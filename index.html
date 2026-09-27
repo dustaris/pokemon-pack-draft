@@ -1,0 +1,591 @@
+<meta charset="utf-8">
+<title>Pokédex Pack Draft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root {
+  --bg: #ECEEF3;
+  --surface: #FFFFFF;
+  --surface-2: #E2E5EC;
+  --ink: #15171E;
+  --muted: #5E6475;
+  --line: #D3D7E0;
+  --accent: #1F55D0;
+  --accent-ink: #FFFFFF;
+  --r0: #8A90A0; /* common */
+  --r1: #2A9964; /* uncommon */
+  --r2: #2F68E0; /* rare */
+  --r3: #D89411; /* legendary */
+  --good: #23905A;
+  --bad: #C73446;
+  --shadow: 0 1px 0 rgba(21,23,30,.05), 0 10px 28px -14px rgba(21,23,30,.35);
+  --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #111319; --surface: #1A1D26; --surface-2: #232733; --ink: #ECEDF2; --muted: #9AA0B2; --line: #2F3442;
+    --accent: #5C8BFF; --accent-ink: #0A1330; --r0: #9AA0B2; --r1: #45C184; --r2: #6D96FF; --r3: #F2B531;
+    --good: #45C07F; --bad: #FF6173;
+    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.75);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111319; --surface: #1A1D26; --surface-2: #232733; --ink: #ECEDF2; --muted: #9AA0B2; --line: #2F3442;
+  --accent: #5C8BFF; --accent-ink: #0A1330; --r0: #9AA0B2; --r1: #45C184; --r2: #6D96FF; --r3: #F2B531;
+  --good: #45C07F; --bad: #FF6173;
+  --shadow: 0 1px 0 rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.75);
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); padding: 0 16px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 20px 48px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* Header */
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px 24px; margin-bottom: 18px; }
+.home-link { display: inline-block; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--accent); text-decoration: none; }
+.brand h1 { font-size: clamp(30px, 5.4vw, 48px); font-weight: 800; line-height: .95; letter-spacing: -.02em; }
+.brand h1 em { font-style: normal; color: var(--accent); }
+.brand p { margin: 8px 0 0; color: var(--muted); max-width: 56ch; }
+.meter { display: grid; gap: 6px; min-width: 240px; flex: 0 1 320px; }
+.meter .nums { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px; color: var(--muted); }
+.meter .nums b { font-family: var(--mono); font-size: 22px; color: var(--ink); }
+.bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width .4s; }
+.meter .sub { font-size: 12px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
+
+.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 12px; width: fit-content; max-width: 100%; margin-bottom: 18px; }
+.tabs button { border: 0; background: transparent; padding: 8px 16px; border-radius: 9px; font-weight: 600; font-size: 14px; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.tabs .ct { font-family: var(--mono); font-size: 12px; margin-left: 4px; opacity: .8; }
+
+/* Pack shelf */
+.shelf { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+.shelf button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+.shelf button i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.shelf button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.shelf button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Stage */
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 24px 20px; min-height: 420px; display: grid; place-items: center; position: relative; overflow: hidden; }
+.stage-inner { width: 100%; display: grid; gap: 18px; justify-items: center; }
+.stage .note { color: var(--muted); font-size: 14px; text-align: center; margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+.btn { border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700; font-size: 14px; }
+.btn-accent { background: var(--accent); color: var(--accent-ink); }
+.btn-plain { background: var(--surface-2); color: var(--ink); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* The pack: the one loud object */
+.pack { --c: #1F55D0; position: relative; width: 210px; aspect-ratio: 5 / 8; max-width: 100%; border: 0; padding: 0; border-radius: 6px; background: var(--c); color: #fff; overflow: hidden;
+  box-shadow: 0 18px 36px -16px color-mix(in srgb, var(--c) 70%, #000), inset 0 0 0 1px rgba(255,255,255,.15); transition: transform .18s; }
+.pack:hover { transform: translateY(-4px) rotate(-1.5deg); }
+.pack::before, .pack::after { content: ""; position: absolute; left: 0; right: 0; height: 14px; z-index: 3;
+  background: repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0 3px, rgba(255,255,255,.18) 3px 6px); }
+.pack::before { top: 0; } .pack::after { bottom: 0; }
+.pack .foil { position: absolute; inset: 0; background: conic-gradient(from 210deg at 70% 30%, rgba(255,255,255,0), rgba(255,255,255,.35), rgba(255,255,255,0) 30%, rgba(255,255,255,.2) 55%, rgba(255,255,255,0) 70%); mix-blend-mode: overlay; }
+.pack .ball { position: absolute; width: 190px; height: 190px; right: -60px; top: 40px; border-radius: 50%; border: 18px solid rgba(255,255,255,.14); }
+.pack .ball::after { content: ""; position: absolute; left: -18px; right: -18px; top: 50%; height: 18px; margin-top: -9px; background: rgba(255,255,255,.14); }
+.pack img { position: absolute; left: 50%; top: 44%; width: 150px; height: 150px; transform: translate(-50%, -50%); image-rendering: pixelated; max-width: none; filter: drop-shadow(0 6px 0 rgba(0,0,0,.25)); }
+.pack .lbl { position: absolute; left: 14px; right: 14px; bottom: 26px; text-align: left; z-index: 2; }
+.pack .lbl small { display: block; font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
+.pack .lbl b { display: block; font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1; letter-spacing: -.01em; }
+.pack .lbl span { font-family: var(--mono); font-size: 11px; opacity: .85; }
+.pack .top { position: absolute; top: 22px; left: 14px; font-family: var(--mono); font-size: 10px; letter-spacing: .1em; opacity: .9; z-index: 2; }
+.pack.tearing { animation: tear .55s ease-in forwards; }
+@keyframes tear { 0% { transform: none; } 25% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } 100% { transform: translateY(-30px) scale(.9); opacity: 0; } }
+
+/* Cards */
+.cards { --g: 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--g); width: 100%; max-width: 860px; }
+.cards .card { width: calc((100% - 4 * var(--g)) / 5); }
+@media (max-width: 720px) { .cards { --g: 8px; } .cards .card { width: calc((100% - 2 * var(--g)) / 3); } }
+.card { --rc: var(--r0); position: relative; perspective: 800px; border: 0; padding: 0; background: none; aspect-ratio: 5 / 7; width: 100%; max-width: 100%; }
+.card .in { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.3,.7,.3,1); }
+.card.up .in { transform: rotateY(180deg); }
+.card .face, .card .back { position: absolute; inset: 0; border-radius: 12px; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; }
+.card .back { background: radial-gradient(circle at 50% 50%, #fff 0 9%, #1B1D26 9% 12%, transparent 12%), linear-gradient(#D6353F 0 48%, #1B1D26 48% 52%, #F3F3F3 52%); border: 5px solid #1B1D26; }
+.card .face { transform: rotateY(180deg); background: var(--surface); border: 2px solid color-mix(in srgb, var(--rc) 70%, var(--line)); display: flex; flex-direction: column; align-items: center; padding: 8px 6px 10px; text-align: center; gap: 2px; }
+.card .face::before { content: ""; position: absolute; inset: 0 0 auto; height: 46%; background: linear-gradient(color-mix(in srgb, var(--rc) 26%, transparent), transparent); }
+.card .rar { position: relative; align-self: stretch; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--rc); }
+.card .rar .no { font-family: var(--mono); color: var(--muted); letter-spacing: 0; }
+.card img { position: relative; width: 96px; height: 96px; max-width: 100%; image-rendering: pixelated; margin: -2px 0 -6px; }
+.card .nm { position: relative; font-weight: 700; font-size: 14px; line-height: 1.15; }
+.card .bst { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.card .new { position: absolute; top: 26px; left: 6px; z-index: 2; font-size: 10px; font-weight: 800; letter-spacing: .06em; background: var(--good); color: #fff; border-radius: 4px; padding: 1px 5px; }
+.card .dupe { position: absolute; top: 26px; left: 6px; z-index: 2; font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--surface-2); border-radius: 4px; padding: 1px 5px; }
+.card.r3 .face { box-shadow: 0 0 0 2px var(--r3), 0 0 26px -4px var(--r3); }
+.card.shiny .face::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 20%, rgba(255,120,200,.25) 35%, rgba(120,220,255,.25) 50%, rgba(255,240,120,.25) 65%, transparent 80%); background-size: 250% 250%; animation: holo 3s linear infinite; }
+@keyframes holo { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.shiny-tag { color: #D0469A; font-weight: 800; }
+.card.pickable { cursor: pointer; }
+.card.pickable:hover .in { transform: rotateY(180deg) translateY(-4px); }
+.card[aria-pressed="true"] .face { outline: 3px solid var(--accent); outline-offset: 2px; }
+.card.gone { opacity: .25; filter: grayscale(1); transition: opacity .4s, filter .4s; }
+.card.kept .face { outline: 3px solid var(--good); outline-offset: 2px; }
+.types { position: relative; display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; }
+.t { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; padding: 1px 6px; border-radius: 4px; text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.odds { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: center; }
+.odds b { font-weight: 700; }
+
+/* Dex */
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.toolbar input[type="search"], .toolbar select { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 14px; color: var(--ink); min-width: 0; }
+.toolbar input[type="search"] { width: 180px; }
+.toolbar label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.toolbar .count { margin-left: auto; font-size: 13px; color: var(--muted); }
+.dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.dm { position: relative; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 4px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; }
+.dm img { width: 72px; height: 72px; image-rendering: pixelated; margin: -4px 0 -6px; }
+.dm .nm { font-size: 12px; font-weight: 600; line-height: 1.2; }
+.dm .no { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.dm.missing img { filter: brightness(0); opacity: .14; }
+.dm.missing .nm { color: var(--muted); font-weight: 400; }
+.dm.owned:hover { border-color: var(--accent); }
+.dm .x { position: absolute; top: 4px; right: 5px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.dm .pip { position: absolute; top: 5px; left: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--rc); }
+.dm.onteam { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.dm .sh { position: absolute; bottom: 4px; right: 6px; font-size: 11px; color: #D0469A; }
+.empty-note { color: var(--muted); padding: 32px 4px; text-align: center; }
+
+/* Team */
+.team-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+@media (max-width: 860px) { .team-grid { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.panel h2 { font-size: 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h2 span { font-family: var(--body); font-size: 12px; font-weight: 500; color: var(--muted); }
+.slots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 480px) { .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.slot { position: relative; border-radius: 12px; background: var(--surface-2); min-height: 132px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; text-align: center; gap: 2px; }
+.slot.filled { background: transparent; outline: 1px solid var(--line); }
+.slot img { width: 80px; height: 80px; image-rendering: pixelated; margin: -6px 0 -6px; }
+.slot .nm { font-weight: 700; font-size: 14px; line-height: 1.2; }
+.slot .emp { font-size: 12px; color: var(--muted); }
+.slot .rm { position: absolute; top: 4px; right: 4px; border: 0; background: var(--surface-2); color: var(--muted); border-radius: 6px; width: 24px; height: 24px; font-size: 14px; line-height: 1; }
+.slot .rm:hover { color: var(--bad); }
+.stats { display: grid; gap: 14px; }
+.kv { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.kv .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.kv .v { font-family: var(--mono); font-weight: 700; font-size: 20px; }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.sect .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.sect p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.statbars { display: grid; gap: 4px; margin-top: 6px; }
+.sb { display: grid; grid-template-columns: 44px 1fr 32px; gap: 8px; align-items: center; font-size: 12px; }
+.sb span:first-child { color: var(--muted); font-weight: 600; }
+.sb .bar { height: 6px; }
+.sb .mono { text-align: right; font-size: 12px; }
+.hint-line { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); z-index: 20; max-width: calc(100% - 32px); }
+footer { margin-top: 32px; font-size: 12px; color: var(--muted); max-width: 72ch; display: grid; gap: 8px; }
+footer .reset { justify-self: start; border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 5px 10px; font-size: 12px; color: var(--muted); }
+footer .reset.armed { border-color: var(--bad); color: var(--bad); }
+@media (prefers-reduced-motion: reduce) {
+  .card .in, .bar i, .pack { transition: none; }
+  .pack.tearing { animation: none; opacity: 0; }
+  .card.shiny .face::after { animation: none; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <a id="home-link" class="home-link" href="https://wdcardshop.com/" target="_top" hidden>← Back to WD Card Shop</a>
+      <h1>Pokédex <em>Pack</em> Draft</h1>
+      <p>Rip a pack of five, keep one. Fill all 1,025 Pokédex entries and build your best team of six.</p>
+    </div>
+    <div class="meter" aria-live="polite">
+      <div class="nums"><span>Caught</span><span><b id="m-caught">0</b> / 1,025</span></div>
+      <div class="bar"><i id="m-bar" style="width:0%"></i></div>
+      <div class="sub"><span id="m-packs">0 packs opened</span><span id="m-leg">0 legendaries</span><span id="m-shiny">0 shinies</span></div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button id="tab-packs" role="tab" type="button" data-tab="packs">Open packs</button>
+    <button id="tab-dex" role="tab" type="button" data-tab="dex">Pokédex</button>
+    <button id="tab-team" role="tab" type="button" data-tab="team">Team <span class="ct" id="team-ct">0/6</span></button>
+  </nav>
+
+  <main id="view"></main>
+
+  <footer>
+    <button class="reset" id="reset" type="button">Reset collection</button>
+    <span>Your collection is saved in this browser only. Unofficial fan game. Pokémon and all related names and sprites are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Sprites via PokéAPI; base stats via Pokémon Showdown.</span>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="dex.js"></script>
+<script src="sprites.js"></script>
+<script>
+(() => {
+// ---------- Static data ----------
+const REGIONS = [
+  { id: "all",    name: "All Regions", lo: 1,   hi: 1025, color: "#1F55D0", mascot: 493 },
+  { id: "kanto",  name: "Kanto",  gen: "I",    lo: 1,   hi: 151,  color: "#D23A35", mascot: 150 },
+  { id: "johto",  name: "Johto",  gen: "II",   lo: 152, hi: 251,  color: "#B98A1E", mascot: 250 },
+  { id: "hoenn",  name: "Hoenn",  gen: "III",  lo: 252, hi: 386,  color: "#23906A", mascot: 384 },
+  { id: "sinnoh", name: "Sinnoh", gen: "IV",   lo: 387, hi: 493,  color: "#4553BE", mascot: 483 },
+  { id: "unova",  name: "Unova",  gen: "V",    lo: 494, hi: 649,  color: "#33363F", mascot: 643 },
+  { id: "kalos",  name: "Kalos",  gen: "VI",   lo: 650, hi: 721,  color: "#2A78AE", mascot: 716 },
+  { id: "alola",  name: "Alola",  gen: "VII",  lo: 722, hi: 809,  color: "#D8752E", mascot: 791 },
+  { id: "galar",  name: "Galar",  gen: "VIII", lo: 810, hi: 905,  color: "#A8336B", mascot: 888 },
+  { id: "paldea", name: "Paldea", gen: "IX",   lo: 906, hi: 1025, color: "#7038A8", mascot: 1007 },
+];
+const RARITY = ["Common", "Uncommon", "Rare", "Legendary"];
+const SHINY_ODDS = 1 / 100;
+// Slot 5 (the hit slot): Legendary 1/20, Rare 1/4, otherwise Uncommon
+const HIT = { leg: 1 / 20, rare: 1 / 4 };
+const TYPE_COLORS = { Normal:"#9A9A6E", Fire:"#E0701F", Water:"#4B7BE0", Electric:"#D4A800", Grass:"#5FA83A", Ice:"#5EB8B4",
+  Fighting:"#B42B25", Poison:"#8E3C92", Ground:"#C79B45", Flying:"#8C74DC", Psychic:"#E6446F", Bug:"#8C9A1A",
+  Rock:"#A48B30", Ghost:"#6A5690", Dragon:"#5B2EE8", Dark:"#5E4D40", Steel:"#8E8EA8", Fairy:"#D8739A" };
+const TYPES = Object.keys(TYPE_COLORS);
+// attacker -> [super effective], [not very effective], [no effect]
+const CHART = {
+  Normal:   [[], ["Rock","Steel"], ["Ghost"]],
+  Fire:     [["Grass","Ice","Bug","Steel"], ["Fire","Water","Rock","Dragon"], []],
+  Water:    [["Fire","Ground","Rock"], ["Water","Grass","Dragon"], []],
+  Electric: [["Water","Flying"], ["Electric","Grass","Dragon"], ["Ground"]],
+  Grass:    [["Water","Ground","Rock"], ["Fire","Grass","Poison","Flying","Bug","Dragon","Steel"], []],
+  Ice:      [["Grass","Ground","Flying","Dragon"], ["Fire","Water","Ice","Steel"], []],
+  Fighting: [["Normal","Ice","Rock","Dark","Steel"], ["Poison","Flying","Psychic","Bug","Fairy"], ["Ghost"]],
+  Poison:   [["Grass","Fairy"], ["Poison","Ground","Rock","Ghost"], ["Steel"]],
+  Ground:   [["Fire","Electric","Poison","Rock","Steel"], ["Grass","Bug"], ["Flying"]],
+  Flying:   [["Grass","Fighting","Bug"], ["Electric","Rock","Steel"], []],
+  Psychic:  [["Fighting","Poison"], ["Psychic","Steel"], ["Dark"]],
+  Bug:      [["Grass","Psychic","Dark"], ["Fire","Fighting","Poison","Flying","Ghost","Steel","Fairy"], []],
+  Rock:     [["Fire","Ice","Flying","Bug"], ["Fighting","Ground","Steel"], []],
+  Ghost:    [["Psychic","Ghost"], ["Dark"], ["Normal"]],
+  Dragon:   [["Dragon"], ["Steel"], ["Fairy"]],
+  Dark:     [["Psychic","Ghost"], ["Fighting","Dark","Fairy"], []],
+  Steel:    [["Ice","Rock","Fairy"], ["Fire","Water","Electric","Steel"], []],
+  Fairy:    [["Fighting","Dragon","Dark"], ["Fire","Poison","Steel"], []],
+};
+function eff(atk, def) {
+  const [se, nve, imm] = CHART[atk];
+  return imm.includes(def) ? 0 : se.includes(def) ? 2 : nve.includes(def) ? .5 : 1;
+}
+const mult = (atk, types) => types.reduce((m, d) => m * eff(atk, d), 1);
+
+// ---------- Data ----------
+const bstOf = s => s.reduce((a, b) => a + b, 0);
+const DEX = window.DEX.map(([num, name, types, stats, legend]) => {
+  const bst = bstOf(stats);
+  return { num, name, types, stats, bst, tier: legend ? 3 : bst >= 500 ? 2 : bst >= 400 ? 1 : 0 };
+});
+const byNum = n => DEX[n - 1];
+const sprite = n => "data:image/png;base64," + window.SPRITES[n - 1];
+const regionOf = n => REGIONS.find(r => r.id !== "all" && n >= r.lo && n <= r.hi);
+const pad = n => String(n).padStart(4, "0");
+const typeChips = types => types.map(t => `<span class="t" style="background:${TYPE_COLORS[t]}">${t}</span>`).join("");
+const rc = tier => `var(--r${tier})`;
+
+// ---------- Storage (optional) ----------
+const KEY = "packdraft";
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } },
+  set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} },
+};
+const blank = () => ({ v: 1, owned: {}, packs: 0, team: [] });
+let C = store.get();
+if (!C || C.v !== 1) C = blank();
+const save = () => store.set(C);
+
+// ---------- State ----------
+const S = { tab: "packs", region: "all", phase: "sealed", cards: [], revealed: 0, selected: null, kept: null,
+            dexRegion: "all", dexFilter: "all", dexSearch: "" };
+let timers = [];
+const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---------- Pack generation ----------
+function pickFrom(pool, tier, taken) {
+  for (let t = tier; t >= 0; t--) {
+    const opts = pool.filter(m => m.tier === t && !taken.has(m.num));
+    if (opts.length) return opts[Math.floor(Math.random() * opts.length)];
+  }
+  return null;
+}
+function makePack(region) {
+  const pool = DEX.slice(region.lo - 1, region.hi);
+  const roll = Math.random();
+  const hitTier = roll < HIT.leg ? 3 : roll < HIT.leg + HIT.rare ? 2 : 1;
+  const tiers = [0, 0, 0, 1, hitTier].map((t, i) => i < 3 && Math.random() < .1 ? 1 : t);
+  const taken = new Set();
+  return tiers.map(t => {
+    const m = pickFrom(pool, t, taken);
+    taken.add(m.num);
+    return { num: m.num, shiny: Math.random() < SHINY_ODDS };
+  }).sort((a, b) => byNum(a.num).tier - byNum(b.num).tier || byNum(a.num).bst - byNum(b.num).bst);
+}
+
+// ---------- Actions ----------
+function openPack() {
+  if (S.phase !== "sealed") return;
+  const region = REGIONS.find(r => r.id === S.region);
+  S.cards = makePack(region);
+  S.phase = "tearing"; S.revealed = 0; S.selected = null; S.kept = null;
+  const packEl = document.getElementById("pack");
+  if (packEl) packEl.classList.add("tearing");
+  timers.push(setTimeout(() => { S.phase = "revealing"; render(); revealNext(); }, reduced ? 0 : 520));
+}
+function revealNext() {
+  if (S.revealed >= S.cards.length) { S.phase = "picking"; render(); return; }
+  const last = S.revealed === S.cards.length - 1;
+  const big = byNum(S.cards[S.revealed].num).tier >= 2 || S.cards[S.revealed].shiny;
+  const delay = reduced ? 0 : last && big ? 900 : 380;
+  timers.push(setTimeout(() => {
+    S.revealed++;
+    const el = document.querySelector(`.card[data-i="${S.revealed - 1}"]`);
+    if (el) el.classList.add("up");
+    revealNext();
+  }, delay));
+}
+function revealAll() {
+  clearTimers();
+  S.revealed = S.cards.length; S.phase = "picking"; render();
+}
+function keep() {
+  if (S.selected == null) return;
+  const c = S.cards[S.selected];
+  const o = C.owned[c.num] || { n: 0, shiny: false };
+  const isNew = o.n === 0;
+  o.n++; if (c.shiny) o.shiny = true;
+  C.owned[c.num] = o; C.packs++;
+  save();
+  S.kept = S.selected; S.phase = "kept";
+  const m = byNum(c.num);
+  toast(isNew ? `${c.shiny ? "Shiny " : ""}${m.name} added to your Pokédex (#${pad(m.num)})` : `${m.name} kept. You now have ${o.n}.`);
+  render();
+}
+function nextPack() { clearTimers(); S.phase = "sealed"; S.cards = []; render(); }
+function toggleTeam(num) {
+  const i = C.team.indexOf(num);
+  if (i >= 0) C.team.splice(i, 1);
+  else if (C.team.length >= 6) { toast("Your team is full. Remove one first."); return; }
+  else C.team.push(num);
+  save(); render();
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+
+// ---------- Rendering ----------
+function renderMeter() {
+  const owned = Object.keys(C.owned).map(Number);
+  document.getElementById("m-caught").textContent = owned.length.toLocaleString();
+  document.getElementById("m-bar").style.width = (owned.length / 1025 * 100).toFixed(2) + "%";
+  document.getElementById("m-packs").textContent = `${C.packs.toLocaleString()} pack${C.packs === 1 ? "" : "s"} opened`;
+  const leg = owned.filter(n => byNum(n).tier === 3).length;
+  document.getElementById("m-leg").textContent = `${leg} legendar${leg === 1 ? "y" : "ies"}`;
+  const sh = owned.filter(n => C.owned[n].shiny).length;
+  document.getElementById("m-shiny").textContent = `${sh} shin${sh === 1 ? "y" : "ies"}`;
+  document.getElementById("team-ct").textContent = `${C.team.length}/6`;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === S.tab));
+}
+
+function regionProgress(r) {
+  let n = 0;
+  for (let i = r.lo; i <= r.hi; i++) if (C.owned[i]) n++;
+  return `${n}/${r.hi - r.lo + 1}`;
+}
+
+function cardHTML(c, i) {
+  const m = byNum(c.num), o = C.owned[c.num];
+  const up = i < S.revealed ? " up" : "";
+  const pickable = S.phase === "picking";
+  const cls = [`card${up}`, `r${m.tier}`, c.shiny ? "shiny" : "", pickable ? "pickable" : "",
+    S.phase === "kept" ? (S.kept === i ? "kept" : "gone") : ""].join(" ");
+  // Ownership badge reflects the collection before this pack was kept
+  const had = o ? o.n - (S.phase === "kept" && S.kept === i ? 1 : 0) : 0;
+  const badge = had === 0 ? `<span class="new">NEW</span>` : `<span class="dupe">Own ×${had}</span>`;
+  return `<button class="${cls}" type="button" data-i="${i}" style="--rc:${rc(m.tier)}" ${pickable ? `aria-pressed="${S.selected === i}"` : "tabindex=\"-1\""}
+    aria-label="${i < S.revealed ? `${c.shiny ? "Shiny " : ""}${m.name}, ${RARITY[m.tier]}` : "Face-down card"}">
+    <span class="in">
+      <span class="back"></span>
+      <span class="face">
+        <span class="rar"><span>${c.shiny ? `<span class="shiny-tag">★ Shiny</span>` : RARITY[m.tier]}</span><span class="no">#${pad(m.num)}</span></span>
+        ${badge}
+        <img src="${sprite(m.num)}" alt="" style="${c.shiny ? "filter:hue-rotate(150deg) saturate(1.3)" : ""}">
+        <span class="nm">${m.name}</span>
+        <span class="types">${typeChips(m.types)}</span>
+        <span class="bst">BST ${m.bst}</span>
+      </span>
+    </span>
+  </button>`;
+}
+
+function renderPacks() {
+  const region = REGIONS.find(r => r.id === S.region);
+  const locked = S.phase !== "sealed" && S.phase !== "kept";
+  let stage;
+  if (S.phase === "sealed" || S.phase === "tearing") {
+    stage = `
+      <button class="pack" id="pack" type="button" style="--c:${region.color}" aria-label="Open a ${region.name} pack">
+        <span class="foil"></span><span class="ball"></span>
+        <span class="top">5 POKÉMON · 1 PICK</span>
+        <img src="${sprite(region.mascot)}" alt="">
+        <span class="lbl"><small>Pack Draft</small><b>${region.name}</b><span>${region.gen ? `Gen ${region.gen} · #${pad(region.lo)}–${pad(region.hi)}` : "#0001–1025"}</span></span>
+      </button>
+      <p class="note">Tap the pack to rip it. You keep one of the five.</p>
+      <div class="odds"><span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 4 · <b style="color:var(--r3)">Legendary</b> 1 in 20</span><span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
+  } else {
+    const picked = S.selected != null ? byNum(S.cards[S.selected].num) : null;
+    let actions;
+    if (S.phase === "revealing") actions = `<button class="btn btn-plain" id="reveal-all" type="button">Reveal all</button>`;
+    else if (S.phase === "picking") actions = `<button class="btn btn-accent" id="keep" type="button" ${picked ? "" : "disabled"}>${picked ? `Keep ${picked.name}` : "Choose one to keep"}</button>`;
+    else actions = `<button class="btn btn-accent" id="next" type="button">Open another ${region.name} pack</button>
+      ${C.team.length < 6 ? `<button class="btn btn-plain" id="add-kept" type="button">${C.team.includes(S.cards[S.kept].num) ? "On your team" : "Add to team"}</button>` : ""}`;
+    const note = S.phase === "picking" ? "Pick one. The other four go back." : S.phase === "kept" ? "The rest went back in the box." : "Revealing…";
+    stage = `<div class="cards">${S.cards.map(cardHTML).join("")}</div>
+      <p class="note">${note}</p><div class="actions">${actions}</div>`;
+  }
+  return `
+    <div class="shelf" role="group" aria-label="Pack type">
+      ${REGIONS.map(r => `<button type="button" data-region="${r.id}" style="--c:${r.color}" aria-pressed="${r.id === S.region}" ${locked ? "disabled" : ""}>
+        <i></i>${r.name}<span class="mono" style="font-size:11px;opacity:.7">${regionProgress(r)}</span></button>`).join("")}
+    </div>
+    <section class="stage" aria-live="polite"><div class="stage-inner">${stage}</div></section>`;
+}
+
+function renderDex() {
+  const r = REGIONS.find(x => x.id === S.dexRegion);
+  const q = S.dexSearch.trim().toLowerCase();
+  let list = DEX.slice(r.lo - 1, r.hi);
+  if (S.dexFilter === "owned") list = list.filter(m => C.owned[m.num]);
+  if (S.dexFilter === "missing") list = list.filter(m => !C.owned[m.num]);
+  if (q) list = list.filter(m => C.owned[m.num] && m.name.toLowerCase().includes(q) || String(m.num) === q);
+  const grid = list.length ? list.map(m => {
+    const o = C.owned[m.num];
+    if (!o) return `<div class="dm missing" style="--rc:${rc(m.tier)}"><img src="${sprite(m.num)}" alt="" loading="lazy"><span class="nm">???</span><span class="no">#${pad(m.num)}</span></div>`;
+    return `<button type="button" class="dm owned ${C.team.includes(m.num) ? "onteam" : ""}" data-num="${m.num}" style="--rc:${rc(m.tier)}"
+      title="${C.team.includes(m.num) ? "Remove from team" : "Add to team"}">
+      <span class="pip" title="${RARITY[m.tier]}"></span>${o.n > 1 ? `<span class="x">×${o.n}</span>` : ""}${o.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
+      <img src="${sprite(m.num)}" alt="" loading="lazy" style="${o.shiny ? "filter:hue-rotate(150deg) saturate(1.3)" : ""}">
+      <span class="nm">${m.name}</span><span class="no">#${pad(m.num)}</span></button>`;
+  }).join("") : `<p class="empty-note">${S.dexFilter === "owned" || q ? "No caught Pokémon match. Open some packs." : "Nothing missing here. Region complete."}</p>`;
+  return `
+    <div class="toolbar">
+      <select id="dex-region" aria-label="Region">${REGIONS.map(x => `<option value="${x.id}" ${x.id === S.dexRegion ? "selected" : ""}>${x.name} (${regionProgress(x)})</option>`).join("")}</select>
+      <select id="dex-filter" aria-label="Show">
+        <option value="all" ${S.dexFilter === "all" ? "selected" : ""}>All entries</option>
+        <option value="owned" ${S.dexFilter === "owned" ? "selected" : ""}>Caught</option>
+        <option value="missing" ${S.dexFilter === "missing" ? "selected" : ""}>Missing</option>
+      </select>
+      <input type="search" id="dex-search" placeholder="Search caught…" value="${S.dexSearch.replace(/"/g, "&quot;")}" aria-label="Search caught Pokémon">
+      <span class="count">Tap a caught Pokémon to add it to your team</span>
+    </div>
+    <div class="dex">${grid}</div>`;
+}
+
+function renderTeam() {
+  const team = C.team.map(byNum);
+  const slots = Array.from({ length: 6 }, (_, i) => {
+    const m = team[i];
+    if (!m) return `<li class="slot"><span class="emp">Empty slot</span></li>`;
+    const sh = C.owned[m.num]?.shiny;
+    return `<li class="slot filled"><button class="rm" type="button" data-rm="${m.num}" aria-label="Remove ${m.name}">×</button>
+      <img src="${sprite(m.num)}" alt="" style="${sh ? "filter:hue-rotate(150deg) saturate(1.3)" : ""}"><span class="nm">${m.name}</span>
+      <span class="types">${typeChips(m.types)}</span></li>`;
+  }).join("");
+  let side;
+  if (!team.length) {
+    side = `<p class="hint-line">Add Pokémon from your Pokédex to see how the team holds up.</p>`;
+  } else {
+    const avg = i => Math.round(team.reduce((a, m) => a + m.stats[i], 0) / team.length);
+    const labels = ["HP", "Atk", "Def", "SpA", "SpD", "Spe"];
+    const bars = labels.map((l, i) => `<div class="sb"><span>${l}</span><span class="bar"><i style="width:${Math.min(100, avg(i) / 150 * 100)}%"></i></span><span class="mono">${avg(i)}</span></div>`).join("");
+    const avgBst = Math.round(team.reduce((a, m) => a + m.bst, 0) / team.length);
+    const stab = new Set(team.flatMap(m => m.types));
+    const covered = TYPES.filter(d => [...stab].some(a => eff(a, d) === 2));
+    const uncovered = TYPES.filter(d => !covered.includes(d));
+    const threats = TYPES.map(a => ({ a, weak: team.filter(m => mult(a, m.types) > 1).length, res: team.filter(m => mult(a, m.types) < 1).length }))
+      .filter(x => x.weak >= 2 && x.weak > x.res).sort((x, y) => (y.weak - y.res) - (x.weak - x.res));
+    side = `
+      <div class="kv"><span class="k">Average BST</span><span class="v">${avgBst}</span></div>
+      <div class="sect"><span class="k">Average stats</span><div class="statbars">${bars}</div></div>
+      <div class="sect"><span class="k">Super-effective coverage · ${covered.length}/18</span>
+        <p>Types your team's own types hit for double damage.${uncovered.length ? " Not covered:" : ""}</p>
+        ${uncovered.length ? `<div class="chips">${typeChips(uncovered)}</div>` : ""}</div>
+      <div class="sect"><span class="k">Shared weaknesses</span>
+        ${threats.length ? `<p>Types that hit two or more of your team for extra damage, with fewer resisting:</p>
+          <div class="chips">${threats.map(x => `<span class="t" style="background:${TYPE_COLORS[x.a]}">${x.a} ×${x.weak}</span>`).join("")}</div>`
+          : `<p>No type hits more of your team than it resists.</p>`}</div>`;
+  }
+  return `<div class="team-grid">
+    <section class="panel"><h2>Your team <span>${team.length}/6</span></h2><ul class="slots">${slots}</ul></section>
+    <aside class="panel stats"><h2>Team report</h2>${side}</aside></div>`;
+}
+
+function render() {
+  renderMeter();
+  const view = document.getElementById("view");
+  view.innerHTML = S.tab === "packs" ? renderPacks() : S.tab === "dex" ? renderDex() : renderTeam();
+}
+
+// ---------- Events ----------
+document.querySelector(".tabs").addEventListener("click", e => {
+  const b = e.target.closest("button[data-tab]");
+  if (!b) return;
+  S.tab = b.dataset.tab;
+  render();
+});
+document.getElementById("view").addEventListener("click", e => {
+  const t = e.target;
+  const region = t.closest("[data-region]");
+  if (region && !region.disabled) { S.region = region.dataset.region; if (S.phase === "kept") nextPack(); else render(); return; }
+  if (t.closest("#pack")) return openPack();
+  if (t.closest("#reveal-all")) return revealAll();
+  if (t.closest("#keep")) return keep();
+  if (t.closest("#next")) return nextPack();
+  if (t.closest("#add-kept")) { const n = S.cards[S.kept].num; if (!C.team.includes(n)) toggleTeam(n); return; }
+  const card = t.closest(".card.pickable");
+  if (card) { S.selected = +card.dataset.i; render(); return; }
+  const dm = t.closest(".dm.owned");
+  if (dm) return toggleTeam(+dm.dataset.num);
+  const rm = t.closest("[data-rm]");
+  if (rm) return toggleTeam(+rm.dataset.rm);
+});
+document.getElementById("view").addEventListener("change", e => {
+  if (e.target.id === "dex-region") { S.dexRegion = e.target.value; render(); }
+  if (e.target.id === "dex-filter") { S.dexFilter = e.target.value; render(); }
+});
+document.getElementById("view").addEventListener("input", e => {
+  if (e.target.id !== "dex-search") return;
+  S.dexSearch = e.target.value;
+  const pos = e.target.selectionStart;
+  render();
+  const el = document.getElementById("dex-search");
+  el.focus(); el.setSelectionRange(pos, pos);
+});
+let resetArmed = false, resetTimer;
+document.getElementById("reset").addEventListener("click", e => {
+  const b = e.currentTarget;
+  if (!resetArmed) {
+    resetArmed = true; b.classList.add("armed"); b.textContent = "Tap again to erase everything";
+    resetTimer = setTimeout(() => { resetArmed = false; b.classList.remove("armed"); b.textContent = "Reset collection"; }, 4000);
+    return;
+  }
+  clearTimeout(resetTimer); resetArmed = false; b.classList.remove("armed"); b.textContent = "Reset collection";
+  C = blank(); save(); clearTimers(); S.phase = "sealed"; S.cards = []; render(); toast("Collection reset.");
+});
+
+// Show the shop link only when embedded on another site
+try { if (/wdcardshop\.com/.test(document.referrer)) document.getElementById("home-link").hidden = false; } catch {}
+
+render();
+})();
+</script>
