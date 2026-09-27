@@ -19,6 +19,8 @@
   --r3: #D89411; /* legendary */
   --good: #23905A;
   --bad: #C73446;
+  --hp-hi: #2FA866; --hp-mid: #D9A21B; --hp-lo: #D8434F;
+  --candy: #C2477F;
   --shadow: 0 1px 0 rgba(21,23,30,.05), 0 10px 28px -14px rgba(21,23,30,.35);
   --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
   --body: "Figtree", system-ui, -apple-system, sans-serif;
@@ -29,7 +31,7 @@
     color-scheme: dark;
     --bg: #111319; --surface: #1A1D26; --surface-2: #232733; --ink: #ECEDF2; --muted: #9AA0B2; --line: #2F3442;
     --accent: #5C8BFF; --accent-ink: #0A1330; --r0: #9AA0B2; --r1: #45C184; --r2: #6D96FF; --r3: #F2B531;
-    --good: #45C07F; --bad: #FF6173;
+    --good: #45C07F; --bad: #FF6173; --candy: #F07AB0;
     --shadow: 0 1px 0 rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.75);
   }
 }
@@ -37,16 +39,18 @@
   color-scheme: dark;
   --bg: #111319; --surface: #1A1D26; --surface-2: #232733; --ink: #ECEDF2; --muted: #9AA0B2; --line: #2F3442;
   --accent: #5C8BFF; --accent-ink: #0A1330; --r0: #9AA0B2; --r1: #45C184; --r2: #6D96FF; --r3: #F2B531;
-  --good: #45C07F; --bad: #FF6173;
+  --good: #45C07F; --bad: #FF6173; --candy: #F07AB0;
   --shadow: 0 1px 0 rgba(0,0,0,.3), 0 12px 30px -14px rgba(0,0,0,.75);
 }
 * { box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); padding: 0 16px; }
 .wrap { max-width: 1120px; margin: 0 auto; padding-block: 20px 48px; }
 button { font: inherit; color: inherit; cursor: pointer; }
-button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
 .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+img.px { image-rendering: pixelated; max-width: none; }
 
 /* Header */
 header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px 24px; margin-bottom: 18px; }
@@ -54,17 +58,72 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .brand h1 { font-size: clamp(30px, 5.4vw, 48px); font-weight: 800; line-height: .95; letter-spacing: -.02em; }
 .brand h1 em { font-style: normal; color: var(--accent); }
 .brand p { margin: 8px 0 0; color: var(--muted); max-width: 56ch; }
-.meter { display: grid; gap: 6px; min-width: 240px; flex: 0 1 320px; }
+.meter { display: grid; gap: 6px; min-width: 240px; flex: 0 1 340px; }
 .meter .nums { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 13px; color: var(--muted); }
 .meter .nums b { font-family: var(--mono); font-size: 22px; color: var(--ink); }
 .bar { height: 8px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--accent); border-radius: inherit; transition: width .4s; }
 .meter .sub { font-size: 12px; color: var(--muted); display: flex; gap: 14px; flex-wrap: wrap; }
+.meter .sub b { color: var(--ink); font-family: var(--mono); font-weight: 700; }
 
-.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 12px; width: fit-content; max-width: 100%; margin-bottom: 18px; }
-.tabs button { border: 0; background: transparent; padding: 8px 16px; border-radius: 9px; font-weight: 600; font-size: 14px; color: var(--muted); }
+.tabs { display: flex; gap: 4px; background: var(--surface-2); padding: 4px; border-radius: 12px; width: fit-content; max-width: 100%; margin-bottom: 18px; overflow-x: auto; }
+.tabs button { flex: none; border: 0; background: transparent; padding: 8px 14px; border-radius: 9px; font-weight: 600; font-size: 14px; color: var(--muted); }
 .tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 .tabs .ct { font-family: var(--mono); font-size: 12px; margin-left: 4px; opacity: .8; }
+.tabs .ct.hot { color: var(--accent); opacity: 1; }
+
+.btn { border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700; font-size: 14px; }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-accent { background: var(--accent); color: var(--accent-ink); }
+.btn-plain { background: var(--surface-2); color: var(--ink); }
+.btn-line { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.panel h2 { font-size: 20px; margin-bottom: 12px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 8px; }
+.panel h2 span { font-family: var(--body); font-size: 12px; font-weight: 500; color: var(--muted); }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.types { position: relative; display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; }
+.t { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; padding: 1px 6px; border-radius: 4px; text-shadow: 0 1px 0 rgba(0,0,0,.25); white-space: nowrap; }
+.candy { color: var(--candy); font-weight: 700; }
+.lv { font-family: var(--mono); font-size: 11px; font-weight: 700; }
+.xpbar { height: 4px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.xpbar i { display: block; height: 100%; background: var(--accent); }
+.sprites { display: flex; flex-wrap: wrap; gap: 0; }
+.sprites img { width: 48px; height: 48px; margin: -4px -2px; }
+.sprites img.unknown { filter: brightness(0); opacity: .18; }
+
+/* Today */
+.today { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.today .chal { grid-row: span 3; }
+@media (max-width: 860px) { .today { grid-template-columns: minmax(0, 1fr); } .today .chal { grid-row: auto; } }
+.tcard { display: grid; gap: 10px; }
+.tcard h2 { margin-bottom: 0; }
+.big { font-family: var(--display); font-weight: 800; font-size: 40px; line-height: 1; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.row.spread { justify-content: space-between; }
+.week { display: flex; gap: 6px; }
+.week span { flex: 1; min-width: 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); display: grid; gap: 4px; justify-items: center; }
+.week span i { width: 26px; height: 26px; border-radius: 50%; border: 2px dashed var(--line); display: block; }
+.week span.on i { border: 0; background: var(--accent); box-shadow: inset 0 -3px 0 rgba(0,0,0,.2); }
+.week span.now { color: var(--ink); }
+.rule { display: inline-flex; align-items: center; gap: 8px; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 8px 12px; font-family: var(--display); font-weight: 800; font-size: 20px; line-height: 1.1; }
+.lineup-mini { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 420px) { .lineup-mini { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.lm { position: relative; border: 1px solid var(--line); border-radius: 10px; padding: 2px 2px 6px; display: grid; justify-items: center; text-align: center; min-width: 0; background: var(--surface); }
+.lm img { width: 56px; height: 56px; margin: -4px 0 -6px; }
+.lm .nm { font-size: 11px; font-weight: 600; line-height: 1.15; overflow-wrap: anywhere; }
+.lm.rental { border-style: dashed; background: var(--surface-2); }
+.lm .tag { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.lm.empty { min-height: 80px; place-content: center; font-size: 11px; color: var(--muted); }
+details.pickbox { border-top: 1px solid var(--line); padding-top: 8px; }
+details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); }
+.chips-pick { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; max-height: 220px; overflow-y: auto; }
+.chips-pick button { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 0 10px 0 0; font-size: 12px; font-weight: 600; }
+.chips-pick button img { width: 32px; height: 32px; margin: -2px 0; }
+.chips-pick button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.score { font-family: var(--mono); font-weight: 700; }
+.winpct { font-family: var(--mono); font-weight: 700; }
+.winpct.good { color: var(--good); } .winpct.bad { color: var(--bad); }
 
 /* Pack shelf */
 .shelf { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
@@ -76,24 +135,22 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 /* Stage */
 .stage { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 24px 20px; min-height: 420px; display: grid; place-items: center; position: relative; overflow: hidden; }
 .stage-inner { width: 100%; display: grid; gap: 18px; justify-items: center; }
-.stage .note { color: var(--muted); font-size: 14px; text-align: center; margin: 0; }
+.stage .note { color: var(--muted); font-size: 14px; text-align: center; margin: 0; max-width: 60ch; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
-.btn { border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700; font-size: 14px; }
-.btn-accent { background: var(--accent); color: var(--accent-ink); }
-.btn-plain { background: var(--surface-2); color: var(--ink); }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
+.bag { font-family: var(--mono); font-weight: 700; font-size: 13px; background: var(--surface-2); border-radius: 999px; padding: 4px 12px; }
 
 /* The pack: the one loud object */
 .pack { --c: #1F55D0; position: relative; width: 210px; aspect-ratio: 5 / 8; max-width: 100%; border: 0; padding: 0; border-radius: 6px; background: var(--c); color: #fff; overflow: hidden;
   box-shadow: 0 18px 36px -16px color-mix(in srgb, var(--c) 70%, #000), inset 0 0 0 1px rgba(255,255,255,.15); transition: transform .18s; }
-.pack:hover { transform: translateY(-4px) rotate(-1.5deg); }
+.pack:hover:not(:disabled) { transform: translateY(-4px) rotate(-1.5deg); }
+.pack:disabled { cursor: not-allowed; filter: grayscale(.7); opacity: .6; }
 .pack::before, .pack::after { content: ""; position: absolute; left: 0; right: 0; height: 14px; z-index: 3;
   background: repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0 3px, rgba(255,255,255,.18) 3px 6px); }
 .pack::before { top: 0; } .pack::after { bottom: 0; }
 .pack .foil { position: absolute; inset: 0; background: conic-gradient(from 210deg at 70% 30%, rgba(255,255,255,0), rgba(255,255,255,.35), rgba(255,255,255,0) 30%, rgba(255,255,255,.2) 55%, rgba(255,255,255,0) 70%); mix-blend-mode: overlay; }
 .pack .ball { position: absolute; width: 190px; height: 190px; right: -60px; top: 40px; border-radius: 50%; border: 18px solid rgba(255,255,255,.14); }
 .pack .ball::after { content: ""; position: absolute; left: -18px; right: -18px; top: 50%; height: 18px; margin-top: -9px; background: rgba(255,255,255,.14); }
-.pack img { position: absolute; left: 50%; top: 44%; width: 150px; height: 150px; transform: translate(-50%, -50%); image-rendering: pixelated; max-width: none; filter: drop-shadow(0 6px 0 rgba(0,0,0,.25)); }
+.pack img { position: absolute; left: 50%; top: 44%; width: 150px; height: 150px; transform: translate(-50%, -50%); filter: drop-shadow(0 6px 0 rgba(0,0,0,.25)); }
 .pack .lbl { position: absolute; left: 14px; right: 14px; bottom: 26px; text-align: left; z-index: 2; }
 .pack .lbl small { display: block; font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
 .pack .lbl b { display: block; font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1; letter-spacing: -.01em; }
@@ -106,7 +163,7 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .cards { --g: 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--g); width: 100%; max-width: 860px; }
 .cards .card { width: calc((100% - 4 * var(--g)) / 5); }
 @media (max-width: 720px) { .cards { --g: 8px; } .cards .card { width: calc((100% - 2 * var(--g)) / 3); } }
-.card { --rc: var(--r0); position: relative; perspective: 800px; border: 0; padding: 0; background: none; aspect-ratio: 5 / 7; width: 100%; max-width: 100%; }
+.card { --rc: var(--r0); position: relative; perspective: 800px; border: 0; padding: 0; background: none; aspect-ratio: 5 / 7; max-width: 100%; }
 .card .in { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.3,.7,.3,1); }
 .card.up .in { transform: rotateY(180deg); }
 .card .face, .card .back { position: absolute; inset: 0; border-radius: 12px; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow: hidden; }
@@ -115,11 +172,12 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .card .face::before { content: ""; position: absolute; inset: 0 0 auto; height: 46%; background: linear-gradient(color-mix(in srgb, var(--rc) 26%, transparent), transparent); }
 .card .rar { position: relative; align-self: stretch; display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--rc); }
 .card .rar .no { font-family: var(--mono); color: var(--muted); letter-spacing: 0; }
-.card img { position: relative; width: 96px; height: 96px; max-width: 100%; image-rendering: pixelated; margin: -2px 0 -6px; }
+.card img { position: relative; width: 96px; height: 96px; max-width: 100%; margin: -2px 0 -6px; }
 .card .nm { position: relative; font-weight: 700; font-size: 14px; line-height: 1.15; }
 .card .bst { font-family: var(--mono); font-size: 11px; color: var(--muted); }
-.card .new { position: absolute; top: 26px; left: 6px; z-index: 2; font-size: 10px; font-weight: 800; letter-spacing: .06em; background: var(--good); color: #fff; border-radius: 4px; padding: 1px 5px; }
-.card .dupe { position: absolute; top: 26px; left: 6px; z-index: 2; font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--surface-2); border-radius: 4px; padding: 1px 5px; }
+.card .new, .card .dupe { position: absolute; top: 26px; left: 6px; z-index: 2; font-size: 10px; border-radius: 4px; padding: 1px 5px; }
+.card .new { font-weight: 800; letter-spacing: .06em; background: var(--good); color: #fff; }
+.card .dupe { font-family: var(--mono); color: var(--muted); background: var(--surface-2); }
 .card.r3 .face { box-shadow: 0 0 0 2px var(--r3), 0 0 26px -4px var(--r3); }
 .card.shiny .face::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, transparent 20%, rgba(255,120,200,.25) 35%, rgba(120,220,255,.25) 50%, rgba(255,240,120,.25) 65%, transparent 80%); background-size: 250% 250%; animation: holo 3s linear infinite; }
 @keyframes holo { from { background-position: 100% 0; } to { background-position: -100% 0; } }
@@ -127,70 +185,136 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .card.pickable { cursor: pointer; }
 .card.pickable:hover .in { transform: rotateY(180deg) translateY(-4px); }
 .card[aria-pressed="true"] .face { outline: 3px solid var(--accent); outline-offset: 2px; }
-.card.gone { opacity: .25; filter: grayscale(1); transition: opacity .4s, filter .4s; }
+.card.gone { opacity: .3; filter: grayscale(1); transition: opacity .4s, filter .4s; }
 .card.kept .face { outline: 3px solid var(--good); outline-offset: 2px; }
-.types { position: relative; display: flex; gap: 3px; justify-content: center; flex-wrap: wrap; }
-.t { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #fff; padding: 1px 6px; border-radius: 4px; text-shadow: 0 1px 0 rgba(0,0,0,.25); }
 .odds { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: center; }
 .odds b { font-weight: 700; }
 
-/* Dex */
-.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
-.toolbar input[type="search"], .toolbar select { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 14px; color: var(--ink); min-width: 0; }
-.toolbar input[type="search"] { width: 180px; }
-.toolbar label { font-size: 13px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
-.toolbar .count { margin-left: auto; font-size: 13px; color: var(--muted); }
-.dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
-.dm { position: relative; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 4px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; }
-.dm img { width: 72px; height: 72px; image-rendering: pixelated; margin: -4px 0 -6px; }
-.dm .nm { font-size: 12px; font-weight: 600; line-height: 1.2; }
-.dm .no { font-family: var(--mono); font-size: 10px; color: var(--muted); }
-.dm.missing img { filter: brightness(0); opacity: .14; }
-.dm.missing .nm { color: var(--muted); font-weight: 400; }
-.dm.owned:hover { border-color: var(--accent); }
-.dm .x { position: absolute; top: 4px; right: 5px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
-.dm .pip { position: absolute; top: 5px; left: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--rc); }
-.dm.onteam { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.dm .sh { position: absolute; bottom: 4px; right: 6px; font-size: 11px; color: #D0469A; }
-.empty-note { color: var(--muted); padding: 32px 4px; text-align: center; }
+/* Journey */
+.badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.badge { width: 34px; height: 34px; border-radius: 50%; border: 2px dashed var(--line); display: grid; place-items: center; font-size: 10px; font-weight: 800; color: var(--muted); }
+.badge.won { border: 0; background: var(--c); color: #fff; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25), 0 0 0 2px color-mix(in srgb, var(--c) 30%, transparent); }
+.trainers { display: grid; gap: 6px; }
+.tr { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto auto; gap: 10px 14px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.tr.next { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tr.locked { opacity: .55; }
+.tr .st { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.tr.beaten .st { color: var(--good); }
+.tr.next .st { color: var(--accent); }
+.tr .who b { font-family: var(--display); font-size: 17px; }
+.tr .who small { display: block; font-size: 12px; color: var(--muted); }
+.tr .lvtag { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; }
+@media (max-width: 640px) { .tr { grid-template-columns: minmax(0, 1fr) auto; } .tr .st { grid-column: 1 / -1; } .tr .sprites { grid-column: 1 / -1; order: 5; } }
 
-/* Team */
-.team-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+/* Battle */
+.arena { display: grid; gap: 12px; }
+.arena-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; }
+.arena-head h2 { font-size: 24px; }
+.field { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .field { grid-template-columns: 1fr; } }
+.side { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 12px; align-items: center; }
+.side .who { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; }
+.side img.act { width: 96px; height: 96px; margin: -8px 0; }
+.side.foe img.act { transform: scaleX(-1); }
+.side.down img.act { opacity: .25; filter: grayscale(1); }
+.side .nm { font-family: var(--display); font-weight: 800; font-size: 20px; line-height: 1.1; }
+.hp { height: 10px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin: 6px 0 2px; }
+.hp i { display: block; height: 100%; border-radius: inherit; background: var(--hp-hi); transition: width .35s; }
+.hp i.mid { background: var(--hp-mid); } .hp i.lo { background: var(--hp-lo); }
+.pips { display: flex; gap: 4px; }
+.pips i { width: 10px; height: 10px; border-radius: 50%; background: var(--ink); box-shadow: inset 0 -5px 0 #D6353F; }
+.pips i.out { background: var(--line); box-shadow: none; }
+.side.hit img.act { animation: shake .3s; }
+@keyframes shake { 25% { translate: -4px 0; } 75% { translate: 4px 0; } }
+.log { list-style: none; margin: 0; padding: 12px 14px; background: var(--ink); color: var(--bg); border-radius: 14px; font-family: var(--mono); font-size: 13px; line-height: 1.55; min-height: 150px; display: grid; align-content: end; }
+.log li { opacity: .55; } .log li:last-child { opacity: 1; }
+.log .se { color: #7DE3A0; } .log .nve { color: #FFC86B; } .log .ko { color: #FF8C96; }
+.result { display: grid; gap: 12px; }
+.result .big.win { color: var(--good); } .result .big.loss { color: var(--bad); }
+.gains { display: flex; flex-wrap: wrap; gap: 6px; }
+.gain { background: var(--surface-2); border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
+.ups { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+.up { display: flex; align-items: center; gap: 6px; font-size: 13px; background: var(--surface-2); border-radius: 10px; padding: 2px 10px 2px 2px; }
+.up img { width: 40px; height: 40px; margin: -4px 0; }
+.up b { font-family: var(--mono); }
+textarea.share { width: 100%; font: 12px/1.4 var(--mono); background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: none; }
+
+/* Team + box */
+.team-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; margin-bottom: 20px; }
 @media (max-width: 860px) { .team-grid { grid-template-columns: minmax(0, 1fr); } }
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
-.panel h2 { font-size: 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-.panel h2 span { font-family: var(--body); font-size: 12px; font-weight: 500; color: var(--muted); }
-.slots { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-@media (max-width: 480px) { .slots { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.slot { position: relative; border-radius: 12px; background: var(--surface-2); min-height: 132px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; text-align: center; gap: 2px; }
-.slot.filled { background: transparent; outline: 1px solid var(--line); }
-.slot img { width: 80px; height: 80px; image-rendering: pixelated; margin: -6px 0 -6px; }
-.slot .nm { font-weight: 700; font-size: 14px; line-height: 1.2; }
-.slot .emp { font-size: 12px; color: var(--muted); }
-.slot .rm { position: absolute; top: 4px; right: 4px; border: 0; background: var(--surface-2); color: var(--muted); border-radius: 6px; width: 24px; height: 24px; font-size: 14px; line-height: 1; }
-.slot .rm:hover { color: var(--bad); }
+.lineup { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lu { display: grid; grid-template-columns: 22px 56px minmax(0, 1fr) auto; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 4px 8px 4px 6px; }
+.lu .pos { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; }
+.lu img { width: 56px; height: 56px; margin: -4px 0; }
+.lu .info { display: grid; gap: 2px; text-align: left; border: 0; background: none; padding: 0; min-width: 0; }
+.lu .info b { font-size: 15px; }
+.lu .ctl { display: flex; gap: 2px; }
+.lu .ctl button { border: 0; background: var(--surface-2); color: var(--muted); border-radius: 6px; width: 28px; height: 28px; font-size: 13px; line-height: 1; }
+.lu .ctl button:hover:not(:disabled) { color: var(--ink); }
+.lu .ctl button:disabled { opacity: .35; cursor: not-allowed; }
+.lu.empty { grid-template-columns: 22px 1fr; min-height: 58px; color: var(--muted); font-size: 13px; border-style: dashed; }
 .stats { display: grid; gap: 14px; }
 .kv { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
 .kv .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .kv .v { font-family: var(--mono); font-weight: 700; font-size: 20px; }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-.sect .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .sect p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
 .statbars { display: grid; gap: 4px; margin-top: 6px; }
 .sb { display: grid; grid-template-columns: 44px 1fr 32px; gap: 8px; align-items: center; font-size: 12px; }
 .sb span:first-child { color: var(--muted); font-weight: 600; }
 .sb .bar { height: 6px; }
 .sb .mono { text-align: right; font-size: 12px; }
-.hint-line { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
 
-.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); z-index: 20; max-width: calc(100% - 32px); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.toolbar input[type="search"], .toolbar select { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; font-size: 14px; color: var(--ink); min-width: 0; }
+.toolbar input[type="search"] { width: 180px; }
+.toolbar .count { margin-left: auto; font-size: 13px; color: var(--muted); }
+.dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+.dm { position: relative; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 4px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 1px; text-align: center; min-width: 0; }
+.dm img { width: 72px; height: 72px; margin: -4px 0 -6px; }
+.dm .nm { font-size: 12px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.dm .no { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.dm.missing img { filter: brightness(0); opacity: .14; }
+.dm.missing .nm { color: var(--muted); font-weight: 400; }
+.dm.gone img { opacity: .45; }
+button.dm:hover { border-color: var(--accent); }
+.dm .x { position: absolute; top: 4px; right: 5px; font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--muted); }
+.dm .pip { position: absolute; top: 5px; left: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--rc); }
+.dm.onteam { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.dm .sh { position: absolute; bottom: 4px; right: 6px; font-size: 11px; color: #D0469A; }
+.empty-note { color: var(--muted); padding: 32px 4px; text-align: center; }
+
+/* Detail sheet */
+.sheet-wrap { position: fixed; inset: 0; z-index: 30; background: rgba(10,12,18,.5); display: grid; place-items: end center; padding: 16px; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
+@media (min-width: 640px) { .sheet-wrap { place-items: center; } }
+.sheet { width: 100%; max-width: 460px; max-height: calc(100% - 16px); overflow-y: auto; background: var(--surface); border-radius: 18px; padding: 16px 18px 18px; box-shadow: var(--shadow); display: grid; gap: 12px; }
+.sheet .hd { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.sheet .hd img { width: 96px; height: 96px; margin: -8px 0; }
+.sheet .hd h2 { font-size: 26px; line-height: 1.05; }
+.sheet .close { border: 0; background: var(--surface-2); border-radius: 8px; width: 32px; height: 32px; font-size: 16px; align-self: start; }
+.sheet .types { justify-content: flex-start; margin-top: 4px; }
+.opts { display: grid; gap: 8px; }
+.opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.opt .what { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 4px; }
+.opt .what img { width: 40px; height: 40px; margin: -8px 0; }
+.opt .why { font-size: 12px; color: var(--muted); }
+.opt.danger .btn { background: transparent; border: 1px solid var(--bad); color: var(--bad); }
+
+/* Starter */
+.starters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 640px; width: 100%; }
+.starter { border: 1px solid var(--line); background: var(--surface); border-radius: 16px; padding: 10px 8px 14px; display: grid; justify-items: center; gap: 4px; }
+.starter:hover { border-color: var(--accent); transform: translateY(-2px); }
+.starter img { width: 112px; height: 112px; max-width: 100%; margin: -8px 0 -10px; }
+.starter b { font-family: var(--display); font-size: 18px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); z-index: 40; max-width: calc(100% - 32px); }
 footer { margin-top: 32px; font-size: 12px; color: var(--muted); max-width: 72ch; display: grid; gap: 8px; }
 footer .reset { justify-self: start; border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 5px 10px; font-size: 12px; color: var(--muted); }
 footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 @media (prefers-reduced-motion: reduce) {
-  .card .in, .bar i, .pack { transition: none; }
+  .card .in, .bar i, .pack, .hp i { transition: none; }
   .pack.tearing { animation: none; opacity: 0; }
-  .card.shiny .face::after { animation: none; }
+  .card.shiny .face::after, .side.hit img.act { animation: none; }
 }
 </style>
 
@@ -199,114 +323,155 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
     <div class="brand">
       <a id="home-link" class="home-link" href="https://wdcardshop.com/" target="_top" hidden>← Back to WD Card Shop</a>
       <h1>Pokédex <em>Pack</em> Draft</h1>
-      <p>Rip a pack of five, keep one. Fill all 1,025 Pokédex entries and build your best team of six.</p>
+      <p>Rip packs, keep one card from each, and raise a team to beat every Gym, Elite Four and Champion from Kanto to Paldea.</p>
     </div>
     <div class="meter" aria-live="polite">
-      <div class="nums"><span>Caught</span><span><b id="m-caught">0</b> / 1,025</span></div>
+      <div class="nums"><span>Pokédex</span><span><b id="m-caught">0</b> / 1,025</span></div>
       <div class="bar"><i id="m-bar" style="width:0%"></i></div>
-      <div class="sub"><span id="m-packs">0 packs opened</span><span id="m-leg">0 legendaries</span><span id="m-shiny">0 shinies</span></div>
+      <div class="sub" id="m-sub"></div>
     </div>
   </header>
 
-  <nav class="tabs" role="tablist" aria-label="Sections">
-    <button id="tab-packs" role="tab" type="button" data-tab="packs">Open packs</button>
+  <nav class="tabs" role="tablist" aria-label="Sections" id="tabs">
+    <button id="tab-today" role="tab" type="button" data-tab="today">Today <span class="ct" id="ct-today"></span></button>
+    <button id="tab-packs" role="tab" type="button" data-tab="packs">Packs <span class="ct" id="ct-packs"></span></button>
+    <button id="tab-journey" role="tab" type="button" data-tab="journey">Journey</button>
+    <button id="tab-team" role="tab" type="button" data-tab="team">Team <span class="ct" id="ct-team"></span></button>
     <button id="tab-dex" role="tab" type="button" data-tab="dex">Pokédex</button>
-    <button id="tab-team" role="tab" type="button" data-tab="team">Team <span class="ct" id="team-ct">0/6</span></button>
   </nav>
 
   <main id="view"></main>
 
   <footer>
-    <button class="reset" id="reset" type="button">Reset collection</button>
-    <span>Your collection is saved in this browser only. Unofficial fan game. Pokémon and all related names and sprites are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Sprites via PokéAPI; base stats via Pokémon Showdown.</span>
+    <button class="reset" id="reset" type="button">Reset save</button>
+    <span>Your save lives in this browser only. Unofficial fan game. Pokémon and all related names and sprites are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Sprites via PokéAPI; base stats and evolutions via Pokémon Showdown.</span>
   </footer>
 </div>
+<div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="dex.js"></script>
 <script src="sprites.js"></script>
+<script src="evo.js"></script>
+<script src="engine.js"></script>
 <script>
 (() => {
+const E = window.ENGINE;
+const { TYPE_COLORS, TYPES, eff, mult, DEX, byNum, family, evosOf, powerCost, xpNeed, TRANSFER, REGIONS, TRAINERS,
+        trainerTeam, battle, winChance, dailyChallenge, challengeScore } = E;
+
 // ---------- Static data ----------
-const REGIONS = [
-  { id: "all",    name: "All Regions", lo: 1,   hi: 1025, color: "#1F55D0", mascot: 493 },
-  { id: "kanto",  name: "Kanto",  gen: "I",    lo: 1,   hi: 151,  color: "#D23A35", mascot: 150 },
-  { id: "johto",  name: "Johto",  gen: "II",   lo: 152, hi: 251,  color: "#B98A1E", mascot: 250 },
-  { id: "hoenn",  name: "Hoenn",  gen: "III",  lo: 252, hi: 386,  color: "#23906A", mascot: 384 },
-  { id: "sinnoh", name: "Sinnoh", gen: "IV",   lo: 387, hi: 493,  color: "#4553BE", mascot: 483 },
-  { id: "unova",  name: "Unova",  gen: "V",    lo: 494, hi: 649,  color: "#33363F", mascot: 643 },
-  { id: "kalos",  name: "Kalos",  gen: "VI",   lo: 650, hi: 721,  color: "#2A78AE", mascot: 716 },
-  { id: "alola",  name: "Alola",  gen: "VII",  lo: 722, hi: 809,  color: "#D8752E", mascot: 791 },
-  { id: "galar",  name: "Galar",  gen: "VIII", lo: 810, hi: 905,  color: "#A8336B", mascot: 888 },
-  { id: "paldea", name: "Paldea", gen: "IX",   lo: 906, hi: 1025, color: "#7038A8", mascot: 1007 },
-];
+const PACKS = [{ id: "all", name: "All Regions", lo: 1, hi: 1025, color: "#1F55D0", mascot: 493 }, ...REGIONS];
 const RARITY = ["Common", "Uncommon", "Rare", "Legendary"];
 const SHINY_ODDS = 1 / 100;
-// Slot 5 (the hit slot): Legendary 1/20, Rare 1/4, otherwise Uncommon
-const HIT = { leg: 1 / 20, rare: 1 / 4 };
-const TYPE_COLORS = { Normal:"#9A9A6E", Fire:"#E0701F", Water:"#4B7BE0", Electric:"#D4A800", Grass:"#5FA83A", Ice:"#5EB8B4",
-  Fighting:"#B42B25", Poison:"#8E3C92", Ground:"#C79B45", Flying:"#8C74DC", Psychic:"#E6446F", Bug:"#8C9A1A",
-  Rock:"#A48B30", Ghost:"#6A5690", Dragon:"#5B2EE8", Dark:"#5E4D40", Steel:"#8E8EA8", Fairy:"#D8739A" };
-const TYPES = Object.keys(TYPE_COLORS);
-// attacker -> [super effective], [not very effective], [no effect]
-const CHART = {
-  Normal:   [[], ["Rock","Steel"], ["Ghost"]],
-  Fire:     [["Grass","Ice","Bug","Steel"], ["Fire","Water","Rock","Dragon"], []],
-  Water:    [["Fire","Ground","Rock"], ["Water","Grass","Dragon"], []],
-  Electric: [["Water","Flying"], ["Electric","Grass","Dragon"], ["Ground"]],
-  Grass:    [["Water","Ground","Rock"], ["Fire","Grass","Poison","Flying","Bug","Dragon","Steel"], []],
-  Ice:      [["Grass","Ground","Flying","Dragon"], ["Fire","Water","Ice","Steel"], []],
-  Fighting: [["Normal","Ice","Rock","Dark","Steel"], ["Poison","Flying","Psychic","Bug","Fairy"], ["Ghost"]],
-  Poison:   [["Grass","Fairy"], ["Poison","Ground","Rock","Ghost"], ["Steel"]],
-  Ground:   [["Fire","Electric","Poison","Rock","Steel"], ["Grass","Bug"], ["Flying"]],
-  Flying:   [["Grass","Fighting","Bug"], ["Electric","Rock","Steel"], []],
-  Psychic:  [["Fighting","Poison"], ["Psychic","Steel"], ["Dark"]],
-  Bug:      [["Grass","Psychic","Dark"], ["Fire","Fighting","Poison","Flying","Ghost","Steel","Fairy"], []],
-  Rock:     [["Fire","Ice","Flying","Bug"], ["Fighting","Ground","Steel"], []],
-  Ghost:    [["Psychic","Ghost"], ["Dark"], ["Normal"]],
-  Dragon:   [["Dragon"], ["Steel"], ["Fairy"]],
-  Dark:     [["Psychic","Ghost"], ["Fighting","Dark","Fairy"], []],
-  Steel:    [["Ice","Rock","Fairy"], ["Fire","Water","Electric","Steel"], []],
-  Fairy:    [["Fighting","Dragon","Dark"], ["Fire","Poison","Steel"], []],
-};
-function eff(atk, def) {
-  const [se, nve, imm] = CHART[atk];
-  return imm.includes(def) ? 0 : se.includes(def) ? 2 : nve.includes(def) ? .5 : 1;
-}
-const mult = (atk, types) => types.reduce((m, d) => m * eff(atk, d), 1);
+const HIT = { leg: 1 / 20, rare: 1 / 4 }; // hit slot: Legendary 1/20, Rare 1/4, otherwise Uncommon
+const STARTERS = [1, 4, 7];
+const START_PACKS = 6, STARTER_LVL = 8, DAILY_BANK = 3, WEEK_GOAL = 5, WEEK_PACKS = 3, CHAL_TRIES = 3, CHAL_WIN_PACKS = 2;
+const SITE = "https://dustaris.github.io/pokemon-pack-draft/";
+const SHINY_CSS = "filter:hue-rotate(150deg) saturate(1.3)";
 
-// ---------- Data ----------
-const bstOf = s => s.reduce((a, b) => a + b, 0);
-const DEX = window.DEX.map(([num, name, types, stats, legend]) => {
-  const bst = bstOf(stats);
-  return { num, name, types, stats, bst, tier: legend ? 3 : bst >= 500 ? 2 : bst >= 400 ? 1 : 0 };
-});
-const byNum = n => DEX[n - 1];
 const sprite = n => "data:image/png;base64," + window.SPRITES[n - 1];
-const regionOf = n => REGIONS.find(r => r.id !== "all" && n >= r.lo && n <= r.hi);
+const img = (n, shiny, cls = "") => `<img class="px ${cls}" src="${sprite(n)}" alt="" style="${shiny ? SHINY_CSS : ""}">`;
 const pad = n => String(n).padStart(4, "0");
+const pad2 = n => String(n).padStart(2, "0");
 const typeChips = types => types.map(t => `<span class="t" style="background:${TYPE_COLORS[t]}">${t}</span>`).join("");
 const rc = tier => `var(--r${tier})`;
+const plural = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+const pct = p => `<span class="winpct ${p >= .6 ? "good" : p < .35 ? "bad" : ""}">${Math.round(p * 100)}%</span>`;
 
-// ---------- Storage (optional) ----------
+// ---------- Dates (local calendar days) ----------
+const iso = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const today = () => iso(new Date());
+const parse = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
+const daysBetween = (a, b) => Math.round((Date.UTC(...b.split("-").map((x, i) => i === 1 ? x - 1 : +x)) - Date.UTC(...a.split("-").map((x, i) => i === 1 ? x - 1 : +x))) / 864e5);
+const weekStart = s => addDays(s, -((parse(s).getDay() + 6) % 7)); // Monday
+
+// ---------- Save (optional; the game still runs without storage) ----------
 const KEY = "packdraft";
 const store = {
   get() { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } },
   set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} },
 };
-const blank = () => ({ v: 1, owned: {}, packs: 0, team: [] });
-let C = store.get();
-if (!C || C.v !== 1) C = blank();
+function blank() {
+  return { v: 2, dex: {}, box: {}, candy: {}, rare: 0, packs: 0, bank: START_PACKS, team: [], beaten: 0,
+           lastDaily: addDays(today(), -1), chal: { date: null, tries: 0, best: null, won: false, share: null },
+           week: { key: null, days: [], claimed: false }, starter: null, pending: null };
+}
+function addCandy(num, n, c = C) { const f = family(num); c.candy[f] = (c.candy[f] || 0) + n; }
+function migrate(old) { // v1 had only owned counts and a team
+  const c = blank();
+  c.packs = old.packs || 0;
+  for (const [k, o] of Object.entries(old.owned || {})) {
+    const n = +k;
+    c.dex[n] = { n: o.n, shiny: !!o.shiny };
+    c.box[n] = { lvl: STARTER_LVL, xp: 0, shiny: !!o.shiny };
+    if (o.n > 1) addCandy(n, (o.n - 1) * 3, c);
+  }
+  c.team = (old.team || []).filter(n => c.box[n]);
+  return c;
+}
+function load() {
+  const raw = store.get();
+  if (raw && raw.v === 2) return Object.assign(blank(), raw);
+  if (raw && raw.v === 1) return migrate(raw);
+  return blank();
+}
+let C = load();
 const save = () => store.set(C);
 
 // ---------- State ----------
-const S = { tab: "packs", region: "all", phase: "sealed", cards: [], revealed: 0, selected: null, kept: null,
-            dexRegion: "all", dexFilter: "all", dexSearch: "" };
+const S = { tab: "today", region: "all", phase: "sealed", cards: [], revealed: 0, selected: null, kept: null, keptMsg: "",
+            journeyRegion: null, battle: null, detail: null, confirmTransfer: false, chalPick: null,
+            dexRegion: "all", dexFilter: "all", dexSearch: "", boxSearch: "", boxSort: "lvl" };
 let timers = [];
 const clearTimers = () => { timers.forEach(clearTimeout); timers = []; };
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// ---------- Pack generation ----------
+// ---------- Daily bookkeeping ----------
+function visit() {
+  const t = today(), wk = weekStart(t);
+  if (C.week.key !== wk) C.week = { key: wk, days: [], claimed: false };
+  if (!C.week.days.includes(t)) C.week.days.push(t);
+  if (C.chal.date !== t) { C.chal = { date: t, tries: 0, best: null, won: false, share: null }; S.chalPick = null; }
+  save();
+}
+const dailyAvailable = () => Math.min(DAILY_BANK, Math.max(0, daysBetween(C.lastDaily, today())));
+const weekReady = () => C.week.days.length >= WEEK_GOAL && !C.week.claimed;
+let CH = null; // today's challenge, rebuilt when the date rolls over
+const challenge = () => { const t = today(); if (!CH || CH.date !== t) CH = dailyChallenge(t); return CH; };
+
+// ---------- Collection helpers ----------
+const candyOf = num => C.candy[family(num)] || 0;
+const inBox = num => !!C.box[num];
+const teamSide = () => C.team.filter(inBox).map(n => ({ num: n, lvl: C.box[n].lvl, shiny: C.box[n].shiny }));
+const teamAvg = () => { const t = teamSide(); return t.length ? t.reduce((a, b) => a + b.lvl, 0) / t.length : 5; };
+const pullLvl = () => Math.max(5, Math.round(teamAvg()) - 3);
+const regionOpen = ri => ri * 13 <= C.beaten;
+const badges = () => Math.floor(C.beaten / 13);
+function register(num, shiny, bump = true) {
+  const d = C.dex[num];
+  C.dex[num] = { n: (d ? d.n : 0) + (bump ? 1 : 0) || 1, shiny: !!((d && d.shiny) || shiny) };
+  return !d;
+}
+function gainXP(num, xp) {
+  const b = C.box[num];
+  b.xp += xp;
+  while (b.lvl < 100 && b.xp >= xpNeed(b.lvl)) { b.xp -= xpNeed(b.lvl); b.lvl++; }
+  if (b.lvl >= 100) b.xp = 0;
+}
+let wcMemo = { key: "", val: 0 };
+function nextWinChance() {
+  const t = TRAINERS[C.beaten];
+  if (!t) return null;
+  const side = teamSide();
+  if (!side.length) return 0;
+  const key = C.beaten + "|" + side.map(s => s.num + ":" + s.lvl).join(",");
+  if (wcMemo.key !== key) wcMemo = { key, val: winChance(side, trainerTeam(t), 160) };
+  return wcMemo.val;
+}
+
+// ---------- Packs ----------
 function pickFrom(pool, tier, taken) {
   for (let t = tier; t >= 0; t--) {
     const opts = pool.filter(m => m.tier === t && !taken.has(m.num));
@@ -326,22 +491,21 @@ function makePack(region) {
     return { num: m.num, shiny: Math.random() < SHINY_ODDS };
   }).sort((a, b) => byNum(a.num).tier - byNum(b.num).tier || byNum(a.num).bst - byNum(b.num).bst);
 }
-
-// ---------- Actions ----------
 function openPack() {
-  if (S.phase !== "sealed") return;
-  const region = REGIONS.find(r => r.id === S.region);
+  if (S.phase !== "sealed" || C.bank < 1) return;
+  const region = PACKS.find(r => r.id === S.region);
   S.cards = makePack(region);
+  C.bank--; C.pending = { region: S.region, cards: S.cards }; save(); // a refresh resumes this pack instead of re-rolling it
   S.phase = "tearing"; S.revealed = 0; S.selected = null; S.kept = null;
   const packEl = document.getElementById("pack");
   if (packEl) packEl.classList.add("tearing");
+  renderMeter();
   timers.push(setTimeout(() => { S.phase = "revealing"; render(); revealNext(); }, reduced ? 0 : 520));
 }
 function revealNext() {
   if (S.revealed >= S.cards.length) { S.phase = "picking"; render(); return; }
-  const last = S.revealed === S.cards.length - 1;
-  const big = byNum(S.cards[S.revealed].num).tier >= 2 || S.cards[S.revealed].shiny;
-  const delay = reduced ? 0 : last && big ? 900 : 380;
+  const c = S.cards[S.revealed], last = S.revealed === S.cards.length - 1;
+  const delay = reduced ? 0 : last && (byNum(c.num).tier >= 2 || c.shiny) ? 900 : 380;
   timers.push(setTimeout(() => {
     S.revealed++;
     const el = document.querySelector(`.card[data-i="${S.revealed - 1}"]`);
@@ -349,77 +513,295 @@ function revealNext() {
     revealNext();
   }, delay));
 }
-function revealAll() {
-  clearTimers();
-  S.revealed = S.cards.length; S.phase = "picking"; render();
-}
+function revealAll() { clearTimers(); S.revealed = S.cards.length; S.phase = "picking"; render(); }
 function keep() {
   if (S.selected == null) return;
-  const c = S.cards[S.selected];
-  const o = C.owned[c.num] || { n: 0, shiny: false };
-  const isNew = o.n === 0;
-  o.n++; if (c.shiny) o.shiny = true;
-  C.owned[c.num] = o; C.packs++;
+  const c = S.cards[S.selected], m = byNum(c.num);
+  const isNew = register(c.num, c.shiny);
+  let msg;
+  if (!inBox(c.num)) {
+    C.box[c.num] = { lvl: pullLvl(), xp: 0, shiny: c.shiny };
+    addCandy(c.num, 1);
+    msg = `${c.shiny ? "Shiny " : ""}${m.name} joined your box at Lv ${C.box[c.num].lvl}${isNew ? " and your Pokédex" : ""}. +1 candy.`;
+  } else {
+    addCandy(c.num, 3);
+    if (c.shiny) C.box[c.num].shiny = true;
+    msg = `Duplicate ${m.name}: +3 ${byNum(family(c.num)).name} candy.`;
+  }
+  const rest = S.cards.filter((_, i) => i !== S.selected);
+  rest.forEach(r => addCandy(r.num, 1));
+  S.keptMsg = `${msg} The other four became 1 candy each for ${rest.map(r => byNum(family(r.num)).name).join(", ")}.`;
+  C.packs++; C.pending = null;
+  if (!C.team.length) C.team.push(c.num);
   save();
   S.kept = S.selected; S.phase = "kept";
-  const m = byNum(c.num);
-  toast(isNew ? `${c.shiny ? "Shiny " : ""}${m.name} added to your Pokédex (#${pad(m.num)})` : `${m.name} kept. You now have ${o.n}.`);
+  toast(isNew ? `New Pokédex entry: ${m.name} (#${pad(m.num)})` : `${m.name} kept`);
   render();
 }
 function nextPack() { clearTimers(); S.phase = "sealed"; S.cards = []; render(); }
+
+// ---------- Growing Pokémon ----------
+function powerUp(num) {
+  const b = C.box[num], cost = powerCost(b.lvl);
+  if (b.lvl >= 100 || candyOf(num) < cost) return;
+  C.candy[family(num)] -= cost; b.lvl++; b.xp = 0; save(); render();
+}
+function useRare(num) {
+  const b = C.box[num];
+  if (b.lvl >= 100 || C.rare < 1) return;
+  C.rare--; b.lvl++; b.xp = 0; save(); render();
+}
+function evolve(num, to) {
+  const b = C.box[num], opt = evosOf(num).find(e => e.to === to);
+  if (!opt || b.lvl < opt.lvl || candyOf(num) < opt.cost) return;
+  C.candy[family(num)] -= opt.cost;
+  const isNew = register(to, b.shiny, false);
+  if (C.box[to]) { C.box[to].lvl = Math.max(C.box[to].lvl, b.lvl); C.box[to].shiny = C.box[to].shiny || b.shiny; }
+  else C.box[to] = { ...b };
+  delete C.box[num];
+  const ti = C.team.indexOf(num);
+  if (ti >= 0) { if (C.team.includes(to)) C.team.splice(ti, 1); else C.team[ti] = to; }
+  save();
+  S.detail = to;
+  toast(`${byNum(num).name} evolved into ${byNum(to).name}!${isNew ? " New Pokédex entry." : ""}`);
+  render();
+}
+function transfer(num) {
+  if (C.team.includes(num) || Object.keys(C.box).length <= 1) return;
+  const got = TRANSFER[byNum(num).tier];
+  C.rare += got; addCandy(num, 1);
+  delete C.box[num];
+  save();
+  S.detail = null; S.confirmTransfer = false;
+  toast(`Released ${byNum(num).name}: +${got} Rare Candy, +1 candy. It stays in your Pokédex.`);
+  render();
+}
 function toggleTeam(num) {
   const i = C.team.indexOf(num);
   if (i >= 0) C.team.splice(i, 1);
-  else if (C.team.length >= 6) { toast("Your team is full. Remove one first."); return; }
+  else if (C.team.length >= 6) { toast("Your lineup is full. Remove one first."); return; }
   else C.team.push(num);
   save(); render();
 }
+function moveTeam(num, d) {
+  const i = C.team.indexOf(num), j = i + d;
+  if (i < 0 || j < 0 || j >= C.team.length) return;
+  [C.team[i], C.team[j]] = [C.team[j], C.team[i]];
+  save(); render();
+}
+function chooseStarter(num) {
+  C.starter = num;
+  register(num, false);
+  if (!C.box[num]) C.box[num] = { lvl: STARTER_LVL, xp: 0, shiny: false };
+  addCandy(num, 3);
+  if (!C.team.includes(num)) { if (C.team.length >= 6) C.team.pop(); C.team.unshift(num); }
+  save();
+  toast(`${byNum(num).name} is your partner. Open your ${START_PACKS} starter packs to build a team.`);
+  S.tab = "packs";
+  render();
+}
+
+// ---------- Battles ----------
+function startJourney(idx) {
+  const t = TRAINERS[idx];
+  if (!t || idx > C.beaten) return;
+  const side = teamSide();
+  if (!side.length) { toast("Add a Pokémon to your lineup first."); S.tab = "team"; render(); return; }
+  const opp = trainerTeam(t), res = battle(side, opp), first = idx === C.beaten;
+  const oppAvg = opp.reduce((a, b) => a + b.lvl, 0) / opp.length;
+  const xp = Math.round(oppAvg * 7 * (res.win ? (first ? 1 : .6) : .35));
+  const ups = side.slice(0, res.used).map(s => { const from = C.box[s.num].lvl; gainXP(s.num, xp); return { num: s.num, from, to: C.box[s.num].lvl }; });
+  const reward = { xp, ups, packs: 0, rare: 0, unlocked: null, done: false };
+  if (res.win && first) {
+    C.beaten++;
+    reward.packs = t.reward.packs; reward.rare = t.reward.rare;
+    if (t.kind === "champ") { if (t.ri + 1 < REGIONS.length) reward.unlocked = REGIONS[t.ri + 1].name; else reward.done = true; }
+  } else if (res.win) reward.rare = 1;
+  C.bank += reward.packs; C.rare += reward.rare;
+  save();
+  S.battle = { kind: "journey", idx, head: `${t.region.name} · ${t.title}`, foe: t.name, res, reward, from: S.tab };
+  playBattle();
+}
+function chalEligible(ch) {
+  return Object.keys(C.dex).map(Number).filter(n => ch.rule.ok(byNum(n))).sort((a, b) => byNum(b).bst - byNum(a).bst);
+}
+function chalLineup(ch) {
+  const picks = (S.chalPick || chalEligible(ch).slice(0, 6)).slice(0, 6);
+  const side = picks.map(n => ({ num: n, lvl: 50, shiny: !!(C.dex[n] && C.dex[n].shiny) }));
+  for (const r of ch.rentals) if (side.length < 6 && !picks.includes(r)) side.push({ num: r, lvl: 50, rental: true });
+  return side;
+}
+function startChallenge() {
+  const ch = challenge();
+  if (C.chal.tries >= CHAL_TRIES) return;
+  const side = chalLineup(ch), res = battle(side, ch.team), score = challengeScore(res);
+  const reward = { packs: 0, rare: 0, score };
+  if (C.chal.tries === 0) reward.rare = 1;
+  C.chal.tries++;
+  if (res.win && !C.chal.won) { C.chal.won = true; reward.packs = CHAL_WIN_PACKS; }
+  if (C.chal.best == null || score > C.chal.best) {
+    C.chal.best = score;
+    const grid = ch.team.map((_, i) => i < res.kos ? "🟩" : "⬛").join("");
+    C.chal.share = `Pokédex Pack Draft · Daily #${ch.n}\n${ch.rule.label} vs ${ch.boss.name}\n${res.win ? "Won" : "Lost"} · ${score}/100\n${grid}\n${SITE}`;
+  }
+  C.bank += reward.packs; C.rare += reward.rare;
+  save();
+  S.battle = { kind: "chal", head: `Daily Challenge #${ch.n} · ${ch.rule.label}`, foe: ch.boss.name, res, reward, from: S.tab };
+  playBattle();
+}
+function playBattle() {
+  clearTimers();
+  const B = S.battle;
+  B.view = { act: [-1, -1], hp: [B.res.A.map(b => b.maxhp), B.res.B.map(b => b.maxhp)], out: [[], []], log: [], hit: -1 };
+  B.step = 0; B.over = false; B.fast = !!B.fast;
+  S.detail = null;
+  window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
+  if (reduced) return skipBattle();
+  tick();
+}
+function applyEvent(B, e) {
+  const v = B.view, teams = [B.res.A, B.res.B];
+  const nm = (side, i) => teams[side][i].name;
+  v.hit = -1;
+  if (e.t === "send") { v.act[e.side] = e.i; v.log.push({ txt: e.side === 0 ? `Go, ${nm(0, e.i)}!` : `${B.foe} sent out ${nm(1, e.i)}.` }); }
+  else if (e.t === "hit") {
+    const tgt = 1 - e.side;
+    v.hp[tgt][v.act[tgt]] = e.hp; v.hit = tgt;
+    const who = e.side === 0 ? nm(0, v.act[0]) : `Foe ${nm(1, v.act[1])}`;
+    const note = e.mul > 1 ? " It's super effective!" : e.mul < 1 ? " It's not very effective." : "";
+    v.log.push({ txt: `${who} used ${e.move}.${e.crit ? " A critical hit!" : ""}${note}`, cls: e.mul > 1 ? "se" : e.mul < 1 ? "nve" : "" });
+  } else if (e.t === "faint") {
+    v.out[e.side].push(v.act[e.side]);
+    v.log.push({ txt: `${e.side === 0 ? "" : "Foe "}${nm(e.side, v.act[e.side])} fainted!`, cls: "ko" });
+  }
+}
+function tick() {
+  const B = S.battle;
+  if (!B || B.over) return;
+  if (B.step >= B.res.ev.length) { B.over = true; render(); return; }
+  applyEvent(B, B.res.ev[B.step++]);
+  render();
+  timers.push(setTimeout(tick, B.fast ? 160 : 620));
+}
+function skipBattle() {
+  clearTimers();
+  const B = S.battle;
+  while (B.step < B.res.ev.length) applyEvent(B, B.res.ev[B.step++]);
+  B.view.hit = -1; B.over = true;
+  render();
+}
+function leaveBattle() { clearTimers(); const from = S.battle.from; S.battle = null; S.tab = from; render(); }
 
 let toastTimer;
 function toast(msg) {
   const el = document.getElementById("toast");
   el.textContent = msg; el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
 }
 
-// ---------- Rendering ----------
+// ---------- Rendering: shared ----------
 function renderMeter() {
-  const owned = Object.keys(C.owned).map(Number);
-  document.getElementById("m-caught").textContent = owned.length.toLocaleString();
-  document.getElementById("m-bar").style.width = (owned.length / 1025 * 100).toFixed(2) + "%";
-  document.getElementById("m-packs").textContent = `${C.packs.toLocaleString()} pack${C.packs === 1 ? "" : "s"} opened`;
-  const leg = owned.filter(n => byNum(n).tier === 3).length;
-  document.getElementById("m-leg").textContent = `${leg} legendar${leg === 1 ? "y" : "ies"}`;
-  const sh = owned.filter(n => C.owned[n].shiny).length;
-  document.getElementById("m-shiny").textContent = `${sh} shin${sh === 1 ? "y" : "ies"}`;
-  document.getElementById("team-ct").textContent = `${C.team.length}/6`;
-  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === S.tab));
+  const caught = Object.keys(C.dex).length;
+  document.getElementById("m-caught").textContent = caught.toLocaleString();
+  document.getElementById("m-bar").style.width = (caught / 1025 * 100).toFixed(2) + "%";
+  document.getElementById("m-sub").innerHTML = `<span><b>${C.bank}</b> packs in bag</span><span><b>${C.rare}</b> Rare Candy</span><span><b>${badges()}</b>/9 Champions</span>`;
+  const todo = dailyAvailable() + (weekReady() ? 1 : 0) + (C.chal.tries === 0 ? 1 : 0);
+  const ctT = document.getElementById("ct-today");
+  ctT.textContent = todo ? `●${todo}` : ""; ctT.className = "ct hot";
+  document.getElementById("ct-packs").textContent = C.bank;
+  document.getElementById("ct-team").textContent = `${C.team.length}/6`;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", !S.battle && b.dataset.tab === S.tab));
+}
+const regionProgress = r => { let n = 0; for (let i = r.lo; i <= r.hi; i++) if (C.dex[i]) n++; return `${n}/${r.hi - r.lo + 1}`; };
+const xpBar = b => `<span class="xpbar"><i style="width:${b.lvl >= 100 ? 100 : Math.round(b.xp / xpNeed(b.lvl) * 100)}%"></i></span>`;
+function trainerSprites(t, known) {
+  return `<span class="sprites">${trainerTeam(t).map(o => img(o.num, false, known ? "" : "unknown")).join("")}</span>`;
 }
 
-function regionProgress(r) {
-  let n = 0;
-  for (let i = r.lo; i <= r.hi; i++) if (C.owned[i]) n++;
-  return `${n}/${r.hi - r.lo + 1}`;
+// ---------- Rendering: Today ----------
+function renderToday() {
+  const avail = dailyAvailable();
+  const t = today(), ws = C.week.key || weekStart(t);
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => {
+    const date = addDays(ws, i);
+    return `<span class="${C.week.days.includes(date) ? "on" : ""} ${date === t ? "now" : ""}"><i></i>${d}</span>`;
+  }).join("");
+  const next = TRAINERS[C.beaten];
+  const wc = nextWinChance();
+  const journey = next ? `
+      <div class="row spread"><div><div class="eyebrow">${next.region.name} · ${next.title}</div><h3 style="font-size:22px">${next.name} ${next.type ? typeChips([next.type]) : ""}</h3></div>
+        <span class="lv">Lv ${next.level}</span></div>
+      ${trainerSprites(next, true)}
+      <div class="row spread"><span class="muted" style="font-size:13px">Your lineup's win chance: ${pct(wc)}</span>
+        <button class="btn btn-accent btn-sm" type="button" data-battle="${next.idx}">Battle ${next.name}</button></div>`
+    : `<p>Every Champion from Kanto to Paldea is beaten. Rematch anyone from the Journey tab.</p>`;
+  return `<div class="today">
+    ${renderChallengeCard()}
+    <section class="panel tcard">
+      <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(C.bank, "pack", "packs")} in bag</span></div>
+      ${avail ? `<div class="row"><span class="big">+${avail}</span><span class="muted" style="font-size:13px">${avail > 1 ? "Includes packs saved from days you missed." : "Today's free pack is ready."}</span></div>
+        <div class="row"><button class="btn btn-accent" type="button" id="claim-daily">Claim ${plural(avail, "pack", "packs")}</button><button class="btn btn-plain" type="button" data-go="packs">Open packs</button></div>`
+      : `<p class="muted" style="margin:0">Claimed today. A new pack arrives tomorrow; missed days save up to ${DAILY_BANK}.</p>
+        <div class="row"><button class="btn btn-plain" type="button" data-go="packs" ${C.bank ? "" : "disabled"}>Open packs</button></div>`}
+    </section>
+    <section class="panel tcard">
+      <h2>Journey <span>${badges()}/9 Champions beaten</span></h2>
+      ${journey}
+    </section>
+    <section class="panel tcard">
+      <div class="row spread"><h2>This week</h2><span class="muted mono" style="font-size:13px">${Math.min(C.week.days.length, 7)}/${WEEK_GOAL} days</span></div>
+      <div class="week">${days}</div>
+      ${C.week.claimed ? `<p class="muted" style="margin:0">Weekly bonus claimed. A new week starts Monday.</p>`
+        : weekReady() ? `<div class="row"><button class="btn btn-accent" type="button" id="claim-week">Claim ${WEEK_PACKS} bonus packs</button></div>`
+        : `<p class="muted" style="margin:0">Visit on any ${WEEK_GOAL} days this week for ${WEEK_PACKS} bonus packs. The days don't need to be in a row.</p>`}
+    </section>
+  </div>`;
+}
+function renderChallengeCard() {
+  const ch = challenge();
+  const side = chalLineup(ch), elig = chalEligible(ch);
+  const picks = S.chalPick || elig.slice(0, 6);
+  const left = CHAL_TRIES - C.chal.tries;
+  const lineup = side.map(s => `<div class="lm ${s.rental ? "rental" : ""}">${img(s.num, s.shiny)}<span class="nm">${byNum(s.num).name}</span><span class="tag">${s.rental ? "Rental" : "Yours"}</span></div>`).join("");
+  const chooser = elig.length ? `<details class="pickbox" ${S.chalOpen ? "open" : ""} id="chal-details"><summary>Choose from your ${plural(elig.length, "eligible Pokémon", "eligible Pokémon")} (${picks.length}/6 picked)</summary>
+      <div class="chips-pick">${elig.map(n => `<button type="button" data-cpick="${n}" aria-pressed="${picks.includes(n)}">${img(n, C.dex[n].shiny)}${byNum(n).name}</button>`).join("")}</div></details>`
+    : `<p class="muted" style="margin:0;font-size:13px">None of your Pokémon fit today's rule, so rentals fill your lineup. Everyone gets a fair shot.</p>`;
+  return `<section class="panel tcard chal">
+    <div class="row spread"><h2>Daily Challenge #${ch.n}</h2><span class="muted mono" style="font-size:13px">${left}/${CHAL_TRIES} tries left</span></div>
+    <div><span class="rule">${ch.rule.label}</span></div>
+    <p class="muted" style="margin:0;font-size:14px">Same battle for every player today. Everything is set to Lv 50, so levels don't matter. Your Pokédex does. Empty slots use rentals.</p>
+    <div><div class="eyebrow">Boss · ${ch.boss.name} (${ch.boss.region} ${ch.boss.title})</div>
+      <span class="sprites">${ch.team.map(o => img(o.num)).join("")}</span></div>
+    <div><div class="eyebrow" style="margin-bottom:6px">Your lineup · leads first</div><div class="lineup-mini">${lineup}</div></div>
+    ${chooser}
+    <div class="row spread">
+      <span style="font-size:14px">${C.chal.best != null ? `Best today <span class="score">${C.chal.best}/100</span>${C.chal.won ? " · <b style=\"color:var(--good)\">Won</b>" : ""}` : `<span class="muted">Win: +${CHAL_WIN_PACKS} packs · First try: +1 Rare Candy</span>`}</span>
+      <span class="row">${C.chal.share ? `<button class="btn btn-plain btn-sm" type="button" id="share">Copy result</button>` : ""}
+        <button class="btn btn-accent" type="button" id="chal-go" ${left ? "" : "disabled"}>${left ? (C.chal.tries ? "Try again" : "Battle") : "Come back tomorrow"}</button></span>
+    </div>
+    ${C.chal.share ? `<textarea class="share" id="share-text" rows="5" readonly aria-label="Shareable result">${C.chal.share}</textarea>` : ""}
+  </section>`;
 }
 
+// ---------- Rendering: Packs ----------
 function cardHTML(c, i) {
-  const m = byNum(c.num), o = C.owned[c.num];
+  const m = byNum(c.num);
   const up = i < S.revealed ? " up" : "";
   const pickable = S.phase === "picking";
   const cls = [`card${up}`, `r${m.tier}`, c.shiny ? "shiny" : "", pickable ? "pickable" : "",
     S.phase === "kept" ? (S.kept === i ? "kept" : "gone") : ""].join(" ");
-  // Ownership badge reflects the collection before this pack was kept
-  const had = o ? o.n - (S.phase === "kept" && S.kept === i ? 1 : 0) : 0;
-  const badge = had === 0 ? `<span class="new">NEW</span>` : `<span class="dupe">Own ×${had}</span>`;
-  return `<button class="${cls}" type="button" data-i="${i}" style="--rc:${rc(m.tier)}" ${pickable ? `aria-pressed="${S.selected === i}"` : "tabindex=\"-1\""}
+  const keptThis = S.phase === "kept" && S.kept === i;
+  const had = C.dex[c.num] && !(keptThis && C.dex[c.num].n === 1);
+  const badge = !had ? `<span class="new">NEW</span>` : inBox(c.num) && !keptThis ? `<span class="dupe">Lv ${C.box[c.num].lvl} · +3 candy</span>` : `<span class="dupe">Caught</span>`;
+  return `<button class="${cls}" type="button" data-i="${i}" style="--rc:${rc(m.tier)}" ${pickable ? `aria-pressed="${S.selected === i}"` : `tabindex="-1"`}
     aria-label="${i < S.revealed ? `${c.shiny ? "Shiny " : ""}${m.name}, ${RARITY[m.tier]}` : "Face-down card"}">
     <span class="in">
       <span class="back"></span>
       <span class="face">
         <span class="rar"><span>${c.shiny ? `<span class="shiny-tag">★ Shiny</span>` : RARITY[m.tier]}</span><span class="no">#${pad(m.num)}</span></span>
         ${badge}
-        <img src="${sprite(m.num)}" alt="" style="${c.shiny ? "filter:hue-rotate(150deg) saturate(1.3)" : ""}">
+        ${img(m.num, c.shiny)}
         <span class="nm">${m.name}</span>
         <span class="types">${typeChips(m.types)}</span>
         <span class="bst">BST ${m.bst}</span>
@@ -427,165 +809,364 @@ function cardHTML(c, i) {
     </span>
   </button>`;
 }
-
 function renderPacks() {
-  const region = REGIONS.find(r => r.id === S.region);
-  const locked = S.phase !== "sealed" && S.phase !== "kept";
+  const region = PACKS.find(r => r.id === S.region);
+  const busy = S.phase !== "sealed" && S.phase !== "kept";
   let stage;
   if (S.phase === "sealed" || S.phase === "tearing") {
+    const none = C.bank < 1;
     stage = `
-      <button class="pack" id="pack" type="button" style="--c:${region.color}" aria-label="Open a ${region.name} pack">
+      <span class="bag">${plural(C.bank, "pack", "packs")} in bag</span>
+      <button class="pack" id="pack" type="button" style="--c:${region.color}" aria-label="Open a ${region.name} pack" ${none ? "disabled" : ""}>
         <span class="foil"></span><span class="ball"></span>
-        <span class="top">5 POKÉMON · 1 PICK</span>
-        <img src="${sprite(region.mascot)}" alt="">
+        <span class="top">5 POKÉMON · KEEP 1</span>
+        ${img(region.mascot)}
         <span class="lbl"><small>Pack Draft</small><b>${region.name}</b><span>${region.gen ? `Gen ${region.gen} · #${pad(region.lo)}–${pad(region.hi)}` : "#0001–1025"}</span></span>
       </button>
-      <p class="note">Tap the pack to rip it. You keep one of the five.</p>
+      ${none ? `<p class="note">Out of packs. Earn more by beating trainers on your Journey, winning the Daily Challenge, and claiming your daily pack.</p>
+        <div class="actions"><button class="btn btn-accent" type="button" data-go="journey">Go battle</button><button class="btn btn-plain" type="button" data-go="today">Today</button></div>`
+      : `<p class="note">Tap the pack to rip it. Keep one card. The other four become candy for their evolution families.</p>`}
       <div class="odds"><span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 4 · <b style="color:var(--r3)">Legendary</b> 1 in 20</span><span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
   } else {
     const picked = S.selected != null ? byNum(S.cards[S.selected].num) : null;
     let actions;
     if (S.phase === "revealing") actions = `<button class="btn btn-plain" id="reveal-all" type="button">Reveal all</button>`;
     else if (S.phase === "picking") actions = `<button class="btn btn-accent" id="keep" type="button" ${picked ? "" : "disabled"}>${picked ? `Keep ${picked.name}` : "Choose one to keep"}</button>`;
-    else actions = `<button class="btn btn-accent" id="next" type="button">Open another ${region.name} pack</button>
-      ${C.team.length < 6 ? `<button class="btn btn-plain" id="add-kept" type="button">${C.team.includes(S.cards[S.kept].num) ? "On your team" : "Add to team"}</button>` : ""}`;
-    const note = S.phase === "picking" ? "Pick one. The other four go back." : S.phase === "kept" ? "The rest went back in the box." : "Revealing…";
+    else {
+      const kn = S.cards[S.kept].num;
+      actions = `<button class="btn btn-accent" id="next" type="button" ${C.bank ? "" : "disabled"}>${C.bank ? `Open another (${C.bank} left)` : "Out of packs"}</button>
+        ${inBox(kn) && !C.team.includes(kn) && C.team.length < 6 ? `<button class="btn btn-plain" id="add-kept" type="button">Add to lineup</button>` : ""}
+        ${inBox(kn) ? `<button class="btn btn-plain" type="button" data-detail="${kn}">View ${byNum(kn).name}</button>` : ""}`;
+    }
+    const note = S.phase === "picking" ? "Pick one to keep. New Pokémon join your box at about your lineup's level." : S.phase === "kept" ? S.keptMsg : "Revealing…";
     stage = `<div class="cards">${S.cards.map(cardHTML).join("")}</div>
       <p class="note">${note}</p><div class="actions">${actions}</div>`;
   }
   return `
     <div class="shelf" role="group" aria-label="Pack type">
-      ${REGIONS.map(r => `<button type="button" data-region="${r.id}" style="--c:${r.color}" aria-pressed="${r.id === S.region}" ${locked ? "disabled" : ""}>
-        <i></i>${r.name}<span class="mono" style="font-size:11px;opacity:.7">${regionProgress(r)}</span></button>`).join("")}
+      ${PACKS.map((r, i) => { const open = i === 0 || regionOpen(i - 1);
+        return `<button type="button" data-region="${r.id}" style="--c:${r.color}" aria-pressed="${r.id === S.region}" ${busy || !open ? "disabled" : ""} title="${open ? "" : `Beat the ${PACKS[i - 1].name} Champion to unlock`}">
+        <i></i>${r.name}<span class="mono" style="font-size:11px;opacity:.7">${open ? regionProgress(r) : "Locked"}</span></button>`; }).join("")}
     </div>
     <section class="stage" aria-live="polite"><div class="stage-inner">${stage}</div></section>`;
 }
 
+// ---------- Rendering: Journey ----------
+function renderJourney() {
+  const cur = TRAINERS[Math.min(C.beaten, TRAINERS.length - 1)].ri;
+  const ri = S.journeyRegion ?? cur;
+  const R = REGIONS[ri];
+  const wc = nextWinChance();
+  const rows = TRAINERS.filter(t => t.ri === ri).map(t => {
+    const st = t.idx < C.beaten ? "beaten" : t.idx === C.beaten ? "next" : "locked";
+    const btn = st === "beaten" ? `<button class="btn btn-line btn-sm" type="button" data-battle="${t.idx}">Rematch</button>`
+      : st === "next" ? `<button class="btn btn-accent btn-sm" type="button" data-battle="${t.idx}">Battle</button>` : `<span></span>`;
+    return `<div class="tr ${st}">
+      <span class="st">${st === "beaten" ? "✓ Beaten" : st === "next" ? "Next" : "Locked"}</span>
+      <span class="who"><b>${t.name}</b> ${t.type ? typeChips([t.type]) : ""}<small>${t.title}${st === "next" ? ` · win chance ${pct(wc)}` : ""}</small></span>
+      <span class="lvtag">Lv ${t.level}<br>${t.size} Pokémon</span>
+      ${btn}
+      ${trainerSprites(t, st !== "locked")}
+    </div>`;
+  }).join("");
+  return `
+    <div class="badges" aria-label="Champions beaten">${REGIONS.map((r, i) => `<span class="badge ${C.beaten >= (i + 1) * 13 ? "won" : ""}" style="--c:${r.color}" title="${r.name} Champion ${r.champ}">${r.gen}</span>`).join("")}
+      <span class="muted" style="font-size:13px">Beat all 9 Champions to finish the Journey.</span></div>
+    <div class="shelf" role="group" aria-label="Region">
+      ${REGIONS.map((r, i) => `<button type="button" data-jregion="${i}" style="--c:${r.color}" aria-pressed="${i === ri}" ${regionOpen(i) ? "" : "disabled"}><i></i>${r.name}</button>`).join("")}
+    </div>
+    <p class="muted" style="margin:0 0 12px;font-size:14px">First wins pay ${TRAINERS[0].reward.packs} packs (Champions: 5 packs + 3 Rare Candy). Rematches give less XP plus 1 Rare Candy. Losses still give some XP. Your lineup fights in order, and HP carries over between Pokémon.</p>
+    <div class="trainers">${rows}</div>`;
+}
+
+// ---------- Rendering: Battle ----------
+function renderBattle() {
+  const B = S.battle, v = B.view, teams = [B.res.A, B.res.B];
+  const sideHTML = side => {
+    const i = v.act[side], mon = i >= 0 ? teams[side][i] : null;
+    const hp = mon ? v.hp[side][i] : 0, frac = mon ? hp / mon.maxhp : 0;
+    const pips = teams[side].map((_, k) => `<i class="${v.out[side].includes(k) ? "out" : ""}"></i>`).join("");
+    return `<div class="side ${side ? "foe" : ""} ${v.hit === side ? "hit" : ""} ${mon && hp === 0 ? "down" : ""}">
+      <div class="who"><span>${side ? B.foe : "You"}</span><span class="pips">${pips}</span></div>
+      ${mon ? img(mon.num, mon.shiny, "act") : "<span></span>"}
+      <div>${mon ? `<div class="nm">${mon.name}</div><span class="lv">Lv ${mon.lvl}</span>
+        <div class="hp"><i class="${frac < .2 ? "lo" : frac < .5 ? "mid" : ""}" style="width:${(frac * 100).toFixed(1)}%"></i></div>
+        <span class="mono muted" style="font-size:12px">${hp}/${mon.maxhp} HP</span>` : ""}</div>
+    </div>`;
+  };
+  const log = v.log.slice(-7).map(l => `<li class="${l.cls || ""}">${l.txt}</li>`).join("");
+  let result = "";
+  if (B.over) {
+    const r = B.reward, win = B.res.win;
+    const gains = [];
+    if (r.packs) gains.push(`+${r.packs} packs`);
+    if (r.rare) gains.push(`+${r.rare} Rare Candy`);
+    if (r.unlocked) gains.push(`${r.unlocked} unlocked`);
+    if (r.done) gains.push("Journey complete!");
+    if (B.kind === "chal") {
+      gains.unshift(`Score ${r.score}/100`);
+      if (win && !r.packs) gains.push("Already won today");
+    }
+    const nextT = TRAINERS[C.beaten];
+    result = `<section class="panel result">
+      <div class="row"><span class="big ${win ? "win" : "loss"}">${win ? "Victory" : "Defeated"}</span>
+        <span class="muted">${win ? `${B.foe} is out of usable Pokémon.` : `${B.res.kos} of ${B.res.B.length} knocked out.`}</span></div>
+      ${gains.length ? `<div class="gains">${gains.map(g => `<span class="gain">${g}</span>`).join("")}</div>` : ""}
+      ${r.ups ? `<div><div class="eyebrow" style="margin-bottom:6px">+${r.xp} XP each</div><div class="ups">${r.ups.map(u => `<span class="up">${img(u.num, C.box[u.num] && C.box[u.num].shiny)}${byNum(u.num).name} <b>${u.from === u.to ? `Lv ${u.to}` : `Lv ${u.from} → ${u.to}`}</b></span>`).join("")}</div></div>` : ""}
+      ${!win && B.kind === "journey" ? `<p class="muted" style="margin:0;font-size:14px">Level up by rematching trainers you've beaten, feeding candy, or evolving. Try a lineup whose types hit ${B.foe}'s team hard.</p>` : ""}
+      <div class="row">
+        <button class="btn btn-accent" type="button" id="leave">Continue</button>
+        ${B.kind === "journey" && win && nextT && B.idx === C.beaten - 1 ? `<button class="btn btn-plain" type="button" data-battle="${nextT.idx}">Battle ${nextT.name} next</button>` : ""}
+        ${B.kind === "journey" && !win ? `<button class="btn btn-plain" type="button" data-go="team">Adjust team</button>` : ""}
+        ${B.kind === "chal" && C.chal.share ? `<button class="btn btn-plain" type="button" id="share">Copy result</button>` : ""}
+      </div>
+    </section>`;
+  }
+  return `<div class="arena">
+    <div class="arena-head"><div><div class="eyebrow">${B.head}</div><h2>vs ${B.foe}</h2></div>
+      ${B.over ? "" : `<div class="row"><button class="btn btn-plain btn-sm" type="button" id="fast">${B.fast ? "Normal speed" : "Fast"}</button><button class="btn btn-plain btn-sm" type="button" id="skip">Skip to result</button></div>`}</div>
+    <div class="field">${sideHTML(0)}${sideHTML(1)}</div>
+    <ol class="log" aria-live="polite">${log}</ol>
+    ${result}
+  </div>`;
+}
+
+// ---------- Rendering: Team ----------
+function renderTeam() {
+  const team = C.team.filter(inBox);
+  const rows = Array.from({ length: 6 }, (_, i) => {
+    const n = team[i];
+    if (n == null) return `<li class="lu empty"><span class="pos">${i + 1}</span><span>Empty. Tap a Pokémon in your box below to add it.</span></li>`;
+    const b = C.box[n], m = byNum(n);
+    return `<li class="lu"><span class="pos">${i + 1}</span>${img(n, b.shiny)}
+      <button class="info" type="button" data-detail="${n}"><b>${m.name}</b><span class="row" style="gap:6px"><span class="lv">Lv ${b.lvl}</span><span class="types">${typeChips(m.types)}</span></span>${xpBar(b)}</button>
+      <span class="ctl"><button type="button" data-mv="${n}" data-d="-1" aria-label="Move ${m.name} up" ${i === 0 ? "disabled" : ""}>↑</button><button type="button" data-mv="${n}" data-d="1" aria-label="Move ${m.name} down" ${i === team.length - 1 ? "disabled" : ""}>↓</button><button type="button" data-tm="${n}" aria-label="Remove ${m.name}">×</button></span></li>`;
+  }).join("");
+  const q = S.boxSearch.trim().toLowerCase();
+  let box = Object.keys(C.box).map(Number).filter(n => !q || byNum(n).name.toLowerCase().includes(q));
+  box.sort(S.boxSort === "lvl" ? (a, b) => C.box[b].lvl - C.box[a].lvl || a - b : S.boxSort === "candy" ? (a, b) => candyOf(b) - candyOf(a) || a - b : (a, b) => a - b);
+  const grid = box.length ? box.map(n => {
+    const b = C.box[n], m = byNum(n);
+    const canEvo = evosOf(n).some(e => b.lvl >= e.lvl && candyOf(n) >= e.cost);
+    return `<button type="button" class="dm ${C.team.includes(n) ? "onteam" : ""}" data-detail="${n}" style="--rc:${rc(m.tier)}">
+      <span class="pip" title="${RARITY[m.tier]}"></span><span class="x">Lv ${b.lvl}</span>${b.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
+      ${img(n, b.shiny)}<span class="nm">${m.name}</span><span class="no">${canEvo ? `<b style="color:var(--good)">Can evolve</b>` : `<span class="candy">${candyOf(n)}</span> candy`}</span></button>`;
+  }).join("") : `<p class="empty-note">${q ? "No Pokémon in your box match." : "Your box is empty. Open packs to catch Pokémon."}</p>`;
+  return `<div class="team-grid">
+    <section class="panel"><h2>Lineup <span>Fights in this order · HP carries over</span></h2><ol class="lineup">${rows}</ol></section>
+    <aside class="panel stats"><h2>Team report</h2>${teamReport(team.map(byNum))}</aside></div>
+    <section class="panel"><h2>Box <span>${plural(Object.keys(C.box).length, "Pokémon", "Pokémon")} · <span class="candy">${C.rare}</span> Rare Candy</span></h2>
+      <div class="toolbar">
+        <input type="search" id="box-search" placeholder="Search your box…" value="${S.boxSearch.replace(/"/g, "&quot;")}" aria-label="Search your box">
+        <select id="box-sort" aria-label="Sort box"><option value="lvl" ${S.boxSort === "lvl" ? "selected" : ""}>Highest level</option><option value="candy" ${S.boxSort === "candy" ? "selected" : ""}>Most candy</option><option value="num" ${S.boxSort === "num" ? "selected" : ""}>Pokédex number</option></select>
+        <span class="count">Tap a Pokémon to level, evolve or add it</span>
+      </div>
+      <div class="dex">${grid}</div></section>`;
+}
+function teamReport(team) {
+  if (!team.length) return `<p class="muted" style="margin:0;font-size:13px">Add Pokémon to see how the lineup holds up.</p>`;
+  const avg = i => Math.round(team.reduce((a, m) => a + m.stats[i], 0) / team.length);
+  const labels = ["HP", "Atk", "Def", "SpA", "SpD", "Spe"];
+  const bars = labels.map((l, i) => `<div class="sb"><span>${l}</span><span class="bar"><i style="width:${Math.min(100, avg(i) / 150 * 100)}%"></i></span><span class="mono">${avg(i)}</span></div>`).join("");
+  const stab = new Set(team.flatMap(m => m.types));
+  const covered = TYPES.filter(d => [...stab].some(a => eff(a, d) === 2));
+  const uncovered = TYPES.filter(d => !covered.includes(d));
+  const threats = TYPES.map(a => ({ a, weak: team.filter(m => mult(a, m.types) > 1).length, res: team.filter(m => mult(a, m.types) < 1).length }))
+    .filter(x => x.weak >= 2 && x.weak > x.res).sort((x, y) => (y.weak - y.res) - (x.weak - x.res));
+  const wc = nextWinChance(), next = TRAINERS[C.beaten];
+  return `
+    ${next ? `<div class="kv"><span class="k">vs ${next.name} (next)</span><span class="v">${pct(wc)}</span></div>` : ""}
+    <div class="kv"><span class="k">Average level</span><span class="v">${Math.round(teamAvg())}</span></div>
+    <div class="sect"><span class="eyebrow">Average base stats</span><div class="statbars">${bars}</div></div>
+    <div class="sect"><span class="eyebrow">Super-effective coverage · ${covered.length}/18</span>
+      <p>Types your lineup's own types hit for double damage.${uncovered.length ? " Not covered:" : ""}</p>
+      ${uncovered.length ? `<div class="chips">${typeChips(uncovered)}</div>` : ""}</div>
+    <div class="sect"><span class="eyebrow">Shared weaknesses</span>
+      ${threats.length ? `<p>Types that hit two or more of your lineup for extra damage, with fewer resisting:</p>
+        <div class="chips">${threats.map(x => `<span class="t" style="background:${TYPE_COLORS[x.a]}">${x.a} ×${x.weak}</span>`).join("")}</div>`
+        : `<p>No type hits more of your lineup than it resists.</p>`}</div>`;
+}
+
+// ---------- Rendering: Pokédex ----------
 function renderDex() {
-  const r = REGIONS.find(x => x.id === S.dexRegion);
+  const r = PACKS.find(x => x.id === S.dexRegion);
   const q = S.dexSearch.trim().toLowerCase();
   let list = DEX.slice(r.lo - 1, r.hi);
-  if (S.dexFilter === "owned") list = list.filter(m => C.owned[m.num]);
-  if (S.dexFilter === "missing") list = list.filter(m => !C.owned[m.num]);
-  if (q) list = list.filter(m => C.owned[m.num] && m.name.toLowerCase().includes(q) || String(m.num) === q);
+  if (S.dexFilter === "owned") list = list.filter(m => C.dex[m.num]);
+  if (S.dexFilter === "missing") list = list.filter(m => !C.dex[m.num]);
+  if (q) list = list.filter(m => (C.dex[m.num] && m.name.toLowerCase().includes(q)) || String(m.num) === q);
   const grid = list.length ? list.map(m => {
-    const o = C.owned[m.num];
-    if (!o) return `<div class="dm missing" style="--rc:${rc(m.tier)}"><img src="${sprite(m.num)}" alt="" loading="lazy"><span class="nm">???</span><span class="no">#${pad(m.num)}</span></div>`;
-    return `<button type="button" class="dm owned ${C.team.includes(m.num) ? "onteam" : ""}" data-num="${m.num}" style="--rc:${rc(m.tier)}"
-      title="${C.team.includes(m.num) ? "Remove from team" : "Add to team"}">
-      <span class="pip" title="${RARITY[m.tier]}"></span>${o.n > 1 ? `<span class="x">×${o.n}</span>` : ""}${o.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
-      <img src="${sprite(m.num)}" alt="" loading="lazy" style="${o.shiny ? "filter:hue-rotate(150deg) saturate(1.3)" : ""}">
-      <span class="nm">${m.name}</span><span class="no">#${pad(m.num)}</span></button>`;
+    const d = C.dex[m.num], b = C.box[m.num];
+    if (!d) return `<div class="dm missing" style="--rc:${rc(m.tier)}"><img class="px" src="${sprite(m.num)}" alt="" loading="lazy"><span class="nm">???</span><span class="no">#${pad(m.num)}</span></div>`;
+    const inner = `<span class="pip" title="${RARITY[m.tier]}"></span>${b ? `<span class="x">Lv ${b.lvl}</span>` : ""}${d.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
+      <img class="px" src="${sprite(m.num)}" alt="" loading="lazy" style="${d.shiny ? SHINY_CSS : ""}"><span class="nm">${m.name}</span><span class="no">#${pad(m.num)}</span>`;
+    return b ? `<button type="button" class="dm ${C.team.includes(m.num) ? "onteam" : ""}" data-detail="${m.num}" style="--rc:${rc(m.tier)}">${inner}</button>`
+      : `<div class="dm gone" style="--rc:${rc(m.tier)}" title="Registered, but not in your box (evolved or released)">${inner}</div>`;
   }).join("") : `<p class="empty-note">${S.dexFilter === "owned" || q ? "No caught Pokémon match. Open some packs." : "Nothing missing here. Region complete."}</p>`;
   return `
     <div class="toolbar">
-      <select id="dex-region" aria-label="Region">${REGIONS.map(x => `<option value="${x.id}" ${x.id === S.dexRegion ? "selected" : ""}>${x.name} (${regionProgress(x)})</option>`).join("")}</select>
+      <select id="dex-region" aria-label="Region">${PACKS.map(x => `<option value="${x.id}" ${x.id === S.dexRegion ? "selected" : ""}>${x.name} (${regionProgress(x)})</option>`).join("")}</select>
       <select id="dex-filter" aria-label="Show">
         <option value="all" ${S.dexFilter === "all" ? "selected" : ""}>All entries</option>
         <option value="owned" ${S.dexFilter === "owned" ? "selected" : ""}>Caught</option>
         <option value="missing" ${S.dexFilter === "missing" ? "selected" : ""}>Missing</option>
       </select>
       <input type="search" id="dex-search" placeholder="Search caught…" value="${S.dexSearch.replace(/"/g, "&quot;")}" aria-label="Search caught Pokémon">
-      <span class="count">Tap a caught Pokémon to add it to your team</span>
+      <span class="count">Evolving and releasing keep entries registered</span>
     </div>
     <div class="dex">${grid}</div>`;
 }
 
-function renderTeam() {
-  const team = C.team.map(byNum);
-  const slots = Array.from({ length: 6 }, (_, i) => {
-    const m = team[i];
-    if (!m) return `<li class="slot"><span class="emp">Empty slot</span></li>`;
-    const sh = C.owned[m.num]?.shiny;
-    return `<li class="slot filled"><button class="rm" type="button" data-rm="${m.num}" aria-label="Remove ${m.name}">×</button>
-      <img src="${sprite(m.num)}" alt="" style="${sh ? "filter:hue-rotate(150deg) saturate(1.3)" : ""}"><span class="nm">${m.name}</span>
-      <span class="types">${typeChips(m.types)}</span></li>`;
+// ---------- Rendering: Starter ----------
+function renderStarter() {
+  return `<section class="stage"><div class="stage-inner">
+    <div style="text-align:center"><div class="eyebrow">Welcome, Trainer</div><h2 style="font-size:30px">Choose your partner</h2>
+      <p class="note" style="margin-top:6px">Your partner starts at Lv ${STARTER_LVL}. You also get ${START_PACKS} packs to build a team before your first Gym, Brock in Kanto.</p></div>
+    <div class="starters">${STARTERS.map(n => { const m = byNum(n); return `<button class="starter" type="button" data-starter="${n}">${img(n)}<b>${m.name}</b><span class="types">${typeChips(m.types)}</span></button>`; }).join("")}</div>
+  </div></section>`;
+}
+
+// ---------- Rendering: detail sheet ----------
+function renderSheet() {
+  const el = document.getElementById("sheet");
+  const n = S.detail;
+  if (n == null || !C.box[n]) { el.innerHTML = ""; return; }
+  const b = C.box[n], m = byNum(n), candy = candyOf(n), fam = byNum(family(n)).name;
+  const cost = powerCost(b.lvl), onTeam = C.team.includes(n);
+  const s = E.makeBattler({ num: n, lvl: b.lvl });
+  const evo = evosOf(n).map(e => {
+    const t = byNum(e.to), okL = b.lvl >= e.lvl, okC = candy >= e.cost;
+    return `<div class="opt"><div><div class="what">Evolve into ${img(e.to, b.shiny)} ${t.name}</div>
+      <div class="why">Needs Lv ${e.lvl} ${okL ? "✓" : `(now ${b.lvl})`} · ${e.cost} candy ${okC ? "✓" : `(have ${candy})`}${C.dex[e.to] ? "" : " · New Pokédex entry"}</div></div>
+      <button class="btn btn-accent btn-sm" type="button" data-evolve="${e.to}" ${okL && okC ? "" : "disabled"}>Evolve</button></div>`;
   }).join("");
-  let side;
-  if (!team.length) {
-    side = `<p class="hint-line">Add Pokémon from your Pokédex to see how the team holds up.</p>`;
-  } else {
-    const avg = i => Math.round(team.reduce((a, m) => a + m.stats[i], 0) / team.length);
-    const labels = ["HP", "Atk", "Def", "SpA", "SpD", "Spe"];
-    const bars = labels.map((l, i) => `<div class="sb"><span>${l}</span><span class="bar"><i style="width:${Math.min(100, avg(i) / 150 * 100)}%"></i></span><span class="mono">${avg(i)}</span></div>`).join("");
-    const avgBst = Math.round(team.reduce((a, m) => a + m.bst, 0) / team.length);
-    const stab = new Set(team.flatMap(m => m.types));
-    const covered = TYPES.filter(d => [...stab].some(a => eff(a, d) === 2));
-    const uncovered = TYPES.filter(d => !covered.includes(d));
-    const threats = TYPES.map(a => ({ a, weak: team.filter(m => mult(a, m.types) > 1).length, res: team.filter(m => mult(a, m.types) < 1).length }))
-      .filter(x => x.weak >= 2 && x.weak > x.res).sort((x, y) => (y.weak - y.res) - (x.weak - x.res));
-    side = `
-      <div class="kv"><span class="k">Average BST</span><span class="v">${avgBst}</span></div>
-      <div class="sect"><span class="k">Average stats</span><div class="statbars">${bars}</div></div>
-      <div class="sect"><span class="k">Super-effective coverage · ${covered.length}/18</span>
-        <p>Types your team's own types hit for double damage.${uncovered.length ? " Not covered:" : ""}</p>
-        ${uncovered.length ? `<div class="chips">${typeChips(uncovered)}</div>` : ""}</div>
-      <div class="sect"><span class="k">Shared weaknesses</span>
-        ${threats.length ? `<p>Types that hit two or more of your team for extra damage, with fewer resisting:</p>
-          <div class="chips">${threats.map(x => `<span class="t" style="background:${TYPE_COLORS[x.a]}">${x.a} ×${x.weak}</span>`).join("")}</div>`
-          : `<p>No type hits more of your team than it resists.</p>`}</div>`;
-  }
-  return `<div class="team-grid">
-    <section class="panel"><h2>Your team <span>${team.length}/6</span></h2><ul class="slots">${slots}</ul></section>
-    <aside class="panel stats"><h2>Team report</h2>${side}</aside></div>`;
+  const canRelease = !onTeam && Object.keys(C.box).length > 1;
+  el.innerHTML = `<div class="sheet-wrap" id="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="${m.name}">
+    <div class="hd">${img(n, b.shiny)}<div><div class="eyebrow">#${pad(n)} · ${RARITY[m.tier]}${b.shiny ? ` · <span class="shiny-tag">★ Shiny</span>` : ""}</div><h2>${m.name}</h2><div class="types">${typeChips(m.types)}</div></div>
+      <button class="close" type="button" id="sheet-close" aria-label="Close">✕</button></div>
+    <div><div class="row spread"><span class="lv" style="font-size:15px">Lv ${b.lvl}</span><span class="mono muted" style="font-size:12px">${b.lvl >= 100 ? "Max level" : `${b.xp}/${xpNeed(b.lvl)} XP`}</span></div>${xpBar(b)}</div>
+    <div class="row mono muted" style="font-size:12px;gap:4px 12px">HP ${s.maxhp} · Atk ${s.atk} · Def ${s.def} · SpA ${s.spa} · SpD ${s.spd} · Spe ${s.spe}</div>
+    <div class="row spread"><span><span class="candy">${candy}</span> ${fam} candy</span><span><span class="candy">${C.rare}</span> Rare Candy</span></div>
+    <div class="opts">
+      <div class="opt"><div><div class="what">Power up</div><div class="why">+1 level for ${cost} ${fam} candy</div></div>
+        <button class="btn btn-plain btn-sm" type="button" id="power" ${candy >= cost && b.lvl < 100 ? "" : "disabled"}>+1 Lv</button></div>
+      <div class="opt"><div><div class="what">Rare Candy</div><div class="why">+1 level for any Pokémon</div></div>
+        <button class="btn btn-plain btn-sm" type="button" id="rare" ${C.rare > 0 && b.lvl < 100 ? "" : "disabled"}>Use one</button></div>
+      ${evo}
+      <div class="opt"><div><div class="what">${onTeam ? "In your lineup" : "Not in your lineup"}</div><div class="why">${onTeam ? `Slot ${C.team.indexOf(n) + 1} of 6` : `${C.team.length}/6 slots used`}</div></div>
+        <button class="btn ${onTeam ? "btn-line" : "btn-accent"} btn-sm" type="button" id="sheet-team" ${!onTeam && C.team.length >= 6 ? "disabled" : ""}>${onTeam ? "Remove" : "Add"}</button></div>
+      <div class="opt danger"><div><div class="what">Release</div><div class="why">${canRelease ? `+${TRANSFER[m.tier]} Rare Candy and +1 candy. Stays registered in your Pokédex.` : onTeam ? "Remove it from your lineup first." : "You need at least one Pokémon."}</div></div>
+        <button class="btn btn-sm" type="button" id="release" ${canRelease ? "" : "disabled"}>${S.confirmTransfer ? "Tap again to release" : "Release"}</button></div>
+    </div>
+  </div></div>`;
 }
 
 function render() {
   renderMeter();
   const view = document.getElementById("view");
-  view.innerHTML = S.tab === "packs" ? renderPacks() : S.tab === "dex" ? renderDex() : renderTeam();
+  document.getElementById("tabs").hidden = !C.starter;
+  if (!C.starter) view.innerHTML = renderStarter();
+  else if (S.battle) view.innerHTML = renderBattle();
+  else view.innerHTML = S.tab === "today" ? renderToday() : S.tab === "packs" ? renderPacks() : S.tab === "journey" ? renderJourney() : S.tab === "team" ? renderTeam() : renderDex();
+  renderSheet();
 }
 
 // ---------- Events ----------
-document.querySelector(".tabs").addEventListener("click", e => {
+document.getElementById("tabs").addEventListener("click", e => {
   const b = e.target.closest("button[data-tab]");
-  if (!b) return;
+  if (!b || S.battle) return;
   S.tab = b.dataset.tab;
+  if (S.tab === "journey") S.journeyRegion = null;
   render();
 });
 document.getElementById("view").addEventListener("click", e => {
-  const t = e.target;
-  const region = t.closest("[data-region]");
-  if (region && !region.disabled) { S.region = region.dataset.region; if (S.phase === "kept") nextPack(); else render(); return; }
-  if (t.closest("#pack")) return openPack();
-  if (t.closest("#reveal-all")) return revealAll();
-  if (t.closest("#keep")) return keep();
-  if (t.closest("#next")) return nextPack();
-  if (t.closest("#add-kept")) { const n = S.cards[S.kept].num; if (!C.team.includes(n)) toggleTeam(n); return; }
-  const card = t.closest(".card.pickable");
-  if (card) { S.selected = +card.dataset.i; render(); return; }
-  const dm = t.closest(".dm.owned");
-  if (dm) return toggleTeam(+dm.dataset.num);
-  const rm = t.closest("[data-rm]");
-  if (rm) return toggleTeam(+rm.dataset.rm);
+  const t = e.target, on = sel => t.closest(sel);
+  let el;
+  if ((el = on("[data-starter]"))) return chooseStarter(+el.dataset.starter);
+  if ((el = on("[data-go]")) && !el.disabled) { if (S.battle) { clearTimers(); S.battle = null; } S.tab = el.dataset.go; return render(); }
+  if ((el = on("[data-battle]"))) return startJourney(+el.dataset.battle);
+  if ((el = on("[data-region]")) && !el.disabled) { S.region = el.dataset.region; if (S.phase === "kept") nextPack(); else render(); return; }
+  if ((el = on("[data-jregion]")) && !el.disabled) { S.journeyRegion = +el.dataset.jregion; return render(); }
+  if ((el = on("[data-detail]"))) { S.detail = +el.dataset.detail; S.confirmTransfer = false; return renderSheet(); }
+  if ((el = on("[data-mv]"))) return moveTeam(+el.dataset.mv, +el.dataset.d);
+  if ((el = on("[data-tm]"))) return toggleTeam(+el.dataset.tm);
+  if ((el = on("[data-cpick]"))) {
+    const n = +el.dataset.cpick, ch = challenge();
+    const picks = [...(S.chalPick || chalEligible(ch).slice(0, 6))];
+    const i = picks.indexOf(n);
+    if (i >= 0) picks.splice(i, 1); else if (picks.length < 6) picks.push(n); else { toast("Six picked. Unpick one first."); return; }
+    S.chalPick = picks; S.chalOpen = true;
+    return render();
+  }
+  if (on("#pack")) return openPack();
+  if (on("#reveal-all")) return revealAll();
+  if (on("#keep")) return keep();
+  if (on("#next")) return nextPack();
+  if (on("#add-kept")) return toggleTeam(S.cards[S.kept].num);
+  if ((el = on(".card.pickable"))) { S.selected = +el.dataset.i; return render(); }
+  if (on("#claim-daily")) { const n = dailyAvailable(); C.bank += n; C.lastDaily = today(); save(); toast(`+${n} ${n === 1 ? "pack" : "packs"} added to your bag`); return render(); }
+  if (on("#claim-week")) { C.bank += WEEK_PACKS; C.week.claimed = true; save(); toast(`+${WEEK_PACKS} bonus packs. See you next week!`); return render(); }
+  if (on("#chal-go")) return startChallenge();
+  if (on("#share")) {
+    const text = C.chal.share;
+    const fallback = () => { const ta = document.getElementById("share-text"); if (ta) { ta.focus(); ta.select(); } toast("Select the text and copy it."); };
+    try { navigator.clipboard.writeText(text).then(() => toast("Result copied. Paste it anywhere."), fallback); } catch { fallback(); }
+    return;
+  }
+  if (on("#fast")) { S.battle.fast = !S.battle.fast; return render(); }
+  if (on("#skip")) return skipBattle();
+  if (on("#leave")) return leaveBattle();
 });
+document.getElementById("view").addEventListener("toggle", e => { if (e.target.id === "chal-details") S.chalOpen = e.target.open; }, true);
+document.getElementById("sheet").addEventListener("click", e => {
+  const t = e.target, n = S.detail;
+  if (t.id === "sheet-bg" || t.closest("#sheet-close")) { S.detail = null; return renderSheet(); }
+  if (t.closest("#power")) return powerUp(n);
+  if (t.closest("#rare")) return useRare(n);
+  const ev = t.closest("[data-evolve]");
+  if (ev && !ev.disabled) return evolve(n, +ev.dataset.evolve);
+  if (t.closest("#sheet-team")) return toggleTeam(n);
+  const rel = t.closest("#release");
+  if (rel && !rel.disabled) { if (S.confirmTransfer) return transfer(n); S.confirmTransfer = true; return renderSheet(); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && S.detail != null) { S.detail = null; renderSheet(); } });
 document.getElementById("view").addEventListener("change", e => {
   if (e.target.id === "dex-region") { S.dexRegion = e.target.value; render(); }
   if (e.target.id === "dex-filter") { S.dexFilter = e.target.value; render(); }
+  if (e.target.id === "box-sort") { S.boxSort = e.target.value; render(); }
 });
 document.getElementById("view").addEventListener("input", e => {
-  if (e.target.id !== "dex-search") return;
-  S.dexSearch = e.target.value;
+  const id = e.target.id;
+  if (id !== "dex-search" && id !== "box-search") return;
+  if (id === "dex-search") S.dexSearch = e.target.value; else S.boxSearch = e.target.value;
   const pos = e.target.selectionStart;
   render();
-  const el = document.getElementById("dex-search");
+  const el = document.getElementById(id);
   el.focus(); el.setSelectionRange(pos, pos);
 });
 let resetArmed = false, resetTimer;
 document.getElementById("reset").addEventListener("click", e => {
   const b = e.currentTarget;
   if (!resetArmed) {
-    resetArmed = true; b.classList.add("armed"); b.textContent = "Tap again to erase everything";
-    resetTimer = setTimeout(() => { resetArmed = false; b.classList.remove("armed"); b.textContent = "Reset collection"; }, 4000);
+    resetArmed = true; b.classList.add("armed"); b.textContent = "Tap again to erase your whole save";
+    resetTimer = setTimeout(() => { resetArmed = false; b.classList.remove("armed"); b.textContent = "Reset save"; }, 4000);
     return;
   }
-  clearTimeout(resetTimer); resetArmed = false; b.classList.remove("armed"); b.textContent = "Reset collection";
-  C = blank(); save(); clearTimers(); S.phase = "sealed"; S.cards = []; render(); toast("Collection reset.");
+  clearTimeout(resetTimer); resetArmed = false; b.classList.remove("armed"); b.textContent = "Reset save";
+  clearTimers();
+  C = blank(); visit();
+  Object.assign(S, { tab: "today", phase: "sealed", cards: [], battle: null, detail: null, chalPick: null });
+  render(); toast("Save reset.");
 });
 
-// Show the shop link only when embedded on another site
+// Show the shop link only when embedded on wdcardshop.com
 try { if (/wdcardshop\.com/.test(document.referrer)) document.getElementById("home-link").hidden = false; } catch {}
 
+// Boot: resume an unfinished pack, then land on Today (or Packs for a brand-new trainer's starter packs)
+visit();
+if (C.pending) { S.region = C.pending.region; S.cards = C.pending.cards; S.revealed = S.cards.length; S.phase = "picking"; S.tab = "packs"; }
 render();
+// A day can roll over while the page is open
+setInterval(() => { if (!S.battle && C.chal.date !== today()) { visit(); render(); } }, 60000);
 })();
 </script>

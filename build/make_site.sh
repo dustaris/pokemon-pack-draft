@@ -10,5 +10,5 @@ mkdir -p docs
   cat index.html
   printf '\n</body>\n</html>\n'
 } > docs/index.html
-cp dex.js sprites.js docs/
+cp dex.js sprites.js evo.js engine.js docs/
 touch docs/.nojekyll
