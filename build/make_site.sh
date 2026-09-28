@@ -11,4 +11,7 @@ mkdir -p docs
   printf '\n</body>\n</html>\n'
 } > docs/index.html
 cp dex.js sprites.js evo.js engine.js rules.html docs/
+# Cache-bust the scripts with this build's time so a new deploy never mixes with old cached files
+v=$(date +%Y%m%d%H%M)
+sed -i '' -E "s/src=\"(dex|sprites|evo|engine)\.js\"/src=\"\1.js?v=$v\"/g" docs/index.html
 touch docs/.nojekyll

@@ -173,8 +173,10 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .bagrow { display: flex; flex-wrap: wrap; gap: 18px 16px; align-items: flex-end; }
 .bagrow::after { content: ""; flex-basis: 100%; height: 8px; margin-top: -10px; border-radius: 99px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 16%, transparent) 10%, color-mix(in srgb, var(--ink) 16%, transparent) 90%, transparent); order: 99; }
 .stackb { display: grid; justify-items: center; gap: 6px; border: 0; background: none; padding: 8px 4px 0; min-width: 0; }
-.stackb .cap { font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; max-width: 92px; }
-.stackb .cap small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
+.fan { display: block; }
+.reveal-g { display: grid; justify-items: center; gap: 8px; }
+.stackb .cap, .reveal-g .cap { font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; max-width: 92px; }
+.stackb .cap small, .reveal-g .cap small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
 .mp { --c: #1F55D0; position: relative; display: block; width: 74px; aspect-ratio: 5 / 8; border-radius: 4px; transition: transform .18s; }
 .mp .skin { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; background: var(--c); box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--c) 60%, #000), inset 0 0 0 1px rgba(255,255,255,.18); }
 .mp.premium .skin { background: linear-gradient(135deg, #7A5410, #E7B53A 35%, #FFE89A 50%, #D19A22 65%, #6E4A0C); }
@@ -340,8 +342,47 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .dm .pinbtn:disabled { opacity: .45; cursor: not-allowed; }
 .rw.secret .pct { color: #D0469A; }
 
+/* Daily packs fan */
+.tcard.daily { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+.daily-body { display: grid; gap: 10px; min-width: 0; }
+.fan { position: relative; width: 170px; height: 140px; flex: none; }
+.fan .mp { position: absolute; width: 78px; top: 10px; }
+.fan .mp:nth-child(1) { left: 10px; transform: rotate(-13deg); }
+.fan .mp:nth-child(2) { left: 46px; top: 0; z-index: 2; }
+.fan .mp:nth-child(3) { left: 82px; transform: rotate(13deg); }
+.fan.ready .mp:nth-child(2) { animation: bob 2.4s ease-in-out infinite; }
+.fan.ready .mp:nth-child(1) { animation: bobl 2.4s ease-in-out .3s infinite; }
+.fan.ready .mp:nth-child(3) { animation: bobr 2.4s ease-in-out .6s infinite; }
+@keyframes bob { 50% { transform: translateY(-6px); } }
+@keyframes bobl { 0%, 100% { transform: rotate(-13deg); } 50% { transform: rotate(-13deg) translateY(-6px); } }
+@keyframes bobr { 0%, 100% { transform: rotate(13deg); } 50% { transform: rotate(13deg) translateY(-6px); } }
+.fan.claimed .mp { filter: grayscale(.7); opacity: .45; }
+.fan-n, .fan-done { position: absolute; z-index: 3; right: -4px; bottom: 0; font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1; padding: 6px 10px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow); }
+.fan-done { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: var(--surface-2); color: var(--muted); }
+@media (max-width: 520px) { .tcard.daily { grid-template-columns: 1fr; justify-items: center; } .daily-body { width: 100%; } }
+
+/* Golden Ticket */
+.ticket { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; padding: 18px 26px; border-radius: 16px; color: #2A1D00; overflow: hidden;
+  background: linear-gradient(135deg, #7A5410, #E7B53A 28%, #FFE89A 48%, #D19A22 68%, #6E4A0C);
+  -webkit-mask: radial-gradient(circle 13px at 0 50%, #0000 97%, #000) left / 51% 100% no-repeat, radial-gradient(circle 13px at 100% 50%, #0000 97%, #000) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle 13px at 0 50%, #0000 97%, #000) left / 51% 100% no-repeat, radial-gradient(circle 13px at 100% 50%, #0000 97%, #000) right / 51% 100% no-repeat; }
+.ticket::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.55) 50%, transparent 65%); transform: translateX(-100%); animation: tkshine 4.5s ease-in-out infinite; pointer-events: none; }
+@keyframes tkshine { 0%, 55% { transform: translateX(-100%); } 85%, 100% { transform: translateX(100%); } }
+.tk-amt { font-family: var(--display); font-weight: 800; font-size: 52px; line-height: .9; padding-right: 18px; border-right: 2px dashed rgba(42,29,0,.45); text-align: center; }
+.tk-amt small { display: block; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+.tk-body { display: grid; gap: 6px; min-width: 0; position: relative; z-index: 1; }
+.tk-top { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.ticket h3 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 22px; line-height: 1.1; text-wrap: balance; }
+.ticket p { margin: 0; font-size: 13px; max-width: 60ch; }
+.btn-dark { background: #2A1D00; color: #FFE89A; border: 0; text-decoration: none; }
+.tk-mini { display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; color: #2A1D00; background: linear-gradient(135deg, #E7B53A, #FFE89A 50%, #D19A22); vertical-align: 1px; }
+@media (max-width: 520px) { .ticket { grid-template-columns: 1fr; text-align: center; padding: 18px 28px; } .tk-amt { border-right: 0; border-bottom: 2px dashed rgba(42,29,0,.45); padding: 0 0 10px; } .ticket .row { justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .ticket::after, .fan .mp { animation: none !important; } }
+
 /* Prize cards */
-.prizecard { width: 100%; max-width: 420px; border-radius: 16px; padding: 14px 16px; text-align: center; display: grid; gap: 8px; justify-items: center;
+.prizecard { width: 100%; max-width: 420px; border-radius: 16px; padding: 14px 28px;
+  -webkit-mask: radial-gradient(circle 12px at 0 50%, #0000 97%, #000) left / 51% 100% no-repeat, radial-gradient(circle 12px at 100% 50%, #0000 97%, #000) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle 12px at 0 50%, #0000 97%, #000) left / 51% 100% no-repeat, radial-gradient(circle 12px at 100% 50%, #0000 97%, #000) right / 51% 100% no-repeat; text-align: center; display: grid; gap: 8px; justify-items: center;
   background: linear-gradient(135deg, #7A5410, #E7B53A 35%, #FFE89A 50%, #D19A22 65%, #6E4A0C); color: #2A1D00; box-shadow: 0 0 0 2px #F2B531, 0 12px 30px -12px #F2B531; animation: drop .6s cubic-bezier(.2,.9,.3,1.3) both; }
 .prizecard .pz-top { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .12em; }
 .prizecard .pz-val { font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1; }
@@ -993,8 +1034,8 @@ function showPrize(pz, batch, seq) {
   pz.found = new Date().toISOString();
   if (pz.test) { (S.testWon = S.testWon || []).unshift(pz); try { localStorage.setItem("pd-test-won", JSON.stringify(S.testWon)); } catch {} }
   if (batch) (batch.prizes = batch.prizes || []).push(pz);
-  if (seq === S.packSeq) { S.prize = pz; S.banner = { glow: "#F2B531", text: pz.test ? "Test prize" : "Store prize!", sub: pz.label }; }
-  toast(pz.test ? `Test prize: ${pz.label}. Nothing real was issued.` : `You found a WD Card Shop prize: ${pz.label}!`);
+  if (seq === S.packSeq) { S.prize = pz; S.banner = { glow: "#F2B531", text: pz.test ? "Test Golden Ticket" : "Golden Ticket!", sub: pz.label }; }
+  toast(pz.test ? `Test prize: ${pz.label}. Nothing real was issued.` : `You found a Golden Ticket: ${pz.label}!`);
   render();
 }
 // Testing only (remove with the Reset button before launch): the next packs show sample prizes; nothing is issued
@@ -1013,7 +1054,7 @@ function prizeCardHTML(pz) {
     : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. To use it, sign in at checkout and choose Apply store credit${pz.expires ? `. Expires ${new Date(pz.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}.</p>
         <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>`
     : codeHTML(pz);
-  return `<div class="prizecard"><div class="pz-top">${pz.test ? "TEST PRIZE · NOT REAL" : "WD CARD SHOP PRIZE"}</div><div class="pz-val">${pz.label}</div>${how}
+  return `<div class="prizecard"><div class="pz-top">${pz.test ? "TEST · GOLDEN TICKET · NOT REAL" : "GOLDEN TICKET · WD CARD SHOP"}</div><div class="pz-val">${pz.label}</div>${how}
     <p class="pz-note pz-saved">${pz.test ? "Test prizes are listed under Your prizes on the Today tab (this browser only)." : "Saved to your account under Your prizes on the Today tab."}</p></div>`;
 }
 
@@ -1191,6 +1232,29 @@ function renderMeter() {
 }
 const regionProgress = r => { let n = 0; for (let i = r.lo; i <= r.hi; i++) if (C.dex[i]) n++; return `${n}/${r.hi - r.lo + 1}`; };
 // ---------- Rendering: Today ----------
+// Hours until the next daily packs (the game day rolls over at midnight Pacific)
+function nextDailyText() {
+  const pt = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const h = 23 - pt.getHours(), m = 59 - pt.getMinutes();
+  return h > 0 ? ` (in about ${plural(h + (m >= 30 ? 1 : 0), "hour", "hours")})` : ` (in ${plural(m + 1, "minute", "minutes")})`;
+}
+// The Golden Ticket teaser: the store prize worth hunting for
+function goldenTicketHTML() {
+  const r = S.rewards;
+  const cta = !SY.shop ? `<a class="btn btn-dark btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com</a>`
+    : !SY.auth ? (SY.loginUrl ? `<a class="btn btn-dark btn-sm" href="${SY.loginUrl}" target="_top">Sign in to hunt</a>` : "")
+    : !r ? "" : !r.eligible ? `<a class="btn btn-dark btn-sm" href="#rewards-join">Join rewards below</a>`
+    : `<button class="btn btn-dark btn-sm" type="button" data-go="packs">${r.chances ? `Hunt now · ${plural(r.chances, "chance", "chances")} left` : "Back tomorrow for 3 more chances"}</button>`;
+  return `<section class="ticket" aria-label="Golden Ticket">
+    <div class="tk-amt"><small>up to</small>$20</div>
+    <div class="tk-body">
+      <div class="tk-top">Golden Ticket</div>
+      <h3>Find a Golden Ticket in your packs</h3>
+      <p>Hidden in packs for WD Card Shop rewards members: <b>$20 store credit</b> (1 in 500), <b>$5 store credit</b> (1 in 100) or <b>5% off</b> (1 in 25).</p>
+      ${cta ? `<div class="row">${cta}</div>` : ""}
+    </div>
+  </section>`;
+}
 function renderToday() {
   const avail = dailyAvailable();
   const t = today(), ws = C.week.key || weekStart(t);
@@ -1201,13 +1265,17 @@ function renderToday() {
   const st = C.streak || { count: 0 }, lit = st.count ? (st.count % STREAK_GOAL || STREAK_GOAL) : 0, earnedToday = st.count > 0 && st.count % STREAK_GOAL === 0;
   const dots = Array.from({ length: STREAK_GOAL }, (_, i) => `<span class="${i < lit ? "on" : ""}"><i></i></span>`).join("");
   return `<div class="today">
-    <section class="panel tcard">
-      <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(bagCount(), "pack", "packs")} in bag</span></div>
-      ${avail ? `<div class="row"><span class="big">+${avail}</span><span class="muted" style="font-size:13px">Today's ${DAILY_PACKS} free packs are ready.</span></div>
-        <div class="row"><button class="btn btn-accent" type="button" id="claim-daily">Claim ${plural(avail, "pack", "packs")}</button><button class="btn btn-plain" type="button" data-go="packs">Open packs</button></div>`
-      : `<p class="muted" style="margin:0">Claimed today. ${DAILY_PACKS} more arrive tomorrow.</p>
-        <div class="row"><button class="btn btn-plain" type="button" data-go="packs" ${bagCount() ? "" : "disabled"}>Open packs</button></div>`}
+    <section class="panel tcard daily">
+      <div class="fan ${avail ? "ready" : "claimed"}" aria-hidden="true">${Array.from({ length: DAILY_PACKS }, () => miniPack("all")).join("")}${avail ? `<span class="fan-n">+${avail}</span>` : `<span class="fan-done">Claimed</span>`}</div>
+      <div class="daily-body">
+        <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(bagCount(), "pack", "packs")} in bag</span></div>
+        ${avail ? `<p style="margin:0">Today's <b>${DAILY_PACKS} free Wild packs</b> are ready. Each one holds 5 Pokémon cards, and you keep one.</p>
+          <div class="row"><button class="btn btn-accent" type="button" id="claim-daily">Claim ${plural(avail, "pack", "packs")}</button><button class="btn btn-plain" type="button" data-go="packs">Open packs</button></div>`
+        : `<p class="muted" style="margin:0">Claimed today. ${DAILY_PACKS} more Wild packs arrive tomorrow${nextDailyText()}.</p>
+          <div class="row"><button class="btn ${bagCount() ? "btn-accent" : "btn-plain"}" type="button" data-go="packs" ${bagCount() ? "" : "disabled"}>${bagCount() ? `Open your ${plural(bagCount(), "pack", "packs")}` : "Open packs"}</button></div>`}
+      </div>
     </section>
+    ${goldenTicketHTML()}
     ${FEATURES.streak ? `<section class="panel tcard">
       <div class="row spread"><h2>Visit streak</h2><span class="muted mono" style="font-size:13px">${plural(st.count || 0, "day", "days")} in a row</span></div>
       <div class="week streak">${dots}</div>
@@ -1242,11 +1310,10 @@ function renderRewards() {
   const r = S.rewards;
   if (SY.auth && !S.rewardsLoading && (!r || Date.now() - (S.rewardsAt || 0) > 60000)) setTimeout(() => loadRewards(false), 0);
   const small = `<p class="muted" style="margin:0;font-size:12px">Discount codes take up to $${r ? r.config.maxOff : 50} off, are single use, for your account only, need a $${r ? r.config.minSubtotal : 25}+ order and expire ${r ? r.config.days : 30} days after they're issued. Store credit is added to your account and expires after ${r ? r.config.creditExpiresDays : 90} days. Store credit prizes are limited to $150 a month in total. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. WD Card Shop rewards are not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>`;
-  const head = `<div class="row spread"><h2>Prizes in packs</h2><span class="muted" style="font-size:13px">WD Card Shop discount codes and store credit</span></div>`;
-  const pitch = `<p style="margin:0">Members' packs can contain real WD Card Shop prizes: <b>1 in 25</b> packs has a 5% off code, <b>1 in 100</b> has $5 store credit, and <b>1 in 500</b> has $20 store credit.</p>`;
-  if (!SY.shop) return `<section class="panel tcard rewards">${head}${pitch}
+  const head = `<div class="row spread"><h2>Your Golden Tickets</h2><span class="muted" style="font-size:13px">WD Card Shop discount codes and store credit</span></div>`;
+  if (!SY.shop) return `<section class="panel tcard rewards">${head}
     <div class="row"><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com to find prizes in packs</a></div>${small}</section>`;
-  if (!SY.auth) return `<section class="panel tcard rewards">${head}${pitch}
+  if (!SY.auth) return `<section class="panel tcard rewards">${head}
     <div class="row">${SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in</a>` : ""}</div>${small}</section>`;
   if (!r) return `<section class="panel tcard rewards">${head}<p class="muted" style="margin:0">Loading your rewards…</p></section>`;
   if (r.banned) return `<section class="panel tcard rewards">${head}<p style="margin:0">This account isn't eligible for rewards. Questions? Email support@wdcardshop.com.</p></section>`;
@@ -1263,8 +1330,8 @@ function renderRewards() {
       <label><input type="checkbox" id="j-us"> I live in the United States</label>
       <label><input type="checkbox" id="j-rules"> I agree to the <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a> (one account per person)</label>
       <div class="row"><button class="btn btn-accent btn-sm" type="submit">Join rewards</button>${S.joinErr ? `<span class="err">${S.joinErr}</span>` : ""}</div></form>`;
-  return `<section class="panel tcard rewards">${head}${join}
-    ${r.eligible ? `<div class="row spread"><span><b>${plural(r.chances || 0, "prize chance", "prize chances")}</b> left today · ${r.config.dailyChances} a day with your free packs${C.subBonus ? "" : `, +${r.config.subscriberChances} for joining the email list`}</span><button class="btn btn-accent btn-sm" type="button" data-go="packs">Open packs</button></div>` : pitch}
+  return `<section class="panel tcard rewards" id="rewards-join">${head}${join}
+    ${r.eligible ? `<div class="row spread"><span><b>${plural(r.chances || 0, "prize chance", "prize chances")}</b> left today · ${r.config.dailyChances} a day with your free packs${C.subBonus ? "" : `, +${r.config.subscriberChances} for joining the email list`}</span><button class="btn btn-accent btn-sm" type="button" data-go="packs">Open packs</button></div>` : ""}
     ${r.eligible || packWins ? `<div><div class="eyebrow" style="margin-bottom:6px">Your prizes</div>${packWins || `<p class="muted" style="margin:0;font-size:14px">No prizes yet. Keep ripping!</p>`}</div>` : ""}
     ${r.config.monthlyEnabled ? `<div><div class="eyebrow" style="margin-bottom:6px">Every month</div>
       <div class="rw"><span class="pct">${r.config.monthly.map(w => w.pct + "%").join(" / ")}</span><span><b>Top 3 collectors of the month</b><small>Most collection points gained that month.</small></span><span></span></div>
@@ -1376,7 +1443,7 @@ function prizeLine() {
   if (!SY.auth) return `<p class="prize-line">${SY.loginUrl ? `<a href="${SY.loginUrl}" target="_top">Sign in</a>` : "Sign in"} and join rewards to find WD Card Shop prizes in packs. ${odds}.</p>`;
   if (!r) return "";
   if (!r.eligible) return `<p class="prize-line">Join WD Card Shop rewards on the Today tab and your packs can contain store prizes. ${odds}.</p>`;
-  return `<p class="prize-line"><b>${plural(r.chances || 0, "prize chance", "prize chances")} left today</b> (${DAILY_PACKS} a day). ${odds}.</p>`;
+  return `<p class="prize-line"><span class="tk-mini">Golden Ticket</span> <b>${plural(r.chances || 0, "chance", "chances")} left today</b> to find one (${DAILY_PACKS} a day). ${odds}.</p>`;
 }
 function renderPacks() {
   if (SY.auth && !S.rewards && !S.rewardsLoading) setTimeout(() => loadRewards(false), 0);
@@ -1577,7 +1644,7 @@ function renderSheet() {
     const gs = S.reveal;
     el.innerHTML = `<div class="sheet-wrap" id="reveal-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="New packs" style="text-align:center">
       <div><div class="eyebrow">Added to your bag</div><h2 style="font-size:28px">New packs!</h2></div>
-      <div class="reveal-packs">${gs.map((g, i) => `<span class="stackb" style="padding:0"><span class="drop" style="animation-delay:${.1 + i * .2}s">${miniPack(g.kind, g.n, true)}</span><span class="cap">${gainText(g)}<small>${g.src}</small></span></span>`).join("")}</div>
+      <div class="reveal-packs">${gs.map((g, i) => `<span class="reveal-g"><span class="drop" style="animation-delay:${.1 + i * .2}s"><span class="fan ready">${Array.from({ length: Math.min(3, g.n) }, () => miniPack(g.kind, 1, true)).join("")}<span class="fan-n">+${g.n}</span></span></span><span class="cap">${gainText(g)}<small>${g.src}</small></span></span>`).join("")}</div>
       <p class="muted" style="margin:0;font-size:14px">You have ${plural(bagCount(), "pack", "packs")} waiting in your bag.</p>
       <div class="row" style="justify-content:center"><button class="btn btn-accent" type="button" data-rip="${gs[gs.length - 1].kind}">Rip one now</button><button class="btn btn-plain" type="button" id="reveal-later">Later</button></div>
     </div></div>`;
@@ -1764,7 +1831,7 @@ try { if (/wdcardshop\.com/.test(document.referrer)) document.getElementById("ho
 // Boot: resume an unfinished pack, then land on Today
 function boot() {
   visit();
-  if (C.pending) { S.region = C.pending.region; S.packKind = C.pending.kind; S.cards = C.pending.cards; S.revealed = S.cards.length; S.phase = "picking"; S.tab = "packs"; }
+  if (C.pending) { S.region = C.pending.region; S.packKind = C.pending.kind; S.cards = C.pending.cards; S.revealed = S.cards.length; S.phase = "picking"; }
   render();
   renderAcct();
 }
