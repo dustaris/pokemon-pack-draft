@@ -299,6 +299,20 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .hint { font-size: 13px; background: color-mix(in srgb, var(--candy) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--candy) 30%, var(--line)); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
 .hint b { color: var(--ink); }
 
+/* Rewards */
+.today .rewards { grid-column: 1 / -1; }
+.rw { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.rw .pct { font-family: var(--display); font-weight: 800; font-size: 18px; color: var(--accent); line-height: 1.1; }
+.rw b { font-size: 14px; } .rw small { display: block; font-size: 12px; color: var(--muted); }
+.pill { font-size: 12px; font-weight: 700; background: var(--surface-2); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.code { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
+.code .mono { font-weight: 700; background: var(--surface-2); padding: 4px 8px; border-radius: 6px; }
+.code a.btn { text-decoration: none; }
+.join { display: grid; gap: 6px; background: var(--surface-2); border-radius: 12px; padding: 12px; font-size: 14px; }
+.join label { display: flex; gap: 8px; align-items: center; }
+.join .err { color: var(--bad); font-size: 13px; }
+@media (max-width: 560px) { .rw { grid-template-columns: 56px minmax(0, 1fr); } .rw > :last-child { grid-column: 2; justify-self: start; } .code { justify-content: flex-start; } }
+
 /* Leaderboard */
 .seg { display: flex; gap: 4px; background: var(--surface-2); padding: 3px; border-radius: 10px; }
 .seg button { border: 0; background: transparent; padding: 5px 12px; border-radius: 8px; font-weight: 600; font-size: 13px; color: var(--muted); }
@@ -537,7 +551,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 
   <footer>
     <button class="reset" id="reset" type="button">Reset save</button>
-    <span>Guest saves live in this browser only; sign in on wdcardshop.com to save to your account. Unofficial fan game. Pokémon and all related names and sprites are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Sprites via PokéAPI; base stats and evolutions via Pokémon Showdown.</span>
+    <span>Guest saves live in this browser only; sign in on wdcardshop.com to save to your account. <a href="https://dustaris.github.io/pokemon-pack-draft/rules.html" target="_blank" rel="noopener">Rewards Official Rules</a>. Unofficial fan game, not affiliated with, sponsored or endorsed by Nintendo, The Pokémon Company, Creatures Inc. or GAME FREAK inc. Pokémon and all related names and sprites are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Sprites via PokéAPI; base stats and evolutions via Pokémon Showdown.</span>
   </footer>
 </div>
 <div id="sheet"></div>
@@ -1057,6 +1071,7 @@ function startJourney(idx) {
   } else if (res.win) reward.rare = 1;
   C.rare += reward.rare;
   save();
+  if (res.win && first && t.kind === "champ" && SY.auth) setTimeout(async () => { if (SY.meta.dirty) await push(); loadRewards(true); }, 400);
   S.battle = { kind: "journey", idx, head: `${t.region.name} · ${t.title}`, foe: t.name, res, reward, from: S.tab };
   playBattle();
 }
@@ -1222,6 +1237,7 @@ function renderToday() {
   return `<div class="today">
     ${renderChallengeCard()}
     ${renderBoard()}
+    ${renderRewards()}
     <section class="panel tcard">
       <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(bagCount(), "pack", "packs")} in bag</span></div>
       ${avail ? `<div class="row"><span class="big">+${avail}</span><span class="muted" style="font-size:13px">${avail > 1 ? "Includes packs saved from days you missed." : "Today's free pack is ready."}</span></div>
@@ -1242,6 +1258,55 @@ function renderToday() {
     </section>
   </div>`;
 }
+// ---------- WD Card Shop rewards ----------
+const RULES_URL = "https://dustaris.github.io/pokemon-pack-draft/rules.html";
+async function loadRewards(announce) {
+  if (!SY.auth || S.rewardsLoading) return;
+  S.rewardsLoading = true;
+  const before = S.rewards ? S.rewards.prizes.map(p => p.ref + p.status).join() : null;
+  try { const { status, data } = await cloud("rewards", {}); if (status === 200) S.rewards = data; } catch {}
+  S.rewardsAt = Date.now(); S.rewardsLoading = false;
+  if (announce && S.rewards && before !== S.rewards.prizes.map(p => p.ref + p.status).join()) {
+    const got = S.rewards.prizes.find(p => p.status === "issued" && !(before || "").includes(p.ref + "issued"));
+    toast(got ? `You earned a WD Card Shop reward: ${got.pct}% off! Your code is on the Today tab.` : "Reward earned! See WD Card Shop rewards on the Today tab.");
+  }
+  if (S.tab === "today" && !S.battle) render();
+}
+function renderRewards() {
+  const r = S.rewards;
+  if (SY.auth && !S.rewardsLoading && (!r || Date.now() - (S.rewardsAt || 0) > 60000)) setTimeout(() => loadRewards(false), 0);
+  const small = `<p class="muted" style="margin:0;font-size:12px">Codes are single use, for your account only, need a $${r ? r.config.minSubtotal : 25}+ order and expire ${r ? r.config.days : 30} days after they're issued. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. WD Card Shop rewards are not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>`;
+  const head = `<div class="row spread"><h2>WD Card Shop rewards</h2><span class="muted" style="font-size:13px">Real store discounts for playing</span></div>`;
+  if (!SY.shop) return `<section class="panel tcard rewards">${head}<p style="margin:0">Top weekly players and Journey milestones earn discount codes at WD Card Shop.</p>
+    <div class="row"><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com to earn rewards</a></div>${small}</section>`;
+  if (!SY.auth) return `<section class="panel tcard rewards">${head}<p style="margin:0">Sign in to earn discount codes: top 3 on the weekly leaderboard and Journey milestones like beating your first Champion.</p>
+    <div class="row">${SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in</a>` : ""}</div>${small}</section>`;
+  if (!r) return `<section class="panel tcard rewards">${head}<p class="muted" style="margin:0">Loading your rewards…</p></section>`;
+  if (r.banned) return `<section class="panel tcard rewards">${head}<p style="margin:0">This account isn't eligible for rewards. Questions? Email support@wdcardshop.com.</p></section>`;
+  const byRef = Object.fromEntries(r.prizes.map(p => [p.ref, p]));
+  const state = p => !p ? null : p.status === "issued" ? codeHTML(p) : p.status === "rejected" ? `<span class="muted">Not approved</span>`
+    : p.status === "review" ? `<span class="pill">Earned · being reviewed</span>` : `<span class="pill">Earned · join rewards to claim</span>`;
+  const miles = r.config.milestones.map(m => { const p = byRef[m.key];
+    return `<div class="rw"><span class="pct">${m.pct}%</span><span><b>${m.label}</b><small>${p ? "" : `${Math.min(r.champs, m.champs)}/${m.champs} Champions`}</small></span>${state(p) || `<span class="muted" style="font-size:13px">Locked</span>`}</div>`; }).join("");
+  const weekly = r.prizes.filter(p => p.kind === "weekly").map(p => `<div class="rw"><span class="pct">${p.pct}%</span><span><b>Weekly ${p.label}</b></span>${state(p)}</div>`).join("");
+  const join = r.eligible ? "" : `<form class="join" id="join-form">
+      <b>Join WD Card Shop rewards</b>
+      <label><input type="checkbox" id="j-18"> I'm 18 or older</label>
+      <label><input type="checkbox" id="j-us"> I live in the United States</label>
+      <label><input type="checkbox" id="j-rules"> I agree to the <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a> (one account per person)</label>
+      <div class="row"><button class="btn btn-accent btn-sm" type="submit">Join rewards</button>${S.joinErr ? `<span class="err">${S.joinErr}</span>` : ""}</div></form>`;
+  return `<section class="panel tcard rewards">${head}${join}
+    <div><div class="eyebrow" style="margin-bottom:6px">Weekly leaderboard · top 3 each week</div>
+      <div class="rw"><span class="pct">${r.config.weekly.map(w => w.pct + "%").join(" / ")}</span><span><b>1st / 2nd / 3rd place</b><small>Play ranked on ${r.config.weeklyMinDays}+ days that week. Winners are reviewed before codes go out.</small></span><span></span></div>${weekly}</div>
+    <div><div class="eyebrow" style="margin-bottom:6px">Journey milestones · one time each</div>${miles}</div>
+    ${small}</section>`;
+}
+function codeHTML(p) {
+  const exp = p.expires ? new Date(p.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+  return `<span class="code"><span class="mono">${escapeHTML(p.code)}</span><button class="btn btn-plain btn-sm" type="button" data-copy="${escapeHTML(p.code)}">Copy</button>
+    <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/discount/${encodeURIComponent(p.code)}?redirect=/collections/all" target="_top">Shop now</a><small class="muted">Expires ${exp}</small></span>`;
+}
+
 // ---------- Leaderboard ----------
 async function loadBoard() {
   if (S.boardLoading) return;
@@ -1288,7 +1353,7 @@ function renderBoard() {
       <div class="modes seg" role="tablist" aria-label="Leaderboard period"><button type="button" role="tab" data-board="day" aria-selected="${!week}">Today</button><button type="button" role="tab" data-board="week" aria-selected="${week}">This week</button></div></div>
     <div class="row spread muted" style="font-size:13px"><span>${week ? (b && b.week ? `${fmt(b.week.start)} – ${fmt(b.week.end)} · day ${b.week.dayOfWeek} of 7` : "Monday – Sunday") : `Daily Challenge #${challenge().n}`}</span><span class="mono">${count != null ? plural(count, "player", "players") : ""}</span></div>
     ${body}${mine}${nameRow}
-    <p class="muted" style="margin:0;font-size:12px">${week ? "Weekly score adds up your best Daily Challenge score from each day, Monday to Sunday (Pacific). Play every day to climb; ties go to more stars."
+    <p class="muted" style="margin:0;font-size:12px">${week ? "Weekly score adds up your best Daily Challenge score from each day, Monday to Sunday (Pacific). Play every day to climb; ties go to more stars. Top 3 win WD Card Shop discount codes (see rewards below)."
       : "Best score of the day counts; ties go to whoever got there first. Resets at midnight Pacific."}</p>
   </section>`;
 }
@@ -1807,6 +1872,7 @@ document.getElementById("view").addEventListener("click", e => {
   if ((el = on("[data-rip]"))) { if (S.battle) { clearTimers(); S.battle = null; } S.packKind = el.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
   if ((el = on("[data-bag]"))) { S.packKind = el.dataset.bag; if (S.phase === "kept" || S.phase === "batchDone") { S.phase = "sealed"; S.cards = []; S.batch = null; } return render(); }
   if (on("#chal-go")) return startChallenge();
+  if ((el = on("[data-copy]"))) { const c = el.dataset.copy; try { navigator.clipboard.writeText(c).then(() => toast("Code copied"), () => toast(c)); } catch { toast(c); } return; }
   if ((el = on("[data-board]"))) { S.boardView = el.dataset.board; return render(); }
   if (on("#name-edit")) { S.editName = true; S.nameErr = ""; render(); const i = document.getElementById("trainer-name"); if (i) i.focus(); return; }
   if (on("#name-cancel")) { S.editName = false; S.nameErr = ""; return render(); }
@@ -1820,7 +1886,16 @@ document.getElementById("view").addEventListener("click", e => {
   if (on("#skip")) return skipBattle();
   if (on("#leave")) return leaveBattle();
 });
-document.getElementById("view").addEventListener("submit", e => {
+document.getElementById("view").addEventListener("submit", async e => {
+  if (e.target.id === "join-form") {
+    e.preventDefault();
+    const over18 = document.getElementById("j-18").checked, us = document.getElementById("j-us").checked, rules = document.getElementById("j-rules").checked;
+    if (!over18 || !us || !rules) { S.joinErr = "Tick all three boxes to join."; return render(); }
+    S.joinErr = "";
+    try { const { status, data } = await cloud("eligibility", { over18, us, rules }); if (status === 200) { S.rewards = data; toast("You're in! Rewards you earn will appear here."); } else S.joinErr = "Couldn't join right now. Try again."; }
+    catch { S.joinErr = "Couldn't reach the server. Try again."; }
+    return render();
+  }
   if (e.target.id !== "name-form") return;
   e.preventDefault();
   saveName(document.getElementById("trainer-name").value.trim());
