@@ -308,6 +308,18 @@ button.dm:hover { border-color: var(--accent); }
 .starter b { font-family: var(--display); font-size: 18px; }
 
 .toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 18px); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow); z-index: 40; max-width: calc(100% - 32px); }
+/* Account bar */
+.acct { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 14px; font-size: 13px; }
+.acct .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.acct .dot.ok { background: var(--good); } .acct .dot.busy { background: var(--hp-mid); } .acct .dot.err { background: var(--bad); }
+.acct .msg { flex: 1 1 240px; min-width: 0; }
+.acct a.btn { text-decoration: none; }
+.choice { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+@media (max-width: 420px) { .choice { grid-template-columns: minmax(0, 1fr); } }
+.choice button { text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 12px; display: grid; gap: 4px; }
+.choice button:hover { border-color: var(--accent); }
+.choice b { font-family: var(--display); font-size: 17px; }
+.choice span { font-size: 13px; color: var(--muted); }
 footer { margin-top: 32px; font-size: 12px; color: var(--muted); max-width: 72ch; display: grid; gap: 8px; }
 footer .reset { justify-self: start; border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 5px 10px; font-size: 12px; color: var(--muted); }
 footer .reset.armed { border-color: var(--bad); color: var(--bad); }
@@ -332,6 +344,8 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
     </div>
   </header>
 
+  <div class="acct" id="acct" aria-live="polite"></div>
+
   <nav class="tabs" role="tablist" aria-label="Sections" id="tabs">
     <button id="tab-today" role="tab" type="button" data-tab="today">Today <span class="ct" id="ct-today"></span></button>
     <button id="tab-packs" role="tab" type="button" data-tab="packs">Packs <span class="ct" id="ct-packs"></span></button>
@@ -344,7 +358,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 
   <footer>
     <button class="reset" id="reset" type="button">Reset save</button>
-    <span>Your save lives in this browser only. Unofficial fan game. Pokémon and all related names and sprites are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Sprites via PokéAPI; base stats and evolutions via Pokémon Showdown.</span>
+    <span>Guest saves live in this browser only; sign in on wdcardshop.com to save to your account. Unofficial fan game. Pokémon and all related names and sprites are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Sprites via PokéAPI; base stats and evolutions via Pokémon Showdown.</span>
   </footer>
 </div>
 <div id="sheet"></div>
@@ -418,7 +432,103 @@ function load() {
   return blank();
 }
 let C = load();
-const save = () => store.set(C);
+let editSeq = 0;
+const save = () => { store.set(C); editSeq++; if (SY.auth && SY.state !== "conflict") { SY.meta.dirty = true; saveMeta(); schedulePush(); } };
+
+// ---------- Cloud save ----------
+// Only on the wdcardshop.com page: it posts a signed token for the signed-in Shopify customer into this frame, and the
+// pokedex-saves Worker keeps one save per customer. Everywhere else the game stays a browser-only guest save.
+const CLOUD = "https://pokedex-saves.gradeworth.workers.dev";
+const SHOP_ORIGINS = ["https://wdcardshop.com", "https://www.wdcardshop.com", "https://1marss-2m.myshopify.com"];
+const STORE_PAGE = "https://wdcardshop.com/pages/pokedex";
+const syncStore = {
+  get() { try { return JSON.parse(localStorage.getItem(KEY + "-sync")); } catch { return null; } },
+  set(v) { try { localStorage.setItem(KEY + "-sync", JSON.stringify(v)); } catch {} },
+};
+// meta: which customer this browser's save belongs to, the cloud revision it's based on, and unsynced edits
+const SY = { shop: false, auth: null, cid: null, name: "", loginUrl: null, state: "guest", conflict: null,
+             meta: syncStore.get() || { cid: null, rev: 0, dirty: false } };
+let pushTimer = null, pushing = false;
+const saveMeta = () => syncStore.set(SY.meta);
+async function cloud(path, extra) {
+  const body = JSON.stringify({ token: SY.auth, ...extra });
+  const r = await fetch(`${CLOUD}/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: body.length < 60000 });
+  return { status: r.status, data: await r.json().catch(() => ({})) };
+}
+function schedulePush(delay = 1500) { clearTimeout(pushTimer); pushTimer = setTimeout(push, delay); }
+async function push() {
+  if (!SY.auth || SY.state === "conflict" || SY.state === "expired") return;
+  if (pushing) return schedulePush(800);
+  pushing = true; SY.state = "saving"; renderAcct();
+  const seq = editSeq;
+  try {
+    const { status, data } = await cloud("save", { baseRev: SY.meta.rev, data: C });
+    if (status === 200) { SY.meta.rev = data.rev; SY.meta.dirty = editSeq !== seq; SY.state = "synced"; }
+    else if (status === 409) { SY.conflict = data; SY.state = "conflict"; }
+    else if (status === 401) SY.state = "expired";
+    else SY.state = "error";
+  } catch { SY.state = "error"; }
+  pushing = false; saveMeta();
+  if (SY.state === "error") schedulePush(15000);
+  else if (SY.state === "synced" && SY.meta.dirty) schedulePush();
+  renderAcct(); renderSheet();
+}
+async function connect(auth) {
+  SY.auth = auth.token; SY.cid = auth.token.split(".")[0]; SY.name = auth.name || ""; SY.state = "loading"; renderAcct();
+  try {
+    const { status, data } = await cloud("load", {});
+    if (status !== 200) { SY.state = status === 401 ? "expired" : "error"; return renderAcct(); }
+    const mine = SY.meta.cid === SY.cid, localHas = !!C.starter;
+    if (!localHas) data.save ? adopt(data) : (SY.meta = { cid: SY.cid, rev: 0, dirty: false }, SY.state = "synced");
+    else if (!data.save && (mine || !SY.meta.cid)) { SY.meta = { cid: SY.cid, rev: 0, dirty: true }; SY.state = "synced"; push(); }
+    else if (data.save && mine && !SY.meta.dirty) adopt(data);
+    else if (data.save && mine && SY.meta.rev === data.rev) { SY.state = "synced"; push(); }
+    else { SY.conflict = data; SY.state = "conflict"; }
+  } catch { SY.state = "error"; }
+  saveMeta(); renderAcct(); renderSheet();
+}
+function adopt(data) {
+  clearTimers();
+  C = Object.assign(blank(), data.save);
+  store.set(C);
+  SY.meta = { cid: SY.cid, rev: data.rev, dirty: false }; saveMeta();
+  SY.state = "synced"; SY.conflict = null;
+  Object.assign(S, { phase: "sealed", cards: [], battle: null, detail: null, chalPick: null });
+  boot();
+}
+function resolveConflict(keep) {
+  const cf = SY.conflict;
+  if (keep === "cloud") {
+    if (cf.save) return adopt(cf);
+    C = blank(); store.set(C); // "start fresh" when the account has no save yet
+    SY.meta = { cid: SY.cid, rev: 0, dirty: false };
+    SY.conflict = null; SY.state = "synced";
+    Object.assign(S, { phase: "sealed", cards: [], battle: null, detail: null, chalPick: null });
+    return boot();
+  }
+  SY.meta = { cid: SY.cid, rev: cf.rev, dirty: true }; saveMeta();
+  SY.conflict = null; SY.state = "synced";
+  push(); render();
+}
+const summary = c => c ? `${Object.keys(c.dex || {}).length} caught · ${c.beaten || 0}/${TRAINERS.length} trainers beaten · ${plural(c.bank || 0, "pack", "packs")} in bag · ${plural(c.packs || 0, "pack", "packs")} opened` : "No save on your account yet";
+function renderAcct() {
+  const el = document.getElementById("acct");
+  const who = SY.name ? `, ${SY.name}` : "";
+  let dot = "", msg, action = "";
+  if (!SY.shop) {
+    msg = "Your progress is saved in this browser only.";
+    action = `<a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com to save to your account</a>`;
+  } else if (!SY.auth) {
+    msg = "Playing as a guest. Sign in with your email to keep your Pokémon safe and play on any device.";
+    action = SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in to save</a>` : "";
+  } else if (SY.state === "loading") { dot = "busy"; msg = `Loading your save${who}…`; }
+  else if (SY.state === "saving") { dot = "busy"; msg = `Saving to your account${who}…`; }
+  else if (SY.state === "synced") { dot = "ok"; msg = `Saved to your account${who}. Sign in on any device to keep playing.`; }
+  else if (SY.state === "conflict") { dot = "err"; msg = "Your account and this device have different saves. Choose one to keep."; action = `<button class="btn btn-accent btn-sm" type="button" id="acct-resolve">Choose save</button>`; }
+  else if (SY.state === "expired") { dot = "err"; msg = "Your sign-in expired. Reload the page to keep saving to your account."; }
+  else { dot = "err"; msg = "Couldn't reach the save server. Your progress is safe on this device and will upload when it's back."; action = `<button class="btn btn-plain btn-sm" type="button" id="acct-retry">Retry now</button>`; }
+  el.innerHTML = `<span class="dot ${dot}"></span><span class="msg">${msg}</span>${action}`;
+}
 
 // ---------- State ----------
 const S = { tab: "today", region: "all", phase: "sealed", cards: [], revealed: 0, selected: null, kept: null, keptMsg: "",
@@ -1029,6 +1139,19 @@ function renderStarter() {
 // ---------- Rendering: detail sheet ----------
 function renderSheet() {
   const el = document.getElementById("sheet");
+  if (SY.state === "conflict" && SY.conflict && S.showConflict !== false) {
+    const cf = SY.conflict, when = cf.updatedAt ? new Date(cf.updatedAt).toLocaleString() : "";
+    el.innerHTML = `<div class="sheet-wrap"><div class="sheet" role="dialog" aria-modal="true" aria-label="Choose a save">
+      <div><div class="eyebrow">Signed in${SY.name ? ` as ${SY.name}` : ""}</div><h2 style="font-size:24px">Which save do you want to keep?</h2>
+        <p class="muted" style="margin:6px 0 0;font-size:14px">This device has progress that isn't on your account. The one you don't pick is replaced.</p></div>
+      <div class="choice">
+        <button type="button" data-keep="cloud"><b>${cf.save ? "Your account" : "Start fresh"}</b><span>${summary(cf.save)}</span>${when ? `<span>Saved ${when}</span>` : ""}</button>
+        <button type="button" data-keep="device"><b>This device</b><span>${summary(C)}</span><span>Uploads to your account</span></button>
+      </div>
+      <button class="btn btn-plain btn-sm" type="button" id="conflict-later" style="justify-self:start">Decide later</button>
+    </div></div>`;
+    return;
+  }
   const n = S.detail;
   if (n == null || !C.box[n]) { el.innerHTML = ""; return; }
   const b = C.box[n], m = byNum(n), candy = candyOf(n), fam = byNum(family(n)).name;
@@ -1120,6 +1243,9 @@ document.getElementById("view").addEventListener("click", e => {
 document.getElementById("view").addEventListener("toggle", e => { if (e.target.id === "chal-details") S.chalOpen = e.target.open; }, true);
 document.getElementById("sheet").addEventListener("click", e => {
   const t = e.target, n = S.detail;
+  const keep = t.closest("[data-keep]");
+  if (keep) return resolveConflict(keep.dataset.keep);
+  if (t.closest("#conflict-later")) { S.showConflict = false; return renderSheet(); }
   if (t.id === "sheet-bg" || t.closest("#sheet-close")) { S.detail = null; return renderSheet(); }
   if (t.closest("#power")) return powerUp(n);
   if (t.closest("#rare")) return useRare(n);
@@ -1144,6 +1270,22 @@ document.getElementById("view").addEventListener("input", e => {
   const el = document.getElementById(id);
   el.focus(); el.setSelectionRange(pos, pos);
 });
+document.getElementById("acct").addEventListener("click", e => {
+  if (e.target.closest("#acct-resolve")) { S.showConflict = true; renderSheet(); }
+  if (e.target.closest("#acct-retry")) push();
+});
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && SY.auth && SY.meta.dirty) push(); });
+// The store page answers this hello with the sign-in state (and a signed token when a customer is signed in)
+window.addEventListener("message", e => {
+  if (!SHOP_ORIGINS.includes(e.origin) || !e.data || e.data.type !== "pd-auth") return;
+  SY.shop = true;
+  document.getElementById("home-link").hidden = true; // the store's own header is right above the game
+  SY.loginUrl = typeof e.data.loginUrl === "string" && e.data.loginUrl.startsWith("/") ? e.origin + e.data.loginUrl : null;
+  if (e.data.auth && typeof e.data.auth.token === "string" && !SY.auth) connect(e.data.auth);
+  else renderAcct();
+});
+if (window.parent !== window) window.parent.postMessage({ type: "pd-hello" }, "*");
+
 let resetArmed = false, resetTimer;
 document.getElementById("reset").addEventListener("click", e => {
   const b = e.currentTarget;
@@ -1155,6 +1297,7 @@ document.getElementById("reset").addEventListener("click", e => {
   clearTimeout(resetTimer); resetArmed = false; b.classList.remove("armed"); b.textContent = "Reset save";
   clearTimers();
   C = blank(); visit();
+  S.showConflict = true;
   Object.assign(S, { tab: "today", phase: "sealed", cards: [], battle: null, detail: null, chalPick: null });
   render(); toast("Save reset.");
 });
@@ -1162,10 +1305,14 @@ document.getElementById("reset").addEventListener("click", e => {
 // Show the shop link only when embedded on wdcardshop.com
 try { if (/wdcardshop\.com/.test(document.referrer)) document.getElementById("home-link").hidden = false; } catch {}
 
-// Boot: resume an unfinished pack, then land on Today (or Packs for a brand-new trainer's starter packs)
-visit();
-if (C.pending) { S.region = C.pending.region; S.cards = C.pending.cards; S.revealed = S.cards.length; S.phase = "picking"; S.tab = "packs"; }
-render();
+// Boot: resume an unfinished pack, then land on Today
+function boot() {
+  visit();
+  if (C.pending) { S.region = C.pending.region; S.cards = C.pending.cards; S.revealed = S.cards.length; S.phase = "picking"; S.tab = "packs"; }
+  render();
+  renderAcct();
+}
+boot();
 // A day can roll over while the page is open
 setInterval(() => { if (!S.battle && C.chal.date !== today()) { visit(); render(); } }, 60000);
 })();

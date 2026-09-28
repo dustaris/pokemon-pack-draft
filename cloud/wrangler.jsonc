@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "pokedex-saves",
+  "main": "src/index.js",
+  "compatibility_date": "2026-09-20",
+  "observability": { "enabled": true },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "pokedex-saves", "database_id": "031ec2f7-fcf4-4e1c-ace6-2809570ad3cc", "migrations_dir": "migrations" }
+  ]
+}

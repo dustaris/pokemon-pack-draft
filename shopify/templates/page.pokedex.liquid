@@ -1,0 +1,35 @@
+{%- comment -%}
+  Pokédex Pack Draft game page. Assign a page (handle "pokedex") to the "pokedex" template.
+  Signed-in customers get a short-lived token: "<customer id>.<unix time>.<hmac>", signed with the same secret as the
+  pokedex-saves Cloudflare Worker's PD_SECRET. __PD_SECRET__ is filled in by build/make_theme.sh (never commit the real value).
+{%- endcomment -%}
+{%- liquid
+  assign pd_token = ''
+  if customer
+    assign pd_ts = 'now' | date: '%s'
+    assign pd_payload = customer.id | append: '.' | append: pd_ts
+    assign pd_sig = pd_payload | hmac_sha256: '__PD_SECRET__'
+    assign pd_token = pd_payload | append: '.' | append: pd_sig
+  endif
+  assign pd_login = '/account/login?return_url=' | append: request.path
+-%}
+<div class="pokedex-game" style="max-width:1200px;margin:0 auto;padding:0 8px">
+  <iframe id="pokedex-frame" src="https://dustaris.github.io/pokemon-pack-draft/" title="Pokédex Pack Draft"
+    style="display:block;width:100%;height:calc(100vh - 120px);min-height:640px;border:0;border-radius:12px"
+    allow="clipboard-write"></iframe>
+</div>
+<script>
+  (function () {
+    var frame = document.getElementById('pokedex-frame');
+    var GAME = 'https://dustaris.github.io';
+    var msg = {
+      type: 'pd-auth',
+      loginUrl: {{ pd_login | json }},
+      auth: {% if customer %}{ token: {{ pd_token | json }}, name: {{ customer.first_name | json }} }{% else %}null{% endif %}
+    };
+    window.addEventListener('message', function (e) {
+      if (e.origin !== GAME || e.source !== frame.contentWindow || !e.data || e.data.type !== 'pd-hello') return;
+      frame.contentWindow.postMessage(msg, GAME);
+    });
+  })();
+</script>
