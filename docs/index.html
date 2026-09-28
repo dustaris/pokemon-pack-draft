@@ -168,6 +168,49 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .pack.tearing { animation: tear .55s ease-in forwards; }
 @keyframes tear { 0% { transform: none; } 25% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } 100% { transform: translateY(-30px) scale(.9); opacity: 0; } }
 
+.pack.premium { background: linear-gradient(135deg, #7A5410, #E7B53A 35%, #FFE89A 50%, #D19A22 65%, #6E4A0C); }
+.pack.premium .foil { mix-blend-mode: soft-light; opacity: 1; animation: sheen 2.8s linear infinite; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.75) 45%, transparent 60%) 0 0 / 250% 100%; }
+@keyframes sheen { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+.pack-from { font-size: 13px; color: var(--muted); text-align: center; margin: -6px 0 0; }
+.pack-from b { color: var(--ink); }
+
+/* Pack bag: a shelf of the actual wrappers you own */
+.bagshelf { position: relative; background: linear-gradient(180deg, var(--surface-2), var(--surface)); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px 16px; margin-bottom: 16px; }
+.bagshelf .hd { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 12px; }
+.bagshelf h2 { font-size: 20px; }
+.bagshelf .hd span { font-size: 13px; color: var(--muted); }
+.bagrow { display: flex; flex-wrap: wrap; gap: 18px 16px; align-items: flex-end; }
+.bagrow::after { content: ""; flex-basis: 100%; height: 8px; margin-top: -10px; border-radius: 99px; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 16%, transparent) 10%, color-mix(in srgb, var(--ink) 16%, transparent) 90%, transparent); order: 99; }
+.stackb { display: grid; justify-items: center; gap: 6px; border: 0; background: none; padding: 8px 4px 0; min-width: 0; }
+.stackb .cap { font-size: 12px; font-weight: 700; line-height: 1.15; text-align: center; max-width: 92px; }
+.stackb .cap small { display: block; font-weight: 500; color: var(--muted); font-size: 11px; }
+.mp { --c: #1F55D0; position: relative; display: block; width: 74px; aspect-ratio: 5 / 8; border-radius: 4px; transition: transform .18s; }
+.mp .skin { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; background: var(--c); box-shadow: 0 10px 18px -10px color-mix(in srgb, var(--c) 60%, #000), inset 0 0 0 1px rgba(255,255,255,.18); }
+.mp.premium .skin { background: linear-gradient(135deg, #7A5410, #E7B53A 35%, #FFE89A 50%, #D19A22 65%, #6E4A0C); }
+.mp .skin::before, .mp .skin::after { content: ""; position: absolute; left: 0; right: 0; height: 6px; z-index: 2; background: repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0 2px, rgba(255,255,255,.2) 2px 4px); }
+.mp .skin::before { top: 0; } .mp .skin::after { bottom: 0; }
+.mp .shine { position: absolute; inset: 0; background: linear-gradient(110deg, transparent 35%, rgba(255,255,255,.45) 48%, transparent 60%) 0 0 / 300% 100%; animation: sheen 4.5s linear infinite; mix-blend-mode: soft-light; }
+.mp img { position: absolute; left: 50%; top: 46%; width: 64px; height: 64px; transform: translate(-50%, -50%); filter: drop-shadow(0 3px 0 rgba(0,0,0,.25)); }
+.mp .nm { position: absolute; left: 5px; right: 5px; bottom: 9px; font-family: var(--display); font-weight: 800; font-size: 11px; line-height: 1; color: #fff; text-align: left; text-shadow: 0 1px 0 rgba(0,0,0,.3); }
+.mp.n2 { box-shadow: 5px -5px 0 -1px color-mix(in srgb, var(--c) 70%, #000); }
+.mp.n3 { box-shadow: 5px -5px 0 -1px color-mix(in srgb, var(--c) 70%, #000), 10px -10px 0 -2px color-mix(in srgb, var(--c) 50%, #000); }
+.mp .count { position: absolute; top: -10px; right: -12px; z-index: 3; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 99px; background: var(--ink); color: var(--bg); font-family: var(--mono); font-weight: 700; font-size: 12px; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--surface); }
+.mp .newtag { position: absolute; top: 10px; left: -6px; z-index: 3; background: var(--good); color: #fff; font-size: 9px; font-weight: 800; letter-spacing: .06em; padding: 1px 5px; border-radius: 4px; animation: bob 1.6s ease-in-out infinite; }
+@keyframes bob { 50% { transform: translateY(-3px); } }
+.stackb:hover .mp { transform: translateY(-5px) rotate(-3deg); }
+.stackb[aria-pressed="true"] .mp { transform: translateY(-10px); }
+.stackb[aria-pressed="true"] .mp .skin { outline: 3px solid var(--accent); outline-offset: 3px; }
+.bag-empty { color: var(--muted); font-size: 14px; margin: 0; }
+.wild-pick { display: grid; gap: 8px; justify-items: center; width: 100%; }
+.wild-pick .shelf { justify-content: center; margin: 0; }
+.mini-gains { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: flex-end; }
+.mini-gains .mp { width: 58px; }
+.mini-gains .mp img { width: 50px; height: 50px; }
+.mini-gains .mp .nm { font-size: 9px; bottom: 7px; }
+.drop { display: block; animation: drop .55s cubic-bezier(.2,.9,.3,1.3) both; }
+@keyframes drop { from { transform: translateY(-70px) rotate(-14deg); opacity: 0; } to { transform: none; opacity: 1; } }
+.reveal-packs { display: flex; flex-wrap: wrap; justify-content: center; gap: 22px 18px; padding: 12px 0 4px; }
+
 /* Cards */
 .cards { --g: 12px; display: flex; flex-wrap: wrap; justify-content: center; gap: var(--g); width: 100%; max-width: 860px; }
 .cards .card { width: calc((100% - 4 * var(--g)) / 5); }
@@ -335,7 +378,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 @media (prefers-reduced-motion: reduce) {
   .card .in, .bar i, .pack, .hp i { transition: none; }
   .pack.tearing { animation: none; opacity: 0; }
-  .card.shiny .face::after, .side.hit img.act { animation: none; }
+  .card.shiny .face::after, .side.hit img.act, .mp .shine, .mp .newtag, .pack.premium .foil, .drop { animation: none; }
 }
 </style>
 
@@ -385,6 +428,12 @@ const { TYPE_COLORS, TYPES, eff, mult, DEX, byNum, family, evosOf, powerCost, xp
 
 // ---------- Static data ----------
 const PACKS = [{ id: "all", name: "All Regions", lo: 1, hi: 1025, color: "#1F55D0", mascot: 493 }, ...REGIONS];
+// Pack items in the bag: Wild packs open as any unlocked region; region packs come from that region's trainers;
+// Champion Packs (from Champions) guarantee a Rare-or-better hit.
+const CHAMP_PACK = { id: "champ", name: "Champion", lo: 1, hi: 1025, color: "#C9971F", mascot: 249, premium: true };
+const packKind = id => id === "champ" ? CHAMP_PACK : PACKS.find(p => p.id === id);
+const packLabel = id => id === "all" ? "Wild" : packKind(id).name;
+const KIND_ORDER = ["champ", ...REGIONS.map(r => r.id), "all"];
 const RARITY = ["Common", "Uncommon", "Rare", "Legendary"];
 const SHINY_ODDS = 1 / 100;
 const HIT = { leg: 1 / 20, rare: 1 / 4 }; // hit slot: Legendary 1/20, Rare 1/4, otherwise Uncommon
@@ -417,7 +466,7 @@ const store = {
   set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} },
 };
 function blank() {
-  return { v: 2, dex: {}, box: {}, candy: {}, rare: 0, packs: 0, bank: START_PACKS, team: [], beaten: 0,
+  return { v: 2, dex: {}, box: {}, candy: {}, rare: 0, packs: 0, bag: Array.from({ length: START_PACKS }, () => ({ k: "all", src: "Starter packs", fresh: true })), team: [], beaten: 0,
            lastDaily: addDays(today(), -1), chal: { date: null, tries: 0, best: null, won: false, share: null },
            week: { key: null, days: [], claimed: false }, starter: null, pending: null };
 }
@@ -434,9 +483,16 @@ function migrate(old) { // v1 had only owned counts and a team
   c.team = (old.team || []).filter(n => c.box[n]);
   return c;
 }
+// Saves from before the pack bag stored a plain count ("bank"); those become Wild packs
+function normalize(raw) {
+  if (!Array.isArray(raw.bag)) raw.bag = Array.from({ length: Math.max(0, raw.bank || 0) }, () => ({ k: "all", src: "Saved packs", fresh: false }));
+  delete raw.bank;
+  if (raw.pending && !raw.pending.kind) raw.pending.kind = "all";
+  return Object.assign(blank(), raw);
+}
 function load() {
   const raw = store.get();
-  if (raw && raw.v === 2) return Object.assign(blank(), raw);
+  if (raw && raw.v === 2) return normalize(raw);
   if (raw && raw.v === 1) return migrate(raw);
   return blank();
 }
@@ -501,13 +557,13 @@ async function connect(auth) {
 // Granted once per save, after the account's save has loaded so the packs land in the right save
 function subBonus() {
   if (!SY.subscribed || !SY.auth || C.subBonus || !C.starter || SY.state === "conflict" || SY.state === "loading") return;
-  C.subBonus = true; C.bank += SUB_PACKS; save();
-  toast(`Thanks for subscribing! +${SUB_PACKS} packs added to your bag.`);
+  C.subBonus = true; addPacks("all", SUB_PACKS, "Subscriber thank-you"); save();
+  toast(`Thanks for subscribing! +${SUB_PACKS} Wild packs added to your bag.`);
   render();
 }
 function adopt(data) {
   clearTimers();
-  C = Object.assign(blank(), data.save);
+  C = normalize(data.save);
   store.set(C);
   SY.meta = { cid: SY.cid, rev: data.rev, dirty: false }; saveMeta();
   SY.state = "synced"; SY.conflict = null;
@@ -528,7 +584,7 @@ function resolveConflict(keep) {
   SY.conflict = null; SY.state = "synced";
   push(); render(); subBonus();
 }
-const summary = c => c ? `${Object.keys(c.dex || {}).length} caught · ${c.beaten || 0}/${TRAINERS.length} trainers beaten · ${plural(c.bank || 0, "pack", "packs")} in bag · ${plural(c.packs || 0, "pack", "packs")} opened` : "No save on your account yet";
+const summary = c => c ? `${Object.keys(c.dex || {}).length} caught · ${c.beaten || 0}/${TRAINERS.length} trainers beaten · ${plural((c.bag || []).length || c.bank || 0, "pack", "packs")} in bag · ${plural(c.packs || 0, "pack", "packs")} opened` : "No save on your account yet";
 function renderAcct() {
   const el = document.getElementById("acct");
   const who = SY.name ? `, ${SY.name}` : "";
@@ -602,6 +658,26 @@ function nextWinChance() {
   return wcMemo.val;
 }
 
+// ---------- Pack bag ----------
+const bagCount = () => C.bag.length;
+function addPacks(kind, n, src, reveal = true) {
+  for (let i = 0; i < n; i++) C.bag.push({ k: kind, src, fresh: true });
+  if (reveal && n > 0) (S.reveal = S.reveal || []).push({ kind, n, src });
+}
+function bagGroups() {
+  const g = {};
+  for (const p of C.bag) { (g[p.k] = g[p.k] || { kind: p.k, n: 0, fresh: 0, src: p.src }).n++; if (p.fresh) g[p.k].fresh++; }
+  return KIND_ORDER.filter(k => g[k]).map(k => g[k]);
+}
+const unlockedRegions = () => PACKS.filter((r, i) => i === 0 || regionOpen(i - 1));
+function miniPack(kind, n = 1, fresh = false, cls = "") {
+  const k = packKind(kind);
+  return `<span class="mp ${k.premium ? "premium" : ""} ${n >= 3 ? "n3" : n === 2 ? "n2" : ""} ${cls}" style="--c:${k.color}">
+    <span class="skin"><span class="shine"></span>${img(k.mascot)}<span class="nm">${packLabel(kind)}</span></span>
+    ${n > 1 ? `<span class="count">×${n}</span>` : ""}${fresh ? `<span class="newtag">NEW</span>` : ""}</span>`;
+}
+const gainText = g => `+${plural(g.n, `${packLabel(g.kind)} pack`, `${packLabel(g.kind)} packs`)}`;
+
 // ---------- Packs ----------
 function pickFrom(pool, tier, taken) {
   for (let t = tier; t >= 0; t--) {
@@ -610,11 +686,11 @@ function pickFrom(pool, tier, taken) {
   }
   return null;
 }
-function makePack(region) {
+function makePack(region, premium) {
   const pool = DEX.slice(region.lo - 1, region.hi);
   const roll = Math.random();
-  const hitTier = roll < HIT.leg ? 3 : roll < HIT.leg + HIT.rare ? 2 : 1;
-  const tiers = [0, 0, 0, 1, hitTier].map((t, i) => i < 3 && Math.random() < .1 ? 1 : t);
+  const hitTier = premium ? (roll < .25 ? 3 : 2) : roll < HIT.leg ? 3 : roll < HIT.leg + HIT.rare ? 2 : 1;
+  const tiers = (premium ? [0, 0, 1, 1, hitTier] : [0, 0, 0, 1, hitTier]).map((t, i) => i < 3 && Math.random() < .1 ? Math.max(t, 1) : t);
   const taken = new Set();
   return tiers.map(t => {
     const m = pickFrom(pool, t, taken);
@@ -623,10 +699,13 @@ function makePack(region) {
   }).sort((a, b) => byNum(a.num).tier - byNum(b.num).tier || byNum(a.num).bst - byNum(b.num).bst);
 }
 function openPack() {
-  if (S.phase !== "sealed" || C.bank < 1) return;
-  const region = PACKS.find(r => r.id === S.region);
-  S.cards = makePack(region);
-  C.bank--; C.pending = { region: S.region, cards: S.cards }; save(); // a refresh resumes this pack instead of re-rolling it
+  const kind = selectedKind();
+  if (S.phase !== "sealed" || !kind) return;
+  const pool = kind === "all" ? PACKS.find(r => r.id === S.region) : packKind(kind);
+  S.cards = makePack(pool, kind === "champ");
+  C.bag.splice(C.bag.findIndex(p => p.k === kind), 1);
+  C.bag.forEach(p => { if (p.k === kind) p.fresh = false; });
+  C.pending = { kind, region: S.region, cards: S.cards }; save(); // a refresh resumes this pack instead of re-rolling it
   S.phase = "tearing"; S.revealed = 0; S.selected = null; S.kept = null;
   const packEl = document.getElementById("pack");
   if (packEl) packEl.classList.add("tearing");
@@ -670,6 +749,14 @@ function keep() {
   render();
 }
 function nextPack() { clearTimers(); S.phase = "sealed"; S.cards = []; render(); }
+// The stack picked in the bag (falls back to the first stack when it runs out)
+function selectedKind() {
+  const groups = bagGroups();
+  if (!groups.length) return null;
+  if (!groups.some(g => g.kind === S.packKind)) S.packKind = groups[0].kind;
+  if (!unlockedRegions().some(r => r.id === S.region)) S.region = "all";
+  return S.packKind;
+}
 
 // ---------- Growing Pokémon ----------
 function powerUp(num) {
@@ -744,12 +831,17 @@ function startJourney(idx) {
   const xp = Math.round(oppAvg * 7 * (res.win ? (first ? 1 : .6) : .35));
   const ups = side.slice(0, res.used).map(s => { const from = C.box[s.num].lvl; gainXP(s.num, xp); return { num: s.num, from, to: C.box[s.num].lvl }; });
   const reward = { xp, ups, packs: 0, rare: 0, unlocked: null, done: false };
+  reward.packs = [];
   if (res.win && first) {
     C.beaten++;
-    reward.packs = t.reward.packs; reward.rare = t.reward.rare;
-    if (t.kind === "champ") { if (t.ri + 1 < REGIONS.length) reward.unlocked = REGIONS[t.ri + 1].name; else reward.done = true; }
+    reward.rare = t.reward.rare;
+    if (t.kind === "champ") {
+      reward.packs.push({ kind: t.region.id, n: t.reward.packs - 1 }, { kind: "champ", n: 1 });
+      if (t.ri + 1 < REGIONS.length) reward.unlocked = REGIONS[t.ri + 1].name; else reward.done = true;
+    } else reward.packs.push({ kind: t.region.id, n: t.reward.packs });
+    reward.packs.forEach(g => addPacks(g.kind, g.n, `${t.name} · ${t.region.name} ${t.title}`, false));
   } else if (res.win) reward.rare = 1;
-  C.bank += reward.packs; C.rare += reward.rare;
+  C.rare += reward.rare;
   save();
   S.battle = { kind: "journey", idx, head: `${t.region.name} · ${t.title}`, foe: t.name, res, reward, from: S.tab };
   playBattle();
@@ -767,16 +859,16 @@ function startChallenge() {
   const ch = challenge();
   if (C.chal.tries >= CHAL_TRIES) return;
   const side = chalLineup(ch), res = battle(side, ch.team), score = challengeScore(res);
-  const reward = { packs: 0, rare: 0, score };
+  const reward = { packs: [], rare: 0, score };
   if (C.chal.tries === 0) reward.rare = 1;
   C.chal.tries++;
-  if (res.win && !C.chal.won) { C.chal.won = true; reward.packs = CHAL_WIN_PACKS; }
+  if (res.win && !C.chal.won) { C.chal.won = true; reward.packs.push({ kind: "all", n: CHAL_WIN_PACKS }); addPacks("all", CHAL_WIN_PACKS, `Daily Challenge #${ch.n}`, false); }
   if (C.chal.best == null || score > C.chal.best) {
     C.chal.best = score;
     const grid = ch.team.map((_, i) => i < res.kos ? "🟩" : "⬛").join("");
     C.chal.share = `Pokédex Pack Draft · Daily #${ch.n}\n${ch.rule.label} vs ${ch.boss.name}\n${res.win ? "Won" : "Lost"} · ${score}/100\n${grid}\n${SITE}`;
   }
-  C.bank += reward.packs; C.rare += reward.rare;
+  C.rare += reward.rare;
   save();
   S.battle = { kind: "chal", head: `Daily Challenge #${ch.n} · ${ch.rule.label}`, foe: ch.boss.name, res, reward, from: S.tab };
   playBattle();
@@ -837,11 +929,11 @@ function renderMeter() {
   const caught = Object.keys(C.dex).length;
   document.getElementById("m-caught").textContent = caught.toLocaleString();
   document.getElementById("m-bar").style.width = (caught / 1025 * 100).toFixed(2) + "%";
-  document.getElementById("m-sub").innerHTML = `<span><b>${C.bank}</b> packs in bag</span><span><b>${C.rare}</b> Rare Candy</span><span><b>${badges()}</b>/9 Champions</span>`;
+  document.getElementById("m-sub").innerHTML = `<span><b>${bagCount()}</b> packs in bag</span><span><b>${C.rare}</b> Rare Candy</span><span><b>${badges()}</b>/9 Champions</span>`;
   const todo = dailyAvailable() + (weekReady() ? 1 : 0) + (C.chal.tries === 0 ? 1 : 0);
   const ctT = document.getElementById("ct-today");
   ctT.textContent = todo ? `●${todo}` : ""; ctT.className = "ct hot";
-  document.getElementById("ct-packs").textContent = C.bank;
+  document.getElementById("ct-packs").textContent = bagCount();
   document.getElementById("ct-team").textContent = `${C.team.length}/6`;
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", !S.battle && b.dataset.tab === S.tab));
 }
@@ -871,11 +963,11 @@ function renderToday() {
   return `<div class="today">
     ${renderChallengeCard()}
     <section class="panel tcard">
-      <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(C.bank, "pack", "packs")} in bag</span></div>
+      <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(bagCount(), "pack", "packs")} in bag</span></div>
       ${avail ? `<div class="row"><span class="big">+${avail}</span><span class="muted" style="font-size:13px">${avail > 1 ? "Includes packs saved from days you missed." : "Today's free pack is ready."}</span></div>
         <div class="row"><button class="btn btn-accent" type="button" id="claim-daily">Claim ${plural(avail, "pack", "packs")}</button><button class="btn btn-plain" type="button" data-go="packs">Open packs</button></div>`
       : `<p class="muted" style="margin:0">Claimed today. A new pack arrives tomorrow; missed days save up to ${DAILY_BANK}.</p>
-        <div class="row"><button class="btn btn-plain" type="button" data-go="packs" ${C.bank ? "" : "disabled"}>Open packs</button></div>`}
+        <div class="row"><button class="btn btn-plain" type="button" data-go="packs" ${bagCount() ? "" : "disabled"}>Open packs</button></div>`}
     </section>
     <section class="panel tcard">
       <h2>Journey <span>${badges()}/9 Champions beaten</span></h2>
@@ -942,31 +1034,45 @@ function cardHTML(c, i) {
   </button>`;
 }
 function renderPacks() {
-  const region = PACKS.find(r => r.id === S.region);
+  const kind = selectedKind(), groups = bagGroups();
   const busy = S.phase !== "sealed" && S.phase !== "kept";
+  const bag = `<section class="bagshelf" aria-label="Your pack bag">
+    <div class="hd"><h2>Your bag</h2><span>${groups.length ? `${plural(bagCount(), "pack", "packs")} · tap a stack to pick your next rip` : "Empty"}</span></div>
+    ${groups.length ? `<div class="bagrow" role="group" aria-label="Pack stacks">${groups.map(g => `<button class="stackb" type="button" data-bag="${g.kind}" aria-pressed="${g.kind === kind}" ${busy ? "disabled" : ""} aria-label="${gainText(g).slice(1)}">
+        ${miniPack(g.kind, g.n, g.fresh > 0)}<span class="cap">${packLabel(g.kind)}<small>${g.kind === "all" ? "Any unlocked region" : g.kind === "champ" ? "Rare or better hit" : "Region pack"}</small></span></button>`).join("")}</div>`
+      : `<p class="bag-empty">Out of packs. Earn more by beating trainers on your Journey, winning the Daily Challenge, and claiming your daily pack.</p>`}
+  </section>`;
   let stage;
   if (S.phase === "sealed" || S.phase === "tearing") {
-    const none = C.bank < 1;
-    stage = `
-      <span class="bag">${plural(C.bank, "pack", "packs")} in bag</span>
-      <button class="pack" id="pack" type="button" style="--c:${region.color}" aria-label="Open a ${region.name} pack" ${none ? "disabled" : ""}>
-        <span class="foil"></span><span class="ball"></span>
-        <span class="top">5 POKÉMON · KEEP 1</span>
-        ${img(region.mascot)}
-        <span class="lbl"><small>Pack Draft</small><b>${region.name}</b><span>${region.gen ? `Gen ${region.gen} · #${pad(region.lo)}–${pad(region.hi)}` : "#0001–1025"}</span></span>
-      </button>
-      ${none ? `<p class="note">Out of packs. Earn more by beating trainers on your Journey, winning the Daily Challenge, and claiming your daily pack.</p>
-        <div class="actions"><button class="btn btn-accent" type="button" data-go="journey">Go battle</button><button class="btn btn-plain" type="button" data-go="today">Today</button></div>`
-      : `<p class="note">Tap the pack to rip it. Keep one card. The other four become candy for their evolution families.</p>`}
-      <div class="odds"><span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 4 · <b style="color:var(--r3)">Legendary</b> 1 in 20</span><span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
+    if (!kind) {
+      stage = `<p class="note">Your bag is empty.</p>
+        <div class="actions"><button class="btn btn-accent" type="button" data-go="journey">Go battle</button><button class="btn btn-plain" type="button" data-go="today">Today</button></div>`;
+    } else {
+      const k = packKind(kind), pool = kind === "all" ? PACKS.find(r => r.id === S.region) : k;
+      const from = C.bag.find(p => p.k === kind).src;
+      const wild = kind === "all" ? `<div class="wild-pick"><span class="eyebrow">Open this Wild pack as</span>
+        <div class="shelf" role="group" aria-label="Region for this Wild pack">${unlockedRegions().map(r => `<button type="button" data-region="${r.id}" style="--c:${r.color}" aria-pressed="${r.id === S.region}"><i></i>${r.name}<span class="mono" style="font-size:11px;opacity:.7">${regionProgress(r)}</span></button>`).join("")}</div></div>` : "";
+      stage = `
+        <button class="pack ${k.premium ? "premium" : ""}" id="pack" type="button" style="--c:${pool.color}" aria-label="Rip a ${packLabel(kind)} pack">
+          <span class="foil"></span><span class="ball"></span>
+          <span class="top">5 POKÉMON · KEEP 1</span>
+          ${img(k.premium ? k.mascot : pool.mascot)}
+          <span class="lbl"><small>${k.premium ? "Champion Pack" : kind === "all" ? "Wild Pack" : "Pack Draft"}</small><b>${k.premium ? "Champion" : pool.name}</b><span>${pool.gen ? `Gen ${pool.gen} · #${pad(pool.lo)}–${pad(pool.hi)}` : "#0001–1025"}</span></span>
+        </button>
+        <p class="pack-from">From <b>${from}</b></p>
+        ${wild}
+        <p class="note">Tap the pack to rip it. Keep one card. The other four become candy for their evolution families.</p>
+        <div class="odds">${k.premium ? `<span>2 <b style="color:var(--r0)">Common</b></span><span>2 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> or better · <b style="color:var(--r3)">Legendary</b> 1 in 4</span>`
+          : `<span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 4 · <b style="color:var(--r3)">Legendary</b> 1 in 20</span>`}<span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
+    }
   } else {
     const picked = S.selected != null ? byNum(S.cards[S.selected].num) : null;
     let actions;
     if (S.phase === "revealing") actions = `<button class="btn btn-plain" id="reveal-all" type="button">Reveal all</button>`;
     else if (S.phase === "picking") actions = `<button class="btn btn-accent" id="keep" type="button" ${picked ? "" : "disabled"}>${picked ? `Keep ${picked.name}` : "Choose one to keep"}</button>`;
     else {
-      const kn = S.cards[S.kept].num;
-      actions = `<button class="btn btn-accent" id="next" type="button" ${C.bank ? "" : "disabled"}>${C.bank ? `Open another (${C.bank} left)` : "Out of packs"}</button>
+      const kn = S.cards[S.kept].num, left = bagCount();
+      actions = `<button class="btn btn-accent" id="next" type="button" ${left ? "" : "disabled"}>${left ? `Back to your bag (${left} left)` : "Bag empty"}</button>
         ${inBox(kn) && !C.team.includes(kn) && C.team.length < 6 ? `<button class="btn btn-plain" id="add-kept" type="button">Add to lineup</button>` : ""}
         ${inBox(kn) ? `<button class="btn btn-plain" type="button" data-detail="${kn}">View ${byNum(kn).name}</button>` : ""}`;
     }
@@ -974,13 +1080,7 @@ function renderPacks() {
     stage = `<div class="cards">${S.cards.map(cardHTML).join("")}</div>
       <p class="note">${note}</p><div class="actions">${actions}</div>`;
   }
-  return `
-    <div class="shelf" role="group" aria-label="Pack type">
-      ${PACKS.map((r, i) => { const open = i === 0 || regionOpen(i - 1);
-        return `<button type="button" data-region="${r.id}" style="--c:${r.color}" aria-pressed="${r.id === S.region}" ${busy || !open ? "disabled" : ""} title="${open ? "" : `Beat the ${PACKS[i - 1].name} Champion to unlock`}">
-        <i></i>${r.name}<span class="mono" style="font-size:11px;opacity:.7">${open ? regionProgress(r) : "Locked"}</span></button>`; }).join("")}
-    </div>
-    <section class="stage" aria-live="polite"><div class="stage-inner">${stage}</div></section>`;
+  return `${bag}<section class="stage" aria-live="polite"><div class="stage-inner">${stage}</div></section>`;
 }
 
 // ---------- Rendering: Journey ----------
@@ -1007,7 +1107,7 @@ function renderJourney() {
     <div class="shelf" role="group" aria-label="Region">
       ${REGIONS.map((r, i) => `<button type="button" data-jregion="${i}" style="--c:${r.color}" aria-pressed="${i === ri}" ${regionOpen(i) ? "" : "disabled"}><i></i>${r.name}</button>`).join("")}
     </div>
-    <p class="muted" style="margin:0 0 12px;font-size:14px">First wins pay ${TRAINERS[0].reward.packs} packs (Champions: 5 packs + 3 Rare Candy). Rematches give less XP plus 1 Rare Candy. Losses still give some XP. Your lineup fights in order, and HP carries over between Pokémon.</p>
+    <p class="muted" style="margin:0 0 12px;font-size:14px">First wins pay ${TRAINERS[0].reward.packs} packs from that trainer's region (Champions: 4 region packs, a gold Champion Pack and 3 Rare Candy). Rematches give less XP plus 1 Rare Candy. Losses still give some XP. Your lineup fights in order, and HP carries over between Pokémon.</p>
     <div class="trainers">${rows}</div>`;
 }
 
@@ -1031,18 +1131,18 @@ function renderBattle() {
   if (B.over) {
     const r = B.reward, win = B.res.win;
     const gains = [];
-    if (r.packs) gains.push(`+${r.packs} packs`);
     if (r.rare) gains.push(`+${r.rare} Rare Candy`);
     if (r.unlocked) gains.push(`${r.unlocked} unlocked`);
     if (r.done) gains.push("Journey complete!");
     if (B.kind === "chal") {
       gains.unshift(`Score ${r.score}/100`);
-      if (win && !r.packs) gains.push("Already won today");
+      if (win && !r.packs.length) gains.push("Already won today");
     }
     const nextT = TRAINERS[C.beaten];
     result = `<section class="panel result">
       <div class="row"><span class="big ${win ? "win" : "loss"}">${win ? "Victory" : "Defeated"}</span>
         <span class="muted">${win ? `${B.foe} is out of usable Pokémon.` : `${B.res.kos} of ${B.res.B.length} knocked out.`}</span></div>
+      ${r.packs && r.packs.length ? `<div class="mini-gains">${r.packs.map((g, i) => `<span class="stackb" style="padding:0"><span class="drop" style="animation-delay:${.15 + i * .18}s">${miniPack(g.kind, g.n, true)}</span><span class="cap">${gainText(g)}</span></span>`).join("")}</div>` : ""}
       ${gains.length ? `<div class="gains">${gains.map(g => `<span class="gain">${g}</span>`).join("")}</div>` : ""}
       ${r.ups ? `<div><div class="eyebrow" style="margin-bottom:6px">+${r.xp} XP each</div><div class="ups">${r.ups.map(u => `<span class="up">${img(u.num, C.box[u.num] && C.box[u.num].shiny)}${byNum(u.num).name} <b>${u.from === u.to ? `Lv ${u.to}` : `Lv ${u.from} → ${u.to}`}</b></span>`).join("")}</div></div>` : ""}
       ${!win && B.kind === "journey" ? `<p class="muted" style="margin:0;font-size:14px">Level up by rematching trainers you've beaten, feeding candy, or evolving. Try a lineup whose types hit ${B.foe}'s team hard.</p>` : ""}
@@ -1050,6 +1150,7 @@ function renderBattle() {
         <button class="btn btn-accent" type="button" id="leave">Continue</button>
         ${B.kind === "journey" && win && nextT && B.idx === C.beaten - 1 ? `<button class="btn btn-plain" type="button" data-battle="${nextT.idx}">Battle ${nextT.name} next</button>` : ""}
         ${B.kind === "journey" && !win ? `<button class="btn btn-plain" type="button" data-go="team">Adjust team</button>` : ""}
+        ${r.packs && r.packs.length ? `<button class="btn btn-plain" type="button" data-rip="${r.packs[r.packs.length - 1].kind}">Rip your new packs</button>` : ""}
         ${B.kind === "chal" && C.chal.share ? `<button class="btn btn-plain" type="button" id="share">Copy result</button>` : ""}
       </div>
     </section>`;
@@ -1161,6 +1262,16 @@ function renderStarter() {
 // ---------- Rendering: detail sheet ----------
 function renderSheet() {
   const el = document.getElementById("sheet");
+  if (S.reveal && S.reveal.length && !S.battle) {
+    const gs = S.reveal;
+    el.innerHTML = `<div class="sheet-wrap" id="reveal-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="New packs" style="text-align:center">
+      <div><div class="eyebrow">Added to your bag</div><h2 style="font-size:28px">New packs!</h2></div>
+      <div class="reveal-packs">${gs.map((g, i) => `<span class="stackb" style="padding:0"><span class="drop" style="animation-delay:${.1 + i * .2}s">${miniPack(g.kind, g.n, true)}</span><span class="cap">${gainText(g)}<small>${g.src}</small></span></span>`).join("")}</div>
+      <p class="muted" style="margin:0;font-size:14px">You have ${plural(bagCount(), "pack", "packs")} waiting in your bag.</p>
+      <div class="row" style="justify-content:center"><button class="btn btn-accent" type="button" data-rip="${gs[gs.length - 1].kind}">Rip one now</button><button class="btn btn-plain" type="button" id="reveal-later">Later</button></div>
+    </div></div>`;
+    return;
+  }
   if (S.subOffer) {
     el.innerHTML = `<div class="sheet-wrap" id="sub-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="Join the email list">
       <div><div class="eyebrow">WD Card Shop emails</div><h2 style="font-size:24px">Get drop alerts and ${SUB_PACKS} free packs</h2></div>
@@ -1239,7 +1350,7 @@ document.getElementById("view").addEventListener("click", e => {
   if ((el = on("[data-starter]"))) return chooseStarter(+el.dataset.starter);
   if ((el = on("[data-go]")) && !el.disabled) { if (S.battle) { clearTimers(); S.battle = null; } S.tab = el.dataset.go; return render(); }
   if ((el = on("[data-battle]"))) return startJourney(+el.dataset.battle);
-  if ((el = on("[data-region]")) && !el.disabled) { S.region = el.dataset.region; if (S.phase === "kept") nextPack(); else render(); return; }
+  if ((el = on("[data-region]")) && !el.disabled) { S.region = el.dataset.region; return render(); }
   if ((el = on("[data-jregion]")) && !el.disabled) { S.journeyRegion = +el.dataset.jregion; return render(); }
   if ((el = on("[data-detail]"))) { S.detail = +el.dataset.detail; S.confirmTransfer = false; return renderSheet(); }
   if ((el = on("[data-mv]"))) return moveTeam(+el.dataset.mv, +el.dataset.d);
@@ -1258,8 +1369,10 @@ document.getElementById("view").addEventListener("click", e => {
   if (on("#next")) return nextPack();
   if (on("#add-kept")) return toggleTeam(S.cards[S.kept].num);
   if ((el = on(".card.pickable"))) { S.selected = +el.dataset.i; return render(); }
-  if (on("#claim-daily")) { const n = dailyAvailable(); C.bank += n; C.lastDaily = today(); save(); toast(`+${n} ${n === 1 ? "pack" : "packs"} added to your bag`); return render(); }
-  if (on("#claim-week")) { C.bank += WEEK_PACKS; C.week.claimed = true; save(); toast(`+${WEEK_PACKS} bonus packs. See you next week!`); return render(); }
+  if (on("#claim-daily")) { const n = dailyAvailable(); addPacks("all", n, "Daily pack"); C.lastDaily = today(); save(); return render(); }
+  if (on("#claim-week")) { addPacks("all", WEEK_PACKS, "Weekly bonus"); C.week.claimed = true; save(); return render(); }
+  if ((el = on("[data-rip]"))) { if (S.battle) { clearTimers(); S.battle = null; } S.packKind = el.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
+  if ((el = on("[data-bag]"))) { S.packKind = el.dataset.bag; if (S.phase === "kept") { S.phase = "sealed"; S.cards = []; } return render(); }
   if (on("#chal-go")) return startChallenge();
   if (on("#share")) {
     const text = C.chal.share;
@@ -1274,6 +1387,9 @@ document.getElementById("view").addEventListener("click", e => {
 document.getElementById("view").addEventListener("toggle", e => { if (e.target.id === "chal-details") S.chalOpen = e.target.open; }, true);
 document.getElementById("sheet").addEventListener("click", e => {
   const t = e.target, n = S.detail;
+  if (t.closest("#reveal-later") || t.id === "reveal-bg") { S.reveal = null; return renderSheet(); }
+  const rip = t.closest("[data-rip]");
+  if (rip) { S.reveal = null; S.packKind = rip.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
   if (t.closest("#sub-yes")) { S.subOffer = false; renderSheet(); if (SY.shopOrigin) window.parent.postMessage({ type: "pd-subscribe" }, SY.shopOrigin); toast("Subscribing…"); return; }
   if (t.closest("#sub-no") || t.id === "sub-bg") { S.subOffer = false; return renderSheet(); }
   const keep = t.closest("[data-keep]");
@@ -1343,7 +1459,7 @@ try { if (/wdcardshop\.com/.test(document.referrer)) document.getElementById("ho
 // Boot: resume an unfinished pack, then land on Today
 function boot() {
   visit();
-  if (C.pending) { S.region = C.pending.region; S.cards = C.pending.cards; S.revealed = S.cards.length; S.phase = "picking"; S.tab = "packs"; }
+  if (C.pending) { S.region = C.pending.region; S.packKind = C.pending.kind; S.cards = C.pending.cards; S.revealed = S.cards.length; S.phase = "picking"; S.tab = "packs"; }
   render();
   renderAcct();
 }
