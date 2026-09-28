@@ -592,6 +592,9 @@ button.dm:hover { border-color: var(--accent); }
 .choice b { font-family: var(--display); font-size: 17px; }
 .choice span { font-size: 13px; color: var(--muted); }
 footer { margin-top: 32px; font-size: 12px; color: var(--muted); max-width: 72ch; display: grid; gap: 8px; }
+header .beta { margin: 8px 0 0; font-size: 13px; color: var(--muted); max-width: 62ch; }
+.beta-tag { display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; margin-right: 4px; vertical-align: 1px;
+  color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 footer .reset { justify-self: start; border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 5px 10px; font-size: 12px; color: var(--muted); }
 footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 @media (prefers-reduced-motion: reduce) {
@@ -608,6 +611,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
       <a id="home-link" class="home-link" href="https://wdcardshop.com/" target="_top" hidden>← Back to WD Card Shop</a>
       <h1>Pokédex <em>Pack</em> Draft</h1>
       <p>Rip free packs every day and keep one card from each. Signed-in members can find WD Card Shop discount codes and store credit inside packs.</p>
+      <p class="beta"><span class="beta-tag">Beta</span> More is on the way. Everything you pull now stays in your Pokédex and collection and carries over to upcoming features like collection showcases and challenges.</p>
     </div>
     <div class="meter" aria-live="polite">
       <div class="nums"><span>Pokédex</span><span><b id="m-caught">0</b> / 1,025</span></div>
@@ -628,7 +632,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
   <main id="view"></main>
 
   <footer>
-    <button class="reset" id="reset" type="button">Reset save</button>
+    <span class="row" style="gap:6px"><button class="reset" id="reset" type="button">Reset save</button><button class="reset" id="test-prizes" type="button">Test prizes</button></span>
     <span>Guest saves live in this browser only; sign in on wdcardshop.com to save to your account. <a href="https://dustaris.github.io/pokemon-pack-draft/rules.html" target="_blank" rel="noopener">Rewards Official Rules</a>. Unofficial fan game, not affiliated with, sponsored or endorsed by Nintendo, The Pokémon Company, Creatures Inc. or GAME FREAK inc. Pokémon and all related names and sprites are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Sprites via PokéAPI; base stats and evolutions via Pokémon Showdown.</span>
   </footer>
 </div>
@@ -961,7 +965,8 @@ function openPack(fast) {
   C.bag.forEach(p => { if (p.k === kind) p.fresh = false; });
   C.pending = { kind, region: S.region, cards: S.cards }; save(); // a refresh resumes this pack instead of re-rolling it
   S.prize = null;
-  if (prizeEligible()) rollPrize();
+  if (S.testPrizes && S.testPrizes.length) { const pz = S.testPrizes.shift(), batch = S.batch; setTimeout(() => showPrize(pz, batch), 300); }
+  else if (prizeEligible()) rollPrize();
   S.phase = "tearing"; S.revealed = 0; S.selected = null; S.kept = null;
   const packEl = document.getElementById("pack");
   if (packEl) packEl.classList.add("tearing");
@@ -986,19 +991,32 @@ async function rollPrize() {
     if (status !== 200) return;
     if (S.rewards) S.rewards.chances = data.chances;
     if (!data.prize) return;
-    if (batch) (batch.prizes = batch.prizes || []).push(data.prize); else S.prize = data.prize;
     S.rewardsAt = 0; // refresh "Your prizes"
-    S.banner = { glow: "#F2B531", text: "Store prize!", sub: data.prize.label };
-    toast(`You found a WD Card Shop prize: ${data.prize.label}!`);
-    render();
+    showPrize(data.prize, batch);
   } catch {}
+}
+function showPrize(pz, batch) {
+  if (batch) (batch.prizes = batch.prizes || []).push(pz); else S.prize = pz;
+  S.banner = { glow: "#F2B531", text: pz.test ? "Test prize" : "Store prize!", sub: pz.label };
+  toast(pz.test ? `Test prize: ${pz.label}. Nothing real was issued.` : `You found a WD Card Shop prize: ${pz.label}!`);
+  render();
+}
+// Testing only (remove with the Reset button before launch): the next packs show sample prizes; nothing is issued
+function testPrizes() {
+  const d = n => new Date(Date.now() + n * 864e5).toISOString();
+  return [
+    { test: true, type: "code", label: "5% off your order", pct: 5, amount: 0, status: "issued", code: "TEST-NOT-REAL", expires: d(30) },
+    { test: true, type: "credit", label: "$5 store credit", pct: 0, amount: 5, status: "issued", expires: d(90) },
+    { test: true, type: "credit", label: "$20 store credit", pct: 0, amount: 20, status: "issued", expires: d(90) },
+    { test: true, type: "credit", label: "$20 store credit", pct: 0, amount: 20, status: "review" },
+  ];
 }
 function prizeCardHTML(pz) {
   const how = pz.status !== "issued" ? `<p class="pz-note">We're verifying this prize. It will appear under <b>Your prizes</b> on the Today tab.</p>`
     : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. It's applied automatically at checkout${pz.expires ? ` and expires ${new Date(pz.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}.</p>
         <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>`
     : codeHTML(pz);
-  return `<div class="prizecard"><div class="pz-top">WD CARD SHOP PRIZE</div><div class="pz-val">${pz.label}</div>${how}</div>`;
+  return `<div class="prizecard"><div class="pz-top">${pz.test ? "TEST PRIZE · NOT REAL" : "WD CARD SHOP PRIZE"}</div><div class="pz-val">${pz.label}</div>${how}</div>`;
 }
 
 // Open all: rip a whole stack back to back, still keeping one card per pack
@@ -1720,6 +1738,10 @@ window.addEventListener("message", e => {
 });
 if (window.parent !== window) window.parent.postMessage({ type: "pd-hello" }, "*");
 
+document.getElementById("test-prizes").addEventListener("click", () => {
+  S.testPrizes = testPrizes(); S.tab = "packs"; render();
+  toast("Your next 4 packs show test prizes: 5% code, $5 credit, $20 credit, then one being verified. Nothing real is issued.");
+});
 let resetArmed = false, resetTimer;
 document.getElementById("reset").addEventListener("click", e => {
   const b = e.currentTarget;
