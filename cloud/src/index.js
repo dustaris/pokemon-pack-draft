@@ -26,7 +26,7 @@ const PACK_PRIZES = [
   { key: "code5", odds: 1 / 25, type: "code", pct: 5, label: "5% off your order" },
 ];
 const PACKS_CFG = {
-  dailyChances: 3, bankChances: 6, subscriberChances: 3,  // prize chances mirror the free packs: 3 a day (bank up to 6) + 3 once for subscribers
+  dailyChances: 3, subscriberChances: 3,  // prize chances mirror the free packs: 3 a day (unused ones don't carry over) + 3 once for subscribers
   creditBudget: 150,                                      // max store credit awarded per calendar month (Pacific); after that, no credit prizes
   creditExpiresDays: 90,
   creditMinAccountDays: 7,                                // newer accounts' credit prizes wait for your review
@@ -293,7 +293,7 @@ async function rollPack(env, cid) {
   if (!p || !p.eligible_at || p.banned) return { eligible: false, banned: !!(p && p.banned) };
   const day = E.challengeDay();
   const days = p.chances_day ? Math.max(0, Math.round((Date.parse(day) - Date.parse(p.chances_day)) / 864e5)) : 1;
-  let chances = Math.min(PACKS_CFG.bankChances, (p.chances || 0) + PACKS_CFG.dailyChances * days), sub = p.sub_bonus;
+  let chances = days > 0 ? PACKS_CFG.dailyChances : (p.chances || 0), sub = p.sub_bonus; // a new day resets to the daily amount; nothing carries over
   if (!sub && await isSubscribed(env, cid)) { chances += PACKS_CFG.subscriberChances; sub = 1; }
   let prize = null;
   if (chances > 0) {
@@ -326,7 +326,7 @@ async function chancesFor(env, p) {
   if (!p || !p.eligible_at) return 0;
   const day = E.challengeDay();
   const days = p.chances_day ? Math.max(0, Math.round((Date.parse(day) - Date.parse(p.chances_day)) / 864e5)) : 1;
-  return Math.min(PACKS_CFG.bankChances, (p.chances || 0) + PACKS_CFG.dailyChances * days);
+  return days > 0 ? PACKS_CFG.dailyChances : (p.chances || 0);
 }
 
 // Monthly top 3 by collection points gained, among eligible, unbanned players active on enough days; always reviewed by you

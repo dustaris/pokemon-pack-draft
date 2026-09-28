@@ -659,7 +659,7 @@ const RARITY = ["Common", "Uncommon", "Rare", "Legendary"];
 const SHINY_ODDS = 1 / 100;
 const HIT = { leg: 1 / 20, rare: 1 / 4 }; // hit slot: Legendary 1/20, Rare 1/4, otherwise Uncommon
 const STARTERS = [1, 4, 7];
-const START_PACKS = 6, DAILY_PACKS = 3, DAILY_BANK_DAYS = 2, WEEK_GOAL = 5, WEEK_PACKS = 3, STREAK_GOAL = 7;
+const START_PACKS = 6, DAILY_PACKS = 3, DAILY_BANK_DAYS = 1, WEEK_GOAL = 5, WEEK_PACKS = 3, STREAK_GOAL = 7;
 // Feature switches: the game starts simple (rip packs, find store prizes). Flip these back on later; the code is all here.
 const FEATURES = { showcase: false, boards: false, grades: false, streak: false, weekly: false };
 const SITE = "https://wdcardshop.com/pages/pokedex-pack-drafts";
@@ -863,7 +863,7 @@ function renderAcct() {
   else if (SY.state === "saving") { dot = "busy"; msg = `Saving to your account${who}…`; }
   else if (SY.state === "synced") {
     dot = "ok"; msg = `Saved to your account${who}. Sign in on any device to keep playing.`;
-    if (SY.subscribed === false) action = `<button class="btn btn-accent btn-sm" type="button" id="acct-sub">Get drop alerts + ${SUB_PACKS} free packs</button>`;
+    if (SY.subscribed === false) action = `<button class="btn btn-accent btn-sm" type="button" id="acct-sub">Subscribe for +${SUB_PACKS} free packs</button>`;
   }
   else if (SY.state === "conflict") { dot = "err"; msg = "Your account and this device have different saves. Choose one to keep."; action = `<button class="btn btn-accent btn-sm" type="button" id="acct-resolve">Choose save</button>`; }
   else if (SY.state === "expired") { dot = "err"; msg = "Your sign-in expired. Reload the page to keep saving to your account."; }
@@ -893,7 +893,7 @@ function visit() {
   }
   save();
 }
-// Free packs: DAILY_PACKS a day; missed days bank up to DAILY_BANK_DAYS days' worth
+// Free packs: DAILY_PACKS a day; missed days are not saved
 const dailyAvailable = () => Math.min(DAILY_BANK_DAYS, Math.max(0, daysBetween(C.lastDaily, today()))) * DAILY_PACKS;
 const weekReady = () => C.week.days.length >= WEEK_GOAL && !C.week.claimed;
 // ---------- Collection helpers ----------
@@ -1184,22 +1184,14 @@ function renderToday() {
   }).join("");
   const st = C.streak || { count: 0 }, lit = st.count ? (st.count % STREAK_GOAL || STREAK_GOAL) : 0, earnedToday = st.count > 0 && st.count % STREAK_GOAL === 0;
   const dots = Array.from({ length: STREAK_GOAL }, (_, i) => `<span class="${i < lit ? "on" : ""}"><i></i></span>`).join("");
-  const email = C.subBonus ? "" : `<section class="panel tcard">
-      <div class="row spread"><h2>+${SUB_PACKS} bonus packs</h2><span class="bag">One time</span></div>
-      <p class="muted" style="margin:0;font-size:14px">Join the WD Card Shop email list for drop alerts and ${SUB_PACKS} extra packs${SY.auth ? `, plus ${SUB_PACKS} extra prize chances` : ""}.</p>
-      <div class="row">${!SY.shop ? `<a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">On wdcardshop.com</a>`
-        : !SY.auth ? (SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in first</a>` : "")
-        : SY.subscribed ? `<span class="muted">Arriving shortly</span>` : `<button class="btn btn-accent btn-sm" type="button" id="earn-sub">Subscribe for ${SUB_PACKS} packs</button>`}</div>
-    </section>`;
   return `<div class="today">
     <section class="panel tcard">
       <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(bagCount(), "pack", "packs")} in bag</span></div>
-      ${avail ? `<div class="row"><span class="big">+${avail}</span><span class="muted" style="font-size:13px">${avail > DAILY_PACKS ? "Includes packs saved from a day you missed." : `Today's ${DAILY_PACKS} free packs are ready.`}</span></div>
+      ${avail ? `<div class="row"><span class="big">+${avail}</span><span class="muted" style="font-size:13px">Today's ${DAILY_PACKS} free packs are ready.</span></div>
         <div class="row"><button class="btn btn-accent" type="button" id="claim-daily">Claim ${plural(avail, "pack", "packs")}</button><button class="btn btn-plain" type="button" data-go="packs">Open packs</button></div>`
-      : `<p class="muted" style="margin:0">Claimed today. ${DAILY_PACKS} more arrive tomorrow; missed days save up to ${DAILY_BANK_DAYS * DAILY_PACKS}.</p>
+      : `<p class="muted" style="margin:0">Claimed today. ${DAILY_PACKS} more arrive tomorrow.</p>
         <div class="row"><button class="btn btn-plain" type="button" data-go="packs" ${bagCount() ? "" : "disabled"}>Open packs</button></div>`}
     </section>
-    ${email}
     ${FEATURES.streak ? `<section class="panel tcard">
       <div class="row spread"><h2>Visit streak</h2><span class="muted mono" style="font-size:13px">${plural(st.count || 0, "day", "days")} in a row</span></div>
       <div class="week streak">${dots}</div>
@@ -1237,7 +1229,7 @@ function renderRewards() {
   const head = `<div class="row spread"><h2>Prizes in packs</h2><span class="muted" style="font-size:13px">WD Card Shop discount codes and store credit</span></div>`;
   const pitch = `<p style="margin:0">Members' packs can contain real WD Card Shop prizes: <b>1 in 25</b> packs has a 5% off code, <b>1 in 100</b> has $5 store credit, and <b>1 in 500</b> has $20 store credit.</p>`;
   if (!SY.shop) return `<section class="panel tcard rewards">${head}${pitch}
-    <div class="row"><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Collect on wdcardshop.com to earn rewards</a></div>${small}</section>`;
+    <div class="row"><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com to find prizes in packs</a></div>${small}</section>`;
   if (!SY.auth) return `<section class="panel tcard rewards">${head}${pitch}
     <div class="row">${SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in</a>` : ""}</div>${small}</section>`;
   if (!r) return `<section class="panel tcard rewards">${head}<p class="muted" style="margin:0">Loading your rewards…</p></section>`;
@@ -1444,9 +1436,9 @@ function renderEarn() {
   const sub = C.subBonus ? done("Claimed")
     : !SY.shop ? `<a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">On wdcardshop.com</a>`
     : !SY.auth ? (SY.loginUrl ? `<a class="btn btn-plain btn-sm" href="${SY.loginUrl}" target="_top">Sign in first</a>` : wait("Sign in first"))
-    : SY.subscribed ? wait("Arriving shortly") : `<button class="btn btn-accent btn-sm" type="button" id="earn-sub">Subscribe</button>`;
+    : SY.subscribed ? wait("Arriving shortly") : wait("Use Subscribe at the top");
   const rows = [
-    { kind: "all", title: "Daily packs", why: `+${DAILY_PACKS} Wild packs every day. Missed days save up to ${DAILY_BANK_DAYS * DAILY_PACKS}.`,
+    { kind: "all", title: "Daily packs", why: `+${DAILY_PACKS} Wild packs every day. Claim them each day; missed days aren't saved.`,
       act: avail ? `<button class="btn btn-accent btn-sm" type="button" id="claim-daily">Claim ${avail}</button>` : done("Claimed today") },
     FEATURES.streak && { kind: "champ", title: "Visit streak", why: `A gold Champion Pack for every ${STREAK_GOAL} days in a row.`, act: wait(`${st.count || 0} days · ${toGo} to go`) },
     FEATURES.weekly && { kind: "all", title: "Weekly check-in", why: `+${WEEK_PACKS} Wild packs for visiting on any ${WEEK_GOAL} days of the week.`,
