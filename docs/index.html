@@ -394,6 +394,22 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 @media (max-width: 520px) { .ticket { grid-template-columns: 1fr; text-align: center; padding: 18px 28px; } .tk-amt { border-right: 0; border-bottom: 2px dashed rgba(42,29,0,.45); padding: 0 0 10px; } .ticket .row { justify-content: center; } }
 @media (prefers-reduced-motion: reduce) { .ticket::after, .fan .mp { animation: none !important; } }
 
+/* Golden Ticket reveal */
+.sheet-wrap.tk-wrap { background: rgba(10, 8, 2, .82); place-items: center; overflow: hidden; }
+.tk-reveal { position: relative; display: grid; justify-items: center; gap: 16px; width: min(560px, 100%); text-align: center; animation: tkpop .7s cubic-bezier(.2,.9,.3,1.25) both; }
+.tk-rays { position: absolute; left: 50%; top: 45%; width: 900px; height: 900px; margin: -450px 0 0 -450px; z-index: -1; pointer-events: none; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255,214,90,.28) 0 9deg, transparent 9deg 22deg); -webkit-mask: radial-gradient(circle, #000 0 18%, transparent 62%); mask: radial-gradient(circle, #000 0 18%, transparent 62%); animation: tkspin 14s linear infinite; }
+.tk-head { color: #FFE89A; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; display: grid; gap: 4px; }
+.tk-head b { font-family: var(--display); font-size: clamp(34px, 8vw, 52px); letter-spacing: 0; text-transform: none; line-height: 1; color: #FFD65A; text-shadow: 0 0 28px rgba(255,200,60,.7); }
+.ticket.tk-big { width: 100%; text-align: left; box-shadow: 0 0 60px rgba(255,200,60,.55); }
+.ticket.tk-big .code .mono { background: rgba(255,255,255,.6); color: #2A1D00; }
+.ticket.tk-big .pz-note { margin: 0; font-size: 13px; }
+.tk-saved { margin: 0; color: #F4E4B0; font-size: 13px; }
+@keyframes tkpop { 0% { opacity: 0; transform: scale(.5) rotate(-8deg); } 100% { opacity: 1; transform: none; } }
+@keyframes tkspin { to { transform: rotate(360deg); } }
+@media (max-width: 520px) { .ticket.tk-big { text-align: center; } }
+@media (prefers-reduced-motion: reduce) { .tk-reveal, .tk-rays { animation: none !important; } }
+
 /* Prize cards */
 .prizecard { width: 100%; max-width: 420px; border-radius: 16px; padding: 14px 28px;
   -webkit-mask: radial-gradient(circle 12px at 0 50%, #0000 97%, #000) left / 51% 100% no-repeat, radial-gradient(circle 12px at 100% 50%, #0000 97%, #000) right / 51% 100% no-repeat;
@@ -688,10 +704,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609281148"></script>
-<script src="sprites.js?v=202609281148"></script>
-<script src="evo.js?v=202609281148"></script>
-<script src="engine.js?v=202609281148"></script>
+<script src="dex.js?v=202609281156"></script>
+<script src="sprites.js?v=202609281156"></script>
+<script src="evo.js?v=202609281156"></script>
+<script src="engine.js?v=202609281156"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -710,7 +726,7 @@ const isWild = id => id === "all" || id === "starter"; // opened as any unlocked
 const KIND_ORDER = ["champ", ...REGIONS.map(r => r.id), "all", "starter"];
 const RARITY = ["Common", "Uncommon", "Rare", "Legendary"];
 const SHINY_ODDS = 1 / 100;
-const HIT = { leg: 1 / 20, rare: 1 / 4 }; // hit slot: Legendary 1/20, Rare 1/4, otherwise Uncommon
+const HIT = { leg: 1 / 30, rare: 1 / 10 }; // hit slot: Legendary 1/30, Rare 1/10, otherwise Uncommon
 const STARTERS = [1, 4, 7];
 const START_PACKS = 6, DAILY_PACKS = 3, DAILY_BANK_DAYS = 1, WEEK_GOAL = 5, WEEK_PACKS = 3, STREAK_GOAL = 7;
 // Feature switches: the game starts simple (rip packs, find store prizes). Flip these back on later; the code is all here.
@@ -1025,7 +1041,7 @@ function openPack(fast) {
     S.revealed = S.cards.length; S.phase = "picking";
     const c = S.cards[S.cards.length - 1];
     if (bigHit(c)) celebrate(null, c);
-    return render();
+    render(); return maybeTicket();
   }
   timers.push(setTimeout(() => { S.phase = "revealing"; render(); revealNext(); }, reduced ? 0 : S.premium ? 1100 : 520));
 }
@@ -1049,9 +1065,17 @@ function showPrize(pz, batch, seq) {
   pz.found = new Date().toISOString();
   if (pz.test) { (S.testWon = S.testWon || []).unshift(pz); try { localStorage.setItem("pd-test-won", JSON.stringify(S.testWon)); } catch {} }
   if (batch) (batch.prizes = batch.prizes || []).push(pz);
-  if (seq === S.packSeq) { S.prize = pz; S.banner = { glow: "#F2B531", text: pz.test ? "Test Golden Ticket" : "Golden Ticket!", sub: pz.label }; }
-  toast(pz.test ? `Test prize: ${pz.label}. Nothing real was issued.` : `You found a Golden Ticket: ${pz.label}!`);
-  render();
+  if (seq === S.packSeq) S.prize = pz;
+  S.ticketPending = pz;
+  maybeTicket();
+}
+// The big Golden Ticket moment waits until the cards have finished flipping (or the Open all summary), so nothing interrupts it
+function maybeTicket() {
+  if (!S.ticketPending || S.tab !== "packs") return;
+  if (S.batch && S.batch.auto && S.phase !== "batchDone") return; // auto-pick: show it on the summary
+  if (S.phase !== "picking" && S.phase !== "kept" && S.phase !== "batchDone") return;
+  S.ticketShow = S.ticketPending; S.ticketPending = null;
+  render(); renderSheet();
 }
 // Testing only (remove with the Reset button before launch): the next packs show sample prizes; nothing is issued
 // Testing tools show for everyone when FEATURES.devTools is on, otherwise only for shop staff accounts (decided by the server)
@@ -1066,11 +1090,14 @@ function testPrizes() {
     { test: true, type: "credit", label: "$20 store credit", pct: 0, amount: 20, status: "review", example: "What a brand-new or flagged account sees: store credit waits for your approval" },
   ];
 }
-function prizeCardHTML(pz) {
-  const how = pz.status !== "issued" ? `<p class="pz-note">We're verifying this prize. It will appear under <b>Your prizes</b> on the Today tab.</p>`
+function prizeHow(pz) {
+  return pz.status !== "issued" ? `<p class="pz-note">We're verifying this prize. It will appear under <b>Your prizes</b> on the Today tab.</p>`
     : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. To use it, sign in at checkout and choose Apply store credit${pz.expires ? `. Expires ${new Date(pz.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}.</p>
         <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>`
     : codeHTML(pz);
+}
+function prizeCardHTML(pz) {
+  const how = prizeHow(pz);
   return `<div class="prizecard"><div class="pz-top">${pz.test ? "TEST · GOLDEN TICKET · NOT REAL" : "GOLDEN TICKET · WD CARD SHOP"}</div><div class="pz-val">${pz.label}</div>${how}
     <p class="pz-note pz-saved">${pz.test ? "Test prizes are listed under Your prizes on the Today tab (this browser only)." : "Saved to your account under Your prizes on the Today tab."}</p></div>`;
 }
@@ -1100,7 +1127,7 @@ function afterBatchKeep(entry) {
     if (S.batch !== B) return;
     S.phase = "sealed"; S.cards = []; S.banner = null;
     if (more) { openPack(true); if (B.auto) { S.selected = bestPick(); keep(); } }
-    else { S.phase = "batchDone"; render(); }
+    else { S.phase = "batchDone"; render(); maybeTicket(); }
   };
   if (B.auto) return next();
   render();
@@ -1123,7 +1150,7 @@ function statDiff(n, from, to) { // stats at two card grades
 }
 const bannerHTML = () => S.banner ? `<div class="pull-banner" style="--glow:${S.banner.glow}">${S.banner.text}<small>${S.banner.sub}</small></div>` : "";
 function revealNext() {
-  if (S.revealed >= S.cards.length) { S.phase = "picking"; render(); return; }
+  if (S.revealed >= S.cards.length) { S.phase = "picking"; render(); maybeTicket(); return; }
   const i = S.revealed, c = S.cards[i], last = i === S.cards.length - 1;
   const hype = last && bigHit(c);
   const delay = reduced ? 0 : hype ? 450 : last && (byNum(c.num).tier >= 2 || c.shiny) ? 900 : 380;
@@ -1147,7 +1174,7 @@ function revealAll() {
   clearTimers();
   const c = S.cards[S.cards.length - 1];
   if (bigHit(c) && !S.banner) celebrate(null, c);
-  S.revealed = S.cards.length; S.phase = "picking"; render();
+  S.revealed = S.cards.length; S.phase = "picking"; render(); maybeTicket();
 }
 function keep() {
   if (S.selected == null) return;
@@ -1506,7 +1533,7 @@ function renderPacks() {
         <p class="note">Tap the pack to rip it and keep one card.</p>
         ${prizeLine()}
         <div class="odds">${k.premium ? `<span>2 <b style="color:var(--r0)">Common</b></span><span>2 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> or better · <b style="color:var(--r3)">Legendary</b> 1 in 4</span>`
-          : `<span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 4 · ${k.noLegend ? "no Legendaries" : `<b style="color:var(--r3)">Legendary</b> 1 in 20`}</span>`}<span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
+          : `<span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 10 · ${k.noLegend ? "no Legendaries" : `<b style="color:var(--r3)">Legendary</b> 1 in 30`}</span>`}<span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
     }
   } else if (S.phase === "batchDone") {
     const B = S.batch, fresh = B.kept.filter(k => k.isNew).length;
@@ -1668,6 +1695,18 @@ function renderStarter() {
 // ---------- Rendering: detail sheet ----------
 function renderSheet() {
   const el = document.getElementById("sheet");
+  if (S.ticketShow) {
+    const pz = S.ticketShow, amt = pz.amount > 0 ? `$${Math.round(pz.amount)}` : `${pz.pct}%`;
+    el.innerHTML = `<div class="sheet-wrap tk-wrap" id="ticket-bg"><div class="tk-reveal" role="dialog" aria-modal="true" aria-label="Golden Ticket">
+      <div class="tk-rays" aria-hidden="true"></div>
+      <div class="tk-head">${pz.test ? "Test · not real" : "You found a"}<b>Golden Ticket!</b></div>
+      <div class="ticket tk-big"><div class="tk-amt"><small>${pz.amount > 0 ? "store credit" : "discount"}</small>${amt}</div>
+        <div class="tk-body"><div class="tk-top">WD Card Shop</div><h3>${pz.label}</h3>${prizeHow(pz)}</div></div>
+      <p class="tk-saved">Saved to your account under <b>Your prizes</b> on the Today tab.</p>
+      <button class="btn btn-accent" type="button" id="ticket-ok">Keep ripping</button>
+    </div></div>`;
+    return;
+  }
   if (S.reveal && S.reveal.length && !S.battle) {
     const gs = S.reveal;
     el.innerHTML = `<div class="sheet-wrap" id="reveal-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="New packs" style="text-align:center">
@@ -1803,6 +1842,7 @@ document.getElementById("view").addEventListener("submit", async e => {
 document.getElementById("sheet").addEventListener("click", e => {
   const t = e.target, n = S.detail;
   if (t.closest("#reveal-later") || t.id === "reveal-bg") { S.reveal = null; return renderSheet(); }
+  if (t.closest("#ticket-ok") || t.id === "ticket-bg") { S.ticketShow = null; return renderSheet(); }
   const rip = t.closest("[data-rip]");
   if (rip) { S.reveal = null; S.packKind = rip.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
   if (t.closest("#sub-yes")) { S.subOffer = false; renderSheet(); if (SY.shopOrigin) window.parent.postMessage({ type: "pd-subscribe" }, SY.shopOrigin); toast("Subscribing…"); return; }
