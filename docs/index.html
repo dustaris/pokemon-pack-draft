@@ -704,10 +704,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609281203"></script>
-<script src="sprites.js?v=202609281203"></script>
-<script src="evo.js?v=202609281203"></script>
-<script src="engine.js?v=202609281203"></script>
+<script src="dex.js?v=202609281205"></script>
+<script src="sprites.js?v=202609281205"></script>
+<script src="evo.js?v=202609281205"></script>
+<script src="engine.js?v=202609281205"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -1534,11 +1534,11 @@ function renderPacks() {
       const wild = isWild(kind) ? `<div class="wild-pick"><span class="eyebrow">Open this ${packLabel(kind)} pack as</span>
         <div class="shelf" role="group" aria-label="Region for this Wild pack">${unlockedRegions().map(r => `<button type="button" data-region="${r.id}" style="--c:${r.color}" aria-pressed="${r.id === S.region}"><i></i>${r.name}<span class="mono" style="font-size:11px;opacity:.7">${regionProgress(r)}</span></button>`).join("")}</div></div>` : "";
       stage = `
-        <button class="pack ${k.premium ? "premium" : ""}" id="pack" type="button" style="--c:${pool.color}" aria-label="Rip a ${packLabel(kind)} pack">
+        <button class="pack ${k.premium ? "premium" : ""}" id="pack" type="button" style="--c:${kind === "starter" ? k.color : pool.color}" aria-label="Rip a ${packLabel(kind)} pack">
           <span class="foil"></span><span class="ball"></span>
           <span class="top">5 POKÉMON · KEEP 1</span>
-          ${img(k.premium ? k.mascot : pool.mascot)}
-          <span class="lbl"><small>${k.premium ? "Champion Pack" : isWild(kind) ? `${packLabel(kind)} Pack` : "Pack Draft"}</small><b>${k.premium ? "Champion" : pool.name}</b><span>${pool.gen ? `Gen ${pool.gen} · #${pad(pool.lo)}–${pad(pool.hi)}` : "#0001–1025"}</span></span>
+          ${img(k.premium || kind === "starter" ? k.mascot : pool.mascot)}
+          <span class="lbl"><small>${k.premium ? "Champion Pack" : kind === "starter" ? `${pool.name} · No Legendaries` : isWild(kind) ? `${packLabel(kind)} Pack` : "Pack Draft"}</small><b>${k.premium ? "Champion" : kind === "starter" ? "Starter Pack" : pool.name}</b><span>${pool.gen ? `Gen ${pool.gen} · #${pad(pool.lo)}–${pad(pool.hi)}` : "#0001–1025"}</span></span>
         </button>
         <p class="pack-from">From <b>${from}</b></p>
         ${groups.find(g => g.kind === kind).n > 1 ? `<button class="btn btn-plain" type="button" id="open-all">Open all ×${groups.find(g => g.kind === kind).n} ${packLabel(kind)}</button>` : ""}
