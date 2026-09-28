@@ -1410,7 +1410,7 @@ function renderChallengeCard() {
       <span class="row">${C.chal.share ? `<button class="btn btn-plain btn-sm" type="button" id="share">Copy result</button>` : ""}
         <button class="btn btn-accent" type="button" id="chal-go" ${left && !S.chalBusy ? "" : "disabled"}>${S.chalBusy ? "Scoring…" : left ? (triesUsed() ? "Try again" : "Battle") : "Come back tomorrow"}</button></span>
     </div>
-    ${C.chal.share ? `<textarea class="share" id="share-text" rows="5" readonly aria-label="Shareable result">${shareText()}</textarea>` : ""}
+    ${C.chal.share && S.showShare ? `<textarea class="share" id="share-text" rows="5" readonly aria-label="Shareable result">${shareText()}</textarea>` : ""}
   </section>`;
 }
 
@@ -1890,7 +1890,8 @@ document.getElementById("view").addEventListener("click", e => {
   if (on("#name-cancel")) { S.editName = false; S.nameErr = ""; return render(); }
   if (on("#share")) {
     const text = shareText();
-    const fallback = () => { const ta = document.getElementById("share-text"); if (ta) { ta.focus(); ta.select(); } toast("Select the text and copy it."); };
+    // Only if the clipboard is blocked: show the text so it can be copied by hand
+    const fallback = () => { S.showShare = true; render(); const ta = document.getElementById("share-text"); if (ta) { ta.focus(); ta.select(); } toast("Select the text and copy it."); };
     try { navigator.clipboard.writeText(text).then(() => toast("Result copied. Paste it anywhere."), fallback); } catch { fallback(); }
     return;
   }
