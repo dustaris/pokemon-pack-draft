@@ -410,5 +410,12 @@ async function admin(req, env, path) {
     await issue(env, pz);
     return j(await env.DB.prepare("SELECT * FROM prizes WHERE id = ?").bind(pz.id).first());
   }
+  if (path === "/admin/test-credit") { // checks store credit by adding $1 to a customer you choose
+    const cid = String(body.cid), t = now();
+    await env.DB.prepare("INSERT INTO prizes (cid, kind, ref, pct, amount, label, status, created) VALUES (?, 'test', ?, 0, 1, '$1 store credit (setup test)', 'review', ?)").bind(cid, "credit-" + t, t).run();
+    const pz = await env.DB.prepare("SELECT * FROM prizes WHERE cid = ? AND kind = 'test' ORDER BY id DESC LIMIT 1").bind(cid).first();
+    await issueCredit(env, pz);
+    return j(await env.DB.prepare("SELECT * FROM prizes WHERE id = ?").bind(pz.id).first());
+  }
   return j({ error: "not_found" }, 404);
 }

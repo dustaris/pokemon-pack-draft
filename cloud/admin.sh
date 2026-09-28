@@ -11,6 +11,7 @@
 #   ./admin.sh showcases               published showcases (with customer ids), for picking Showcase of the Month
 #   ./admin.sh feature <customerId> [YYYY-MM-DD]  make their showcase this month's pick (queues a 15% prize for approval)
 #   ./admin.sh test-code <customerId>  issue a 5% test code to check the Shopify app connection
+#   ./admin.sh test-credit <customerId>  add $1 store credit to check the store credit permission
 #   ./admin.sh check-secrets           describe the stored Shopify credentials (length/format only, never the values)
 set -e
 cd "$(dirname "$0")"
@@ -19,7 +20,7 @@ TOKEN="$(cat admin-token.txt)"
 cmd="$1"; shift || true
 case "$cmd" in
   approve|reject) body="{\"id\": $1, \"reason\": \"${2:-}\"}" ;;
-  player|clear-flags|ban|test-code) body="{\"cid\": \"$1\", \"note\": \"${2:-}\", \"reason\": \"${2:-}\"}" ;;
+  player|clear-flags|ban|test-code|test-credit) body="{\"cid\": \"$1\", \"note\": \"${2:-}\", \"reason\": \"${2:-}\"}" ;;
   feature) if [ -n "$2" ]; then body="{\"cid\": \"$1\", \"day\": \"$2\"}"; else body="{\"cid\": \"$1\"}"; fi ;;
   run-monthly) if [ -n "$1" ]; then body="{\"day\": \"$1\"}"; else body="{}"; fi ;;
   pending|prizes|check-secrets|check-scopes|showcases) body="{}" ;;
