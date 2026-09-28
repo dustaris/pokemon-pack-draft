@@ -28,7 +28,7 @@ const PACK_PRIZES = [
 // Shop staff accounts (Shopify customer ids) that see the testing tools (Reset save, Test prizes)
 const STAFF_CIDS = ["8534366486766"];
 const PACKS_CFG = {
-  dailyChances: 3, subscriberChances: 3,  // prize chances mirror the free packs: 3 a day (unused ones don't carry over) + 3 once for subscribers
+  dailyChances: 3, subscriberChances: 3,  // Golden Ticket chances come with packs: 3 when the daily packs are claimed, 3 once for subscribers, plus pack codes; they stay until used
   creditBudget: 150,                                      // max store credit awarded per calendar month (Pacific); after that, no credit prizes
   creditExpiresDays: 90,
   creditMinAccountDays: 7,                                // newer accounts' credit prizes wait for your review
@@ -64,7 +64,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const path = new URL(req.url).pathname;
     if (req.method === "POST" && path.startsWith("/admin/")) return admin(req, env, path);
-    if (req.method !== "POST" || !["/load", "/save", "/leaderboard", "/name", "/rewards", "/eligibility", "/showcase", "/gallery", "/roll", "/redeem", "/reset"].includes(path)) return json({ error: "not_found" }, 404);
+    if (req.method !== "POST" || !["/load", "/save", "/leaderboard", "/name", "/rewards", "/eligibility", "/showcase", "/gallery", "/roll", "/redeem", "/reset", "/claim"].includes(path)) return json({ error: "not_found" }, 404);
 
     const text = await req.text();
     if (text.length > MAX_BYTES) return json({ error: "too_large" }, 413);
@@ -79,6 +79,7 @@ export default {
     if (path === "/rewards") return json(await rewardsFor(env, cid));
     if (path === "/roll") return json(await rollPack(env, cid));
     if (path === "/redeem") return redeem(env, cid, body, json);
+    if (path === "/claim") return json(await claimChances(env, cid));
     if (path === "/reset") { // staff only: wipe the game save; rewards membership, prizes, chances and codes stay
       if (!STAFF_CIDS.includes(cid)) return json({ error: "forbidden" }, 403);
       await env.DB.batch(["saves", "audit", "collection", "month_start", "active_days"].map(t => env.DB.prepare(`DELETE FROM ${t} WHERE cid = ?`).bind(cid)));
@@ -325,12 +326,9 @@ async function rollPack(env, cid) {
   const p = await env.DB.prepare("SELECT first_seen, eligible_at, banned, open_flags, chances, chances_day, sub_bonus, bonus_chances FROM players WHERE cid = ?").bind(cid).first();
   if (!p || !p.eligible_at || p.banned) return { eligible: false, banned: !!(p && p.banned) };
   const day = E.challengeDay();
-  const days = p.chances_day ? Math.max(0, Math.round((Date.parse(day) - Date.parse(p.chances_day)) / 864e5)) : 1;
-  let chances = days > 0 ? PACKS_CFG.dailyChances : (p.chances || 0), sub = p.sub_bonus; // a new day resets to the daily amount; nothing carries over
-  if (!sub && await isSubscribed(env, cid)) { chances += PACKS_CFG.subscriberChances; sub = 1; }
-  let prize = null, bonus = p.bonus_chances || 0;
-  if (chances > 0 || bonus > 0) {
-    if (chances > 0) chances--; else bonus--; // today's chances first, then chances from pack codes (those never expire)
+  let prize = null, bonus = p.bonus_chances || 0; // one pool of chances, filled when packs are claimed; kept until used
+  if (bonus > 0) {
+    bonus--;
     const r = crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
     let acc = 0, hit = null;
     for (const pr of PACK_PRIZES) { acc += pr.odds; if (r < acc) { hit = pr; break; } }
@@ -351,15 +349,23 @@ async function rollPack(env, cid) {
       prize = { ...done, type: hit.type, code: done.status === "issued" ? done.code : null };
     }
   }
-  await env.DB.prepare("UPDATE players SET chances = ?, chances_day = ?, sub_bonus = ?, bonus_chances = ? WHERE cid = ?").bind(chances, day, sub, bonus, cid).run();
-  return { eligible: true, chances: chances + bonus, prize };
+  await env.DB.prepare("UPDATE players SET bonus_chances = ? WHERE cid = ?").bind(bonus, cid).run();
+  return { eligible: true, chances: bonus, prize };
 }
-// Chances left today, without rolling (for the game's display)
+// Golden Ticket chances waiting to be used (for the game's display)
 async function chancesFor(env, p) {
   if (!p || !p.eligible_at) return 0;
+  return p.bonus_chances || 0;
+}
+// Claiming the daily packs adds that day's chances (once per Pacific day); subscribing adds its chances once
+async function claimChances(env, cid) {
+  const p = await env.DB.prepare("SELECT chances_day, sub_bonus, bonus_chances FROM players WHERE cid = ?").bind(cid).first();
   const day = E.challengeDay();
-  const days = p.chances_day ? Math.max(0, Math.round((Date.parse(day) - Date.parse(p.chances_day)) / 864e5)) : 1;
-  return (days > 0 ? PACKS_CFG.dailyChances : (p.chances || 0)) + (p.bonus_chances || 0);
+  let add = 0, sub = p.sub_bonus, claimed = false;
+  if (p.chances_day !== day) { add += PACKS_CFG.dailyChances; claimed = true; }
+  if (!sub && await isSubscribed(env, cid)) { add += PACKS_CFG.subscriberChances; sub = 1; }
+  await env.DB.prepare("UPDATE players SET bonus_chances = bonus_chances + ?, chances_day = ?, sub_bonus = ? WHERE cid = ?").bind(add, claimed ? day : p.chances_day, sub, cid).run();
+  return { chances: (p.bonus_chances || 0) + add, added: add };
 }
 
 // Monthly top 3 by collection points gained, among eligible, unbanned players active on enough days; always reviewed by you
