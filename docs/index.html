@@ -341,6 +341,14 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .rw .xpbar { margin-top: 4px; max-width: 220px; }
 @media (prefers-reduced-motion: reduce) { .scard.shiny::after { animation: none; } }
 
+.dm.col { padding: 0; }
+.dm .dmopen { display: flex; flex-direction: column; align-items: center; gap: 1px; width: 100%; border: 0; background: none; padding: 4px 4px 6px; text-align: center; color: inherit; }
+.dm .pinbtn { border: 0; border-top: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font-size: 12px; font-weight: 700; padding: 5px 0; width: 100%; border-radius: 0 0 9px 9px; }
+.dm .pinbtn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); }
+.dm .pinbtn.on { background: var(--accent); color: var(--accent-ink); }
+.dm .pinbtn:disabled { opacity: .45; cursor: not-allowed; }
+.rw.secret .pct { color: #D0469A; }
+
 /* Rewards */
 .today .rewards { grid-column: 1 / -1; }
 .rw { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
@@ -739,7 +747,7 @@ async function push() {
   try {
     const { status, data } = await cloud("save", { baseRev: SY.meta.rev, data: C });
     if (status === 200) { SY.meta.rev = data.rev; SY.meta.dirty = editSeq !== seq; SY.state = "synced"; if (Date.now() - (S.boardAt || 0) > 10000) S.board = null; }
-    else if (status === 409) { SY.conflict = data; SY.state = "conflict"; }
+    else if (status === 409) { mergeFrom(data); return schedulePush(200); } // another tab or device saved first: merge, then save again
     else if (status === 401) SY.state = "expired";
     else SY.state = "error";
   } catch { SY.state = "error"; }
@@ -758,12 +766,43 @@ async function connect(auth) {
     else if (!data.save && (mine || !SY.meta.cid)) { SY.meta = { cid: SY.cid, rev: 0, dirty: true }; SY.state = "synced"; push(); }
     else if (data.save && mine && !SY.meta.dirty) adopt(data);
     else if (data.save && mine && SY.meta.rev === data.rev) { SY.state = "synced"; push(); }
-    else { SY.conflict = data; SY.state = "conflict"; }
+    else mergeFrom(data); // both this device and the account have progress: keep everything from both
   } catch { SY.state = "error"; }
   saveMeta(); renderAcct(); renderSheet();
   subBonus();
   S.board = null; S.gallery = null; if (showcase().length) publishShowcase(); if (!S.battle) render(); // reload boards with your rank
   if (C.trainer) cloud("name", { name: C.trainer }).catch(() => {}); // carry your collector name to the boards
+}
+// Combines the account's save with this device's: every card from both, the better grade, any Shiny,
+// the bigger pack bag. Collections only ever grow, so nothing is lost and there's nothing to choose.
+function mergeSaves(a, b) {
+  const m = JSON.parse(JSON.stringify(a));
+  m.dex = m.dex || {}; m.box = m.box || {};
+  for (const [k, d] of Object.entries(b.dex || {})) { const x = m.dex[k]; m.dex[k] = x ? { n: Math.max(x.n || 1, d.n || 1), shiny: !!(x.shiny || d.shiny) } : d; }
+  for (const [k, c] of Object.entries(b.box || {})) {
+    const x = m.box[k];
+    if (!x) { m.box[k] = c; continue; }
+    const better = (c.grade || 0) > (x.grade || 0) || ((c.grade || 0) === (x.grade || 0) && (c.dupes || 0) > (x.dupes || 0));
+    m.box[k] = { ...(better ? c : x), shiny: !!(x.shiny || c.shiny) };
+  }
+  m.packs = Math.max(a.packs || 0, b.packs || 0);
+  if ((b.bag || []).length > (a.bag || []).length) m.bag = b.bag;
+  m.lastDaily = [a.lastDaily, b.lastDaily].filter(Boolean).sort().pop();
+  m.subBonus = !!(a.subBonus || b.subBonus);
+  m.starter = a.starter || b.starter;
+  m.trainer = a.trainer || b.trainer;
+  if (!(m.showcase || []).length && (b.showcase || []).length) m.showcase = b.showcase;
+  const sa = a.streak || {}, sb = b.streak || {};
+  m.streak = (sb.last || "") > (sa.last || "") || ((sb.last || "") === (sa.last || "") && (sb.count || 0) > (sa.count || 0)) ? sb : sa;
+  if (b.week && a.week && b.week.key === a.week.key) m.week = { key: a.week.key, days: [...new Set([...a.week.days, ...b.week.days])], claimed: !!(a.week.claimed || b.week.claimed) };
+  return m;
+}
+function mergeFrom(data) {
+  if (data.save) C = normalize(mergeSaves(C, normalize(JSON.parse(JSON.stringify(data.save)))));
+  store.set(C);
+  SY.meta = { cid: SY.cid, rev: data.rev || 0, dirty: true }; saveMeta();
+  SY.state = "synced"; SY.conflict = null;
+  push(); render();
 }
 // Granted once per save, after the account's save has loaded so the packs land in the right save
 function subBonus() {
@@ -1144,7 +1183,7 @@ function renderRewards() {
   if (SY.auth && !S.rewardsLoading && (!r || Date.now() - (S.rewardsAt || 0) > 60000)) setTimeout(() => loadRewards(false), 0);
   const small = `<p class="muted" style="margin:0;font-size:12px">Codes take up to $${r ? r.config.maxOff : 50} off, are single use, for your account only, need a $${r ? r.config.minSubtotal : 25}+ order and expire ${r ? r.config.days : 30} days after they're issued. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. WD Card Shop rewards are not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>`;
   const head = `<div class="row spread"><h2>WD Card Shop rewards</h2><span class="muted" style="font-size:13px">Real store discounts for collecting · up to $50 off</span></div>`;
-  const pitch = `<p style="margin:0">Complete a region's Pokédex, collect Shinies, gain the most points in a month, or get your showcase picked as Showcase of the Month.</p>`;
+  const pitch = `<p style="margin:0">Pin your best cards to your showcase for a chance at Showcase of the Month, and gain the most collection points in a month to finish top 3.</p>`;
   if (!SY.shop) return `<section class="panel tcard rewards">${head}${pitch}
     <div class="row"><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Collect on wdcardshop.com to earn rewards</a></div>${small}</section>`;
   if (!SY.auth) return `<section class="panel tcard rewards">${head}${pitch}
@@ -1154,11 +1193,8 @@ function renderRewards() {
   const byKey = Object.fromEntries(r.prizes.map(p => [p.kind + ":" + p.ref, p]));
   const state = p => !p ? null : p.status === "issued" ? codeHTML(p) : p.status === "rejected" ? `<span class="muted">Not approved</span>`
     : p.status === "review" ? `<span class="pill">Earned · being reviewed</span>` : `<span class="pill">Earned · join rewards to claim</span>`;
-  const sets = r.config.sets.map(st => { const p = byKey["set:" + st.key];
-    let have = 0; for (let n = st.lo; n <= st.hi; n++) if (C.dex[n]) have++;
-    return `<div class="rw"><span class="pct">${st.pct}%</span><span><b>${st.label}</b><small>${have}/${st.hi - st.lo + 1} caught</small><span class="xpbar"><i style="width:${have / (st.hi - st.lo + 1) * 100}%"></i></span></span>${state(p) || `<span class="muted" style="font-size:13px">${have === st.hi - st.lo + 1 ? "Complete!" : "In progress"}</span>`}</div>`; }).join("");
-  const shiny = r.config.shiny.map(g => { const p = byKey["shiny:" + g.key];
-    return `<div class="rw"><span class="pct">${g.pct}%</span><span><b>Collect ${g.count} Shiny Pokémon</b><small>${Math.min(shinies(), g.count)}/${g.count} Shinies</small></span>${state(p) || `<span class="muted" style="font-size:13px">In progress</span>`}</div>`; }).join("");
+  // A secret reward only shows up once it's earned
+  const secret = r.prizes.filter(p => p.kind === "shiny").map(p => `<div class="rw secret"><span class="pct">${p.pct}%</span><span><b>Secret reward unlocked!</b><small>${p.label}</small></span>${state(p)}</div>`).join("");
   const won = r.prizes.filter(p => p.kind === "monthly" || p.kind === "featured").map(p => `<div class="rw"><span class="pct">${p.pct}%</span><span><b>${p.label}</b></span>${state(p)}</div>`).join("");
   const join = r.eligible ? "" : `<form class="join" id="join-form">
       <b>Join WD Card Shop rewards</b>
@@ -1169,9 +1205,8 @@ function renderRewards() {
   return `<section class="panel tcard rewards">${head}${join}
     <div><div class="eyebrow" style="margin-bottom:6px">Every month</div>
       <div class="rw"><span class="pct">${r.config.monthly.map(w => w.pct + "%").join(" / ")}</span><span><b>Top 3 collectors of the month</b><small>Most collection points gained that month. Visit on ${r.config.monthlyMinDays}+ days. Winners are reviewed before codes go out.</small></span><span><button class="btn btn-plain btn-sm" type="button" data-board-jump="month">See standings</button></span></div>
-      <div class="rw"><span class="pct">${r.config.featured}%</span><span><b>Showcase of the Month</b><small>WD Card Shop picks a favorite published showcase each month.</small></span><span><button class="btn btn-plain btn-sm" type="button" data-go="collection">Your showcase</button></span></div>${won}</div>
-    <div><div class="eyebrow" style="margin-bottom:6px">Complete a set · one time each</div>${sets}</div>
-    <div><div class="eyebrow" style="margin-bottom:6px">Shiny hunter · one time each</div>${shiny}</div>
+      <div class="rw"><span class="pct">${r.config.featured}%</span><span><b>Showcase of the Month</b><small>WD Card Shop picks a favorite published showcase each month. Pin your best 6 cards to enter.</small></span><span><button class="btn btn-accent btn-sm" type="button" data-go="collection">Edit your showcase</button></span></div>${won}</div>
+    ${secret}
     ${small}</section>`;
 }
 function codeHTML(p) {
@@ -1363,7 +1398,7 @@ function renderCollection() {
   const sc = showcase();
   const slots = Array.from({ length: SHOW_MAX }, (_, i) => {
     const n = sc[i];
-    if (n == null) return `<span class="scard empty">Empty slot<small>Tap a card below, then "Pin to showcase"</small></span>`;
+    if (n == null) return `<span class="scard empty">Empty slot<small>Tap "Pin" on any card below</small></span>`;
     return showCard(n, C.box[n], `<span class="ctl"><button type="button" data-smv="${i}" data-d="-1" aria-label="Move left" ${i === 0 ? "disabled" : ""}>←</button><button type="button" data-show="${n}" aria-label="Unpin">×</button><button type="button" data-smv="${i}" data-d="1" aria-label="Move right" ${i === sc.length - 1 ? "disabled" : ""}>→</button></span>`);
   }).join("");
   const pub = !SY.shop ? `<a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Publish on wdcardshop.com</a>`
@@ -1376,9 +1411,12 @@ function renderCollection() {
   box.sort(S.boxSort === "num" ? (a, b) => a - b : S.boxSort === "grade" ? (a, b) => (C.box[b].grade - C.box[a].grade) || power(b) - power(a) : (a, b) => power(b) - power(a) || a - b);
   const grid = box.length ? box.map(n => {
     const b = C.box[n], m = byNum(n);
-    return `<button type="button" class="dm ${sc.includes(n) ? "onteam" : ""} gr${b.grade || 0}" data-detail="${n}" style="--rc:${rc(m.tier)}">
-      <span class="pip" title="${RARITY[m.tier]}"></span><span class="x">${gradeName(b.grade)}</span>${b.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
-      ${img(n, b.shiny)}<span class="nm">${m.name}</span><span class="no">${nextGradeText(b)}</span></button>`;
+    const pinned = sc.includes(n);
+    return `<div class="dm col ${pinned ? "onteam" : ""} gr${b.grade || 0}" style="--rc:${rc(m.tier)}">
+      <button type="button" class="dmopen" data-detail="${n}" aria-label="${m.name} details">
+        <span class="pip" title="${RARITY[m.tier]}"></span><span class="x">${gradeName(b.grade)}</span>${b.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
+        ${img(n, b.shiny)}<span class="nm">${m.name}</span><span class="no">${nextGradeText(b)}</span></button>
+      <button type="button" class="pinbtn ${pinned ? "on" : ""}" data-show="${n}" aria-pressed="${pinned}" ${!pinned && sc.length >= SHOW_MAX ? "disabled" : ""}>${pinned ? "✓ Pinned" : "Pin"}</button></div>`;
   }).join("") : `<p class="empty-note">${q || show !== "all" ? (show === "shiny" && !q ? "No Shinies yet. Every card has a 1 in 100 chance to be Shiny." : "No cards match.") : "Your collection is empty. Open packs to catch Pokémon."}</p>`;
   if (!S.galleryLoading && (!S.gallery || Date.now() - (S.galleryAt || 0) > 60000)) setTimeout(loadGallery, 0);
   const g = S.gallery;
@@ -1396,7 +1434,7 @@ function renderCollection() {
         <input type="search" id="box-search" placeholder="Search your cards…" value="${S.boxSearch.replace(/"/g, "&quot;")}" aria-label="Search your cards">
         <select id="box-show" aria-label="Show">${[["all", "All cards"], ["shiny", `★ Shiny (${Object.values(C.box).filter(b => b.shiny).length})`], ["graded", "Upgraded (★ or better)"], ["pinned", "In showcase"]].map(([v, l]) => `<option value="${v}" ${show === v ? "selected" : ""}>${l}</option>`).join("")}</select>
         <select id="box-sort" aria-label="Sort"><option value="power" ${!S.boxSort || S.boxSort === "power" ? "selected" : ""}>Rarest first</option><option value="grade" ${S.boxSort === "grade" ? "selected" : ""}>Highest grade</option><option value="num" ${S.boxSort === "num" ? "selected" : ""}>Pokédex number</option></select>
-        <span class="count">Tap a card to pin it or see its grade</span>
+        <span class="count">Tap Pin to add a card to your showcase</span>
       </div>
       <div class="dex">${grid}</div></section>
     <section class="panel"><h2>Gallery <span>Showcases from collectors on wdcardshop.com</span></h2><div class="galleryl">${gallery}</div></section>`;
@@ -1441,7 +1479,7 @@ function renderDex() {
 function renderStarter() {
   return `<section class="stage"><div class="stage-inner">
     <div style="text-align:center"><div class="eyebrow">Welcome, Trainer</div><h2 style="font-size:30px">Choose your partner</h2>
-      <p class="note" style="margin-top:6px">Duplicates of any card upgrade its grade and make it stronger. You also get ${START_PACKS} packs to build a team before your first Gym, Brock in Kanto.</p></div>
+      <p class="note" style="margin-top:6px">You also get ${START_PACKS} starter packs. Keep one card from each pack, pin your favorites to your showcase, and come back every day for more.</p></div>
     <div class="starters">${STARTERS.map(n => { const m = byNum(n); return `<button class="starter" type="button" data-starter="${n}">${img(n)}<b>${m.name}</b><span class="types">${typeChips(m.types)}</span></button>`; }).join("")}</div>
   </div></section>`;
 }
@@ -1525,9 +1563,9 @@ document.getElementById("view").addEventListener("click", e => {
   if ((el = on("[data-go]")) && !el.disabled) { if (S.battle) { clearTimers(); S.battle = null; } S.tab = el.dataset.go; return render(); }
   if ((el = on("[data-region]")) && !el.disabled) { S.region = el.dataset.region; return render(); }
   if ((el = on("[data-dexr]"))) { S.dexRegion = el.dataset.dexr; return render(); }
+  if ((el = on("[data-show]")) && !el.disabled) return toggleShow(+el.dataset.show);
   if ((el = on("[data-detail]"))) { S.detail = +el.dataset.detail; S.confirmTransfer = false; return renderSheet(); }
   if ((el = on("[data-smv]"))) return moveShow(+el.dataset.smv, +el.dataset.d);
-  if ((el = on("[data-show]"))) return toggleShow(+el.dataset.show);
   if (on("#pack")) return openPack();
   if (on("#reveal-all")) return revealAll();
   if (on("#keep")) return keep();

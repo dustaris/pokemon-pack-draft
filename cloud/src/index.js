@@ -22,9 +22,8 @@ const STORE = "https://wdcardshop.com";
 const REWARDS = {
   monthly: [{ place: 1, pct: 20 }, { place: 2, pct: 15 }, { place: 3, pct: 10 }], // most collection points gained that month
   featured: 15,                                                                       // Showcase of the Month, picked by you
-  sets: [...E.REGIONS.map(r => ({ key: r.id, lo: r.lo, hi: r.hi, pct: 10, label: `Complete the ${r.name} Pokédex` })),
-         { key: "all", lo: 1, hi: 1025, pct: 20, label: "Complete all 1,025 Pokémon" }],
-  shiny: [{ key: "s5", count: 5, pct: 10 }, { key: "s10", count: 10, pct: 15 }, { key: "s25", count: 25, pct: 20 }],
+  sets: [],                                             // set-completion rewards retired 2026-09-28
+  shiny: [{ key: "s10", count: 10, pct: 15 }],          // secret reward: not shown in the game until earned
   minSubtotal: 25, maxOff: 50, days: 30, // every code: $25+ order, never more than $50 off (enforced by the capped-reward function)
   monthlyMinDays: 10,        // days the game saved that month
   monthlyMinAccountDays: 7,  // account first seen at least this many days before the month ends
