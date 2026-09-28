@@ -23,7 +23,7 @@ const STORE = "https://wdcardshop.com";
 const REWARDS = {
   monthly: [{ place: 1, pct: 20 }, { place: 2, pct: 15 }, { place: 3, pct: 10 }],
   milestones: [{ key: "champ9", champs: 9, pct: 10, label: "Beat all 9 Champions" }],
-  minSubtotal: 25, days: 30,
+  minSubtotal: 25, maxOff: 50, days: 30, // every code: $25+ order, never more than $50 off (enforced by the capped-reward function)
   monthlyMinDays: 10,        // ranked days played that month
   monthlyMinAccountDays: 7,  // account first seen at least this many days before the month ends
   milestoneMinAccountDays: 2,
@@ -231,7 +231,7 @@ async function rewardsFor(env, cid) {
   }
   const prizes = await env.DB.prepare("SELECT kind, ref, pct, label, status, code, expires FROM prizes WHERE cid = ? ORDER BY id DESC").bind(cid).all();
   return {
-    config: { monthly: REWARDS.monthly, milestones: REWARDS.milestones, minSubtotal: REWARDS.minSubtotal, days: REWARDS.days, monthlyMinDays: REWARDS.monthlyMinDays },
+    config: { monthly: REWARDS.monthly, milestones: REWARDS.milestones, minSubtotal: REWARDS.minSubtotal, maxOff: REWARDS.maxOff, days: REWARDS.days, monthlyMinDays: REWARDS.monthlyMinDays },
     eligible: !!player.eligible_at, banned: !!player.banned, champs,
     prizes: prizes.results.map(p => ({ ...p, code: p.status === "issued" ? p.code : null })),
   };
@@ -248,15 +248,16 @@ async function issue(env, pz) {
     if (!tok.access_token) throw new Error("token: " + JSON.stringify(tok).slice(0, 200));
     const rand = [...crypto.getRandomValues(new Uint8Array(6))].map(b => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
     const code = `PDX-${pz.pct}-${rand}`, starts = now(), ends = new Date(Date.now() + REWARDS.days * 864e5).toISOString();
-    const q = `mutation($d: DiscountCodeBasicInput!) { discountCodeBasicCreate(basicCodeDiscount: $d) { codeDiscountNode { id } userErrors { field message } } }`;
-    const d = { title: `Pokédex Pack Draft reward: ${pz.label} (${pz.pct}% off)`, code, startsAt: starts, endsAt: ends,
-      customerSelection: { customers: { add: [`gid://shopify/Customer/${pz.cid}`] } },
-      customerGets: { value: { percentage: pz.pct / 100 }, items: { all: true } },
-      minimumRequirement: { subtotal: { greaterThanOrEqualToSubtotal: String(REWARDS.minSubtotal) } },
-      usageLimit: 1, appliesOncePerCustomer: true };
+    // A code backed by the app's capped-reward discount function: pct% off, capped at maxOff, $minSubtotal minimum
+    const q = `mutation($d: DiscountCodeAppInput!) { discountCodeAppCreate(codeAppDiscount: $d) { codeAppDiscount { discountId } userErrors { field message } } }`;
+    const d = { title: `Pokédex Pack Draft reward: ${pz.label} (${pz.pct}% off, max $${REWARDS.maxOff})`, code, startsAt: starts, endsAt: ends,
+      functionHandle: "capped-reward", discountClasses: ["ORDER"],
+      context: { customers: { add: [`gid://shopify/Customer/${pz.cid}`] } },
+      usageLimit: 1, appliesOncePerCustomer: true,
+      metafields: [{ namespace: "$app", key: "config", type: "json", value: JSON.stringify({ pct: pz.pct, cap: REWARDS.maxOff, min: REWARDS.minSubtotal }) }] };
     const r = await fetch(`https://${SHOP}.myshopify.com/admin/api/2026-07/graphql.json`, { method: "POST",
       headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": tok.access_token }, body: JSON.stringify({ query: q, variables: { d } }) }).then(r => readJSON("graphql", r));
-    const errs = (r.errors || []).concat(r.data ? r.data.discountCodeBasicCreate.userErrors : []);
+    const errs = (r.errors || []).concat(r.data && r.data.discountCodeAppCreate ? r.data.discountCodeAppCreate.userErrors : []);
     if (errs.length || !r.data) throw new Error(JSON.stringify(errs).slice(0, 300));
     await env.DB.prepare("UPDATE prizes SET status = 'issued', code = ?, issued = ?, expires = ?, note = NULL WHERE id = ?").bind(code, starts, ends, pz.id).run();
     return true;

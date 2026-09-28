@@ -1275,8 +1275,8 @@ async function loadRewards(announce) {
 function renderRewards() {
   const r = S.rewards;
   if (SY.auth && !S.rewardsLoading && (!r || Date.now() - (S.rewardsAt || 0) > 60000)) setTimeout(() => loadRewards(false), 0);
-  const small = `<p class="muted" style="margin:0;font-size:12px">Codes are single use, for your account only, need a $${r ? r.config.minSubtotal : 25}+ order and expire ${r ? r.config.days : 30} days after they're issued. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. WD Card Shop rewards are not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>`;
-  const head = `<div class="row spread"><h2>WD Card Shop rewards</h2><span class="muted" style="font-size:13px">Real store discounts for playing</span></div>`;
+  const small = `<p class="muted" style="margin:0;font-size:12px">Codes take up to $${r ? r.config.maxOff || 50 : 50} off, are single use, for your account only, need a $${r ? r.config.minSubtotal : 25}+ order and expire ${r ? r.config.days : 30} days after they're issued. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. WD Card Shop rewards are not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>`;
+  const head = `<div class="row spread"><h2>WD Card Shop rewards</h2><span class="muted" style="font-size:13px">Real store discounts for playing · up to $50 off</span></div>`;
   if (!SY.shop) return `<section class="panel tcard rewards">${head}<p style="margin:0">The month's top 3 players and anyone who beats all 9 Champions earn discount codes at WD Card Shop.</p>
     <div class="row"><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com to earn rewards</a></div>${small}</section>`;
   if (!SY.auth) return `<section class="panel tcard rewards">${head}<p style="margin:0">Sign in to earn discount codes: finish top 3 on the monthly leaderboard, or beat all 9 Champions on your Journey.</p>

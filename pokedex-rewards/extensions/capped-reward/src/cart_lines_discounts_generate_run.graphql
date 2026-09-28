@@ -1,0 +1,16 @@
+query CartInput {
+  cart {
+    cost {
+      subtotalAmount {
+        amount
+      }
+    }
+  }
+  discount {
+    discountClasses
+    # Set per code by the pokedex-saves Worker: {"pct": 20, "cap": 50, "min": 25}
+    metafield(namespace: "$app", key: "config") {
+      jsonValue
+    }
+  }
+}
