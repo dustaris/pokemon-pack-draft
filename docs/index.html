@@ -594,7 +594,9 @@ const CHAL_TIERS = [
 const chalTier = (res, score) => res.win ? (score >= CHAL_GOLD ? 3 : 2) : res.kos >= 3 ? 1 : 0;
 const tierReward = r => [r.packs ? `+${plural(r.packs, "Wild pack", "Wild packs")}` : "", r.rare ? `+${r.rare} Rare Candy` : ""].filter(Boolean).join(" · ");
 const starsText = n => "★".repeat(n) + "☆".repeat(3 - n);
-const SITE = "https://dustaris.github.io/pokemon-pack-draft/";
+const SITE = "https://wdcardshop.com/pages/pokedex-pack-drafts";
+// Results saved before the store page became home still name the old github.io address
+const shareText = () => (C.chal.share || "").replace(/https:\/\/dustaris\.github\.io\/pokemon-pack-draft\/?/g, SITE);
 const SHINY_CSS = "filter:hue-rotate(150deg) saturate(1.3)";
 
 const sprite = n => "data:image/png;base64," + window.SPRITES[n - 1];
@@ -1369,6 +1371,14 @@ async function saveName(name) {
   render();
 }
 
+// Signed-in players see their ranked best; a practice score from before ranking (or as a guest) is labeled as such
+function bestLine() {
+  const b = S.board, me = ranked() && b && !b.error ? b.me : null;
+  if (me) return `Ranked best <span class="score">${me.best}/100</span> · <span class="stars-inline">${starsText(me.stars)}</span> · #${me.rank} today`;
+  if (C.chal.best == null) return `<span class="muted">3 tries a day. Each better score pays the next rewards.</span>`;
+  const practice = `Practice best <span class="score">${C.chal.best}/100</span> · <span class="stars-inline">${starsText(C.chal.tier || 0)}</span>`;
+  return ranked() ? `${practice}<br><span class="muted" style="font-size:13px">Not on the leaderboard yet. Press Battle for a ranked try.</span>` : practice;
+}
 function renderChallengeCard() {
   const ch = challenge();
   const side = chalLineup(ch), elig = chalEligible(ch);
@@ -1396,11 +1406,11 @@ function renderChallengeCard() {
     <div class="starmeter"><div class="row spread"><span><b>Challenge stars</b> <span class="muted">· every ${STAR_CHEST} earns a gold Champion Pack</span></span><span class="mono">${(C.stars || 0) % STAR_CHEST}/${STAR_CHEST}</span></div>
       <div class="bar"><i style="width:${((C.stars || 0) % STAR_CHEST) / STAR_CHEST * 100}%"></i></div></div>
     <div class="row spread">
-      <span style="font-size:14px">${C.chal.best != null ? `Best today <span class="score">${C.chal.best}/100</span> · <span class="stars-inline">${starsText(C.chal.tier || 0)}</span>` : `<span class="muted">3 tries a day. Each better score pays the next rewards.</span>`}</span>
+      <span style="font-size:14px">${bestLine()}</span>
       <span class="row">${C.chal.share ? `<button class="btn btn-plain btn-sm" type="button" id="share">Copy result</button>` : ""}
         <button class="btn btn-accent" type="button" id="chal-go" ${left && !S.chalBusy ? "" : "disabled"}>${S.chalBusy ? "Scoring…" : left ? (triesUsed() ? "Try again" : "Battle") : "Come back tomorrow"}</button></span>
     </div>
-    ${C.chal.share ? `<textarea class="share" id="share-text" rows="5" readonly aria-label="Shareable result">${C.chal.share}</textarea>` : ""}
+    ${C.chal.share ? `<textarea class="share" id="share-text" rows="5" readonly aria-label="Shareable result">${shareText()}</textarea>` : ""}
   </section>`;
 }
 
@@ -1879,7 +1889,7 @@ document.getElementById("view").addEventListener("click", e => {
   if (on("#name-edit")) { S.editName = true; S.nameErr = ""; render(); const i = document.getElementById("trainer-name"); if (i) i.focus(); return; }
   if (on("#name-cancel")) { S.editName = false; S.nameErr = ""; return render(); }
   if (on("#share")) {
-    const text = C.chal.share;
+    const text = shareText();
     const fallback = () => { const ta = document.getElementById("share-text"); if (ta) { ta.focus(); ta.select(); } toast("Select the text and copy it."); };
     try { navigator.clipboard.writeText(text).then(() => toast("Result copied. Paste it anywhere."), fallback); } catch { fallback(); }
     return;
