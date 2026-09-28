@@ -53,9 +53,24 @@ for (const k in EVO) for (const [to, lvl, depth] of EVO[k]) PREV[to] = { from: +
 const obtainLvl = n => PREV[n] ? PREV[n].lvl : 1;
 const firstEvoLvl = n => EVO[n] ? Math.min(...EVO[n].map(e => e[1])) : Infinity;
 const evosOf = n => (EVO[n] || []).map(([to, lvl, depth]) => ({ to, lvl, cost: depth >= 2 ? 25 : 10 }));
-const powerCost = lvl => 1 + Math.floor(lvl / 20);   // family candy per level
-const xpNeed = lvl => 5 * lvl + 15;                    // XP from lvl to lvl+1
 const TRANSFER = [1, 1, 2, 4];                         // Rare Candy for releasing a Pokémon, by rarity tier
+// Card grades replace levels: duplicates (or Rare Candy) upgrade a card, and each grade boosts every stat.
+const BATTLE_LVL = 50;
+const GRADES = ["☆", "★", "★★", "★★★", "Gold"];
+const GRADE_BOOST = [1, 1.1, 1.2, 1.35, 1.5];
+const GRADE_COST = [1, 2, 3, 4];                       // copies needed to go from grade g to g+1 (10 to reach Gold)
+const MAX_GRADE = GRADES.length - 1;
+let GRADE_CURVE = 6;                                   // how fast trainer card grades rise through the Journey
+// Adds one copy to a card ({ grade, dupes }); returns how many grades it went up
+function addCopy(card) {
+  card.grade = card.grade || 0; card.dupes = (card.dupes || 0) + 1;
+  let ups = 0;
+  while (card.grade < MAX_GRADE && card.dupes >= GRADE_COST[card.grade]) { card.dupes -= GRADE_COST[card.grade]; card.grade++; ups++; }
+  if (card.grade >= MAX_GRADE) card.dupes = 0;
+  return ups;
+}
+// Card grade and progress from a total number of extra copies (used to convert old saves)
+function gradeFromCopies(copies) { const c = { grade: 0, dupes: 0 }; for (let i = 0; i < copies; i++) addCopy(c); return c; }
 
 // ---------- RNG ----------
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -106,8 +121,14 @@ TRAINERS.forEach((t, i) => {
   t.level = Math.min(96, Math.round(6 + 86 * Math.pow(i / LAST, .75)) + (t.kind === "champ" ? 4 : t.kind === "e4" ? 2 : 0));
   t.size = t.kind === "champ" ? 6 : t.kind === "e4" ? Math.min(6, 4 + t.ri) : Math.min(6, 2 + Math.floor(t.k / 3) + t.ri);
   t.reward = t.kind === "champ" ? { packs: 5, rare: 3 } : { packs: 2, rare: 0 };
+  t.grade = trainerGrade(t);
 });
 
+// Trainer card grades rise through the Journey; Champions sit one grade above their region's Gyms
+function trainerGrade(t) {
+  const g = Math.floor(t.idx / TRAINERS.length * GRADE_CURVE) + (t.kind === "champ" ? 1 : 0);
+  return Math.max(0, Math.min(MAX_GRADE, g));
+}
 // A species "fits" a level when it could plausibly be that far along its evolution line.
 const fitsLevel = (m, L) => !m.legend && obtainLvl(m.num) <= L + 3 && firstEvoLvl(m.num) + 5 > L;
 
@@ -127,16 +148,16 @@ function trainerTeam(t) {
     while (picks.length < t.size && pool.length) { const m = draw(pool, rng); picks.push(m.num); seen.add(m.num); }
   }
   picks.sort((a, b) => byNum(a).bst - byNum(b).bst); // ace last
-  t.team = picks.map((num, i) => ({ num, lvl: Math.min(100, i === picks.length - 1 ? L + 2 : L - Math.floor(rng() * 3)) }));
+  t.team = picks.map((num, i) => ({ num, lvl: BATTLE_LVL, grade: Math.min(MAX_GRADE, t.grade + (i === picks.length - 1 && t.kind !== "gym" ? 1 : 0)) }));
   return t.team;
 }
 
 // ---------- Battles ----------
-function makeBattler({ num, lvl, shiny }) {
-  const m = byNum(num), s = m.stats;
-  const st = i => Math.floor(2 * s[i] * lvl / 100) + 5;
-  const hp = Math.floor(2 * s[0] * lvl / 100) + lvl + 10;
-  return { num, name: m.name, types: m.types, lvl, shiny: !!shiny, maxhp: hp, hp, atk: st(1), def: st(2), spa: st(3), spd: st(4), spe: st(5) };
+function makeBattler({ num, lvl = BATTLE_LVL, shiny, grade = 0 }) {
+  const m = byNum(num), s = m.stats, boost = GRADE_BOOST[grade] || 1;
+  const st = i => Math.floor((Math.floor(2 * s[i] * lvl / 100) + 5) * boost);
+  const hp = Math.floor((Math.floor(2 * s[0] * lvl / 100) + lvl + 10) * boost);
+  return { num, name: m.name, types: m.types, lvl, grade, shiny: !!shiny, maxhp: hp, hp, atk: st(1), def: st(2), spa: st(3), spd: st(4), spe: st(5) };
 }
 function chooseMove(a, d) {
   const phys = a.atk >= a.spa;
@@ -253,6 +274,6 @@ function puzzleScore(raw, bestRaw, tryNo) {
 const puzzleStars = (win, perfect, score) => perfect ? 3 : score >= 90 ? 2 : win ? 1 : 0;
 const permutations = a => a.length < 2 ? [a.slice()] : a.flatMap((x, i) => permutations([...a.slice(0, i), ...a.slice(i + 1)]).map(p => [x, ...p]));
 
-G.ENGINE = { PUZZLE_RNG, puzzleBattle, puzzleScore, puzzleStars, permutations, challengeDay, challengeWeek, challengeMonth, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, powerCost, xpNeed, TRANSFER,
+G.ENGINE = { BATTLE_LVL, GRADES, GRADE_BOOST, GRADE_COST, MAX_GRADE, addCopy, gradeFromCopies, setGradeCurve: v => { GRADE_CURVE = v; TRAINERS.forEach(t => { t.grade = trainerGrade(t); t.team = null; }); }, PUZZLE_RNG, puzzleBattle, puzzleScore, puzzleStars, permutations, challengeDay, challengeWeek, challengeMonth, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, TRANSFER,
   REGIONS, TRAINERS, trainerTeam, battle, winChance, makeBattler, mulberry32, hashStr, dailyChallenge, dayNumber, challengeScore };
 })(typeof window !== "undefined" ? window : globalThis);

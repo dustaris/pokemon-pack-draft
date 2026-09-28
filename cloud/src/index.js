@@ -200,7 +200,9 @@ function metrics(d) {
   const dex = Object.keys(d.dex || {}).map(Number);
   const box = Object.values(d.box || {});
   return { dex: dex.length, packs: d.packs || 0, bag: (d.bag || []).length, beaten: d.beaten || 0, rare: d.rare || 0,
-    legends: dex.filter(n => E.byNum(n) && E.byNum(n).tier === 3).length, maxLvl: box.reduce((m, b) => Math.max(m, b.lvl || 0), 0) };
+    legends: dex.filter(n => E.byNum(n) && E.byNum(n).tier === 3).length,
+    // copies spent on card grades across the box (each grade costs GRADE_COST copies); stored in audit.max_lvl
+    copies: box.reduce((sum, b) => sum + E.GRADE_COST.slice(0, b.grade || 0).reduce((a, c) => a + c, 0) + (b.dupes || 0), 0) };
 }
 async function audit(env, cid, rev, data) {
   const m = metrics(data);
@@ -212,10 +214,9 @@ async function audit(env, cid, rev, data) {
   if (prev && m.dex - prev.dex_n > (m.packs - prev.packs) + 6) flags.push("dexjump");               // many entries appeared at once
   if (m.packs + m.bag > 15 + days * 8 + m.beaten * 5) flags.push("packs");                          // more packs than the calendar allows
   if (m.legends > 3 + m.packs * 0.15) flags.push("legend");                                          // far luckier than the pull rates
-  const lvlCap = Math.max(25, (m.beaten ? E.TRAINERS[Math.min(m.beaten, E.TRAINERS.length) - 1].level : 6) + 20);
-  if (m.maxLvl > lvlCap) flags.push("level");                                                         // levels far above Journey progress
+  if (m.copies > m.packs + 30 + days * 5) flags.push("grade");                                         // more upgrades than packs + Rare Candy explain
   await env.DB.prepare("INSERT INTO audit (cid, at, rev, dex_n, packs, bag_n, beaten, rare, legends, max_lvl, flags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(cid, now(), rev, m.dex, m.packs, m.bag, m.beaten, m.rare, m.legends, m.maxLvl, flags.join(",") || null).run();
+    .bind(cid, now(), rev, m.dex, m.packs, m.bag, m.beaten, m.rare, m.legends, m.copies, flags.join(",") || null).run();
   if (flags.length) await env.DB.prepare("UPDATE players SET open_flags = open_flags + 1 WHERE cid = ?").bind(cid).run();
 }
 
@@ -223,7 +224,7 @@ async function audit(env, cid, rev, data) {
 // Re-battles the Champion with the player's saved lineup (secret seed, 3 attempts) so an edited save alone can't claim it
 async function verifyChampion(env, cid, data, champs) {
   const t = E.TRAINERS[champs * 13 - 1];
-  const side = (data.team || []).filter(n => data.box && data.box[n]).map(n => ({ num: n, lvl: data.box[n].lvl }));
+  const side = (data.team || []).filter(n => data.box && data.box[n]).map(n => ({ num: n, grade: data.box[n].grade || 0 }));
   if (!t || !side.length) return false;
   for (let i = 0; i < 3; i++) if (E.battle(side, E.trainerTeam(t), E.mulberry32(await secretSeed(env, `verify|${cid}|${champs}|${i}`)), false).win) return true;
   return false;
