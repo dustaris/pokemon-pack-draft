@@ -186,7 +186,7 @@ async function verify(token, secret) {
   return want.length === got.length && crypto.subtle.timingSafeEqual(want, got) ? cid : null;
 }
 
-// ---------- Pack codes: free packs, once per account; the server keeps the count so the audit allows them ----------
+// ---------- Pack codes: free packs (and optionally Golden Ticket chances), once per account; the server keeps the count so the audit allows them ----------
 const REDEEM_FAILS_PER_DAY = 10;
 async function redeem(env, cid, body, json) {
   const code = String(body.code || "").trim().toUpperCase().replace(/\s+/g, "");
@@ -206,9 +206,9 @@ async function redeem(env, cid, body, json) {
   if (!done.meta.changes) return json({ error: "already_redeemed" }, 400);
   await env.DB.batch([
     env.DB.prepare("UPDATE codes SET uses = uses + 1 WHERE code = ?").bind(code),
-    env.DB.prepare("UPDATE players SET bonus_packs = bonus_packs + ? WHERE cid = ?").bind(c.packs, cid),
+    env.DB.prepare("UPDATE players SET bonus_packs = bonus_packs + ?, bonus_chances = bonus_chances + ? WHERE cid = ?").bind(c.packs, c.chances || 0, cid),
   ]);
-  return json({ code, packs: c.packs });
+  return json({ code, packs: c.packs, chances: c.chances || 0 });
 }
 
 // ---------- Anti-cheat: plausibility checks on every accepted save ----------
@@ -238,7 +238,7 @@ async function audit(env, cid, rev, data) {
 
 // ---------- Rewards ----------
 async function rewardsFor(env, cid) {
-  const player = await env.DB.prepare("SELECT first_seen, eligible_at, banned, open_flags, chances, chances_day, sub_bonus FROM players WHERE cid = ?").bind(cid).first();
+  const player = await env.DB.prepare("SELECT first_seen, eligible_at, banned, open_flags, chances, chances_day, sub_bonus, bonus_chances FROM players WHERE cid = ?").bind(cid).first();
   const saved = await env.DB.prepare("SELECT data FROM saves WHERE cid = ?").bind(cid).first();
   const data = saved ? JSON.parse(saved.data) : {};
   const shinies = E.shinyCount(data);
@@ -322,15 +322,15 @@ async function isSubscribed(env, cid) {
 // ---------- Prize cards in packs ----------
 // One roll per opened pack, while the player has prize chances. The server decides; the game only shows the result.
 async function rollPack(env, cid) {
-  const p = await env.DB.prepare("SELECT first_seen, eligible_at, banned, open_flags, chances, chances_day, sub_bonus FROM players WHERE cid = ?").bind(cid).first();
+  const p = await env.DB.prepare("SELECT first_seen, eligible_at, banned, open_flags, chances, chances_day, sub_bonus, bonus_chances FROM players WHERE cid = ?").bind(cid).first();
   if (!p || !p.eligible_at || p.banned) return { eligible: false, banned: !!(p && p.banned) };
   const day = E.challengeDay();
   const days = p.chances_day ? Math.max(0, Math.round((Date.parse(day) - Date.parse(p.chances_day)) / 864e5)) : 1;
   let chances = days > 0 ? PACKS_CFG.dailyChances : (p.chances || 0), sub = p.sub_bonus; // a new day resets to the daily amount; nothing carries over
   if (!sub && await isSubscribed(env, cid)) { chances += PACKS_CFG.subscriberChances; sub = 1; }
-  let prize = null;
-  if (chances > 0) {
-    chances--;
+  let prize = null, bonus = p.bonus_chances || 0;
+  if (chances > 0 || bonus > 0) {
+    if (chances > 0) chances--; else bonus--; // today's chances first, then chances from pack codes (those never expire)
     const r = crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
     let acc = 0, hit = null;
     for (const pr of PACK_PRIZES) { acc += pr.odds; if (r < acc) { hit = pr; break; } }
@@ -351,15 +351,15 @@ async function rollPack(env, cid) {
       prize = { ...done, type: hit.type, code: done.status === "issued" ? done.code : null };
     }
   }
-  await env.DB.prepare("UPDATE players SET chances = ?, chances_day = ?, sub_bonus = ? WHERE cid = ?").bind(chances, day, sub, cid).run();
-  return { eligible: true, chances, prize };
+  await env.DB.prepare("UPDATE players SET chances = ?, chances_day = ?, sub_bonus = ?, bonus_chances = ? WHERE cid = ?").bind(chances, day, sub, bonus, cid).run();
+  return { eligible: true, chances: chances + bonus, prize };
 }
 // Chances left today, without rolling (for the game's display)
 async function chancesFor(env, p) {
   if (!p || !p.eligible_at) return 0;
   const day = E.challengeDay();
   const days = p.chances_day ? Math.max(0, Math.round((Date.parse(day) - Date.parse(p.chances_day)) / 864e5)) : 1;
-  return days > 0 ? PACKS_CFG.dailyChances : (p.chances || 0);
+  return (days > 0 ? PACKS_CFG.dailyChances : (p.chances || 0)) + (p.bonus_chances || 0);
 }
 
 // Monthly top 3 by collection points gained, among eligible, unbanned players active on enough days; always reviewed by you
@@ -449,8 +449,9 @@ async function admin(req, env, path) {
     if (!/^[A-Z0-9-]{3,32}$/.test(code) || !(packs >= 1 && packs <= 100)) return j({ error: "code must be 3-32 letters/numbers/dashes; packs 1-100" }, 400);
     const maxUses = body.maxUses ? Math.floor(Number(body.maxUses)) : null;
     const expires = body.days ? new Date(Date.now() + Number(body.days) * 864e5).toISOString() : null;
-    await env.DB.prepare("INSERT INTO codes (code, packs, max_uses, expires, note, created) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (code) DO UPDATE SET packs = excluded.packs, max_uses = excluded.max_uses, expires = excluded.expires")
-      .bind(code, packs, maxUses, expires, body.note || null, now()).run();
+    const chances = Math.max(0, Math.min(100, Math.floor(Number(body.chances) || 0))); // Golden Ticket chances that come with the code
+    await env.DB.prepare("INSERT INTO codes (code, packs, max_uses, expires, note, created, chances) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (code) DO UPDATE SET packs = excluded.packs, max_uses = excluded.max_uses, expires = excluded.expires, chances = excluded.chances")
+      .bind(code, packs, maxUses, expires, body.note || null, now(), chances).run();
     return j(await env.DB.prepare("SELECT * FROM codes WHERE code = ?").bind(code).first());
   }
   if (path === "/admin/whois") { // the Shopify customer behind a customer id (for reviewing prizes)

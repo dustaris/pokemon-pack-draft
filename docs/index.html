@@ -688,10 +688,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609281129"></script>
-<script src="sprites.js?v=202609281129"></script>
-<script src="evo.js?v=202609281129"></script>
-<script src="engine.js?v=202609281129"></script>
+<script src="dex.js?v=202609281148"></script>
+<script src="sprites.js?v=202609281148"></script>
+<script src="evo.js?v=202609281148"></script>
+<script src="engine.js?v=202609281148"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -1239,7 +1239,7 @@ function renderMeter() {
   const caught = Object.keys(C.dex).length;
   document.getElementById("m-caught").textContent = caught.toLocaleString();
   document.getElementById("m-bar").style.width = (caught / 1025 * 100).toFixed(2) + "%";
-  document.getElementById("m-sub").innerHTML = `<span><b>${bagCount()}</b> packs in bag</span><span><b>${shinies()}</b> Shinies</span>${S.rewards && S.rewards.eligible ? `<span><b>${S.rewards.chances || 0}</b> prize chances today</span>` : FEATURES.boards ? `<span><b>${score().toLocaleString()}</b> collection points</span>` : ""}`;
+  document.getElementById("m-sub").innerHTML = `<span><b>${bagCount()}</b> packs in bag</span><span><b>${shinies()}</b> Shinies</span>${S.rewards && S.rewards.eligible ? `<span><b>${S.rewards.chances || 0}</b> Golden Ticket chances</span>` : FEATURES.boards ? `<span><b>${score().toLocaleString()}</b> collection points</span>` : ""}`;
   const todo = (dailyAvailable() ? 1 : 0) + (weekReady() ? 1 : 0);
   const ctT = document.getElementById("ct-today");
   ctT.textContent = todo ? `●${todo}` : ""; ctT.className = "ct hot";
@@ -1359,7 +1359,7 @@ function renderRewards() {
       <label><input type="checkbox" id="j-rules"> I agree to the <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a> (one account per person)</label>
       <div class="row"><button class="btn btn-accent btn-sm" type="submit">Join rewards</button>${S.joinErr ? `<span class="err">${S.joinErr}</span>` : ""}</div></form>`;
   return `<section class="panel tcard rewards" id="rewards-join">${head}${join}
-    ${r.eligible ? `<div class="row spread"><span><b>${plural(r.chances || 0, "prize chance", "prize chances")}</b> left today · ${r.config.dailyChances} a day with your free packs${C.subBonus ? "" : `, +${r.config.subscriberChances} for joining the email list`}</span><button class="btn btn-accent btn-sm" type="button" data-go="packs">Open packs</button></div>` : ""}
+    ${r.eligible ? `<div class="row spread"><span><b>${plural(r.chances || 0, "Golden Ticket chance", "Golden Ticket chances")}</b> left · ${r.config.dailyChances} a day, plus any from pack codes${C.subBonus ? "" : `, +${r.config.subscriberChances} for joining the email list`}</span><button class="btn btn-accent btn-sm" type="button" data-go="packs">Open packs</button></div>` : ""}
     ${r.eligible || packWins ? `<div><div class="eyebrow" style="margin-bottom:6px">Your prizes</div>${packWins || `<p class="muted" style="margin:0;font-size:14px">No prizes yet. Keep ripping!</p>`}</div>` : ""}
     ${r.config.monthlyEnabled ? `<div><div class="eyebrow" style="margin-bottom:6px">Every month</div>
       <div class="rw"><span class="pct">${r.config.monthly.map(w => w.pct + "%").join(" / ")}</span><span><b>Top 3 collectors of the month</b><small>Most collection points gained that month.</small></span><span></span></div>
@@ -1471,7 +1471,7 @@ function prizeLine() {
   if (!SY.auth) return `<p class="prize-line">${SY.loginUrl ? `<a href="${SY.loginUrl}" target="_top">Sign in</a>` : "Sign in"} and join rewards to find WD Card Shop prizes in packs. ${odds}.</p>`;
   if (!r) return "";
   if (!r.eligible) return `<p class="prize-line">Join WD Card Shop rewards on the Today tab and your packs can contain store prizes. ${odds}.</p>`;
-  return `<p class="prize-line"><span class="tk-mini">Golden Ticket</span> <b>${plural(r.chances || 0, "chance", "chances")} left today</b> to find one (${DAILY_PACKS} a day). ${odds}.</p>`;
+  return `<p class="prize-line"><span class="tk-mini">Golden Ticket</span> <b>${plural(r.chances || 0, "chance", "chances")} left</b> to find one (${DAILY_PACKS} a day, plus pack codes). ${odds}.</p>`;
 }
 function renderPacks() {
   if (SY.auth && !S.rewards && !S.rewardsLoading) setTimeout(() => loadRewards(false), 0);
@@ -1781,7 +1781,8 @@ document.getElementById("view").addEventListener("submit", async e => {
       const { status, data } = await cloud("redeem", { code });
       if (status === 200) {
         addPacks("all", data.packs, `Code ${data.code}`); save();
-        S.codeOk = true; S.codeMsg = `Code ${data.code} redeemed: +${plural(data.packs, "Wild pack", "Wild packs")}!`; S.codeDraft = "";
+        S.codeOk = true; S.codeMsg = `Code ${data.code} redeemed: +${plural(data.packs, "Wild pack", "Wild packs")}${data.chances ? ` and +${plural(data.chances, "Golden Ticket chance", "Golden Ticket chances")}` : ""}!${data.chances && !(S.rewards && S.rewards.eligible) ? " Join rewards to use your chances." : ""}`; S.codeDraft = "";
+        if (data.chances) { S.rewardsAt = 0; loadRewards(false); }
       } else { S.codeOk = false; S.codeMsg = why[data.error] || "Couldn't redeem that right now. Try again."; }
     } catch { S.codeOk = false; S.codeMsg = "Couldn't reach the server. Try again."; }
     S.codeBusy = false; render(); return;
