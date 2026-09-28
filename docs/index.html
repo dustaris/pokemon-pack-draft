@@ -661,7 +661,7 @@ const save = () => { store.set(C); editSeq++; if (SY.auth && SY.state !== "confl
 // pokedex-saves Worker keeps one save per customer. Everywhere else the game stays a browser-only guest save.
 const CLOUD = "https://pokedex-saves.gradeworth.workers.dev";
 const SHOP_ORIGINS = ["https://wdcardshop.com", "https://www.wdcardshop.com", "https://1marss-2m.myshopify.com"];
-const STORE_PAGE = "https://wdcardshop.com/pages/pokedex";
+const STORE_PAGE = "https://wdcardshop.com/pages/pokedex-pack-drafts";
 const syncStore = {
   get() { try { return JSON.parse(localStorage.getItem(KEY + "-sync")); } catch { return null; } },
   set(v) { try { localStorage.setItem(KEY + "-sync", JSON.stringify(v)); } catch {} },

@@ -9,6 +9,7 @@
 #   ./admin.sh prizes                  the 50 most recent prizes
 #   ./admin.sh run-monthly [YYYY-MM-DD] queue that month's top 3 now (normally automatic on the 1st)
 #   ./admin.sh test-code <customerId>  issue a 5% test code to check the Shopify app connection
+#   ./admin.sh check-secrets           describe the stored Shopify credentials (length/format only, never the values)
 set -e
 cd "$(dirname "$0")"
 URL="${PDX_URL:-https://pokedex-saves.gradeworth.workers.dev}"
@@ -18,8 +19,8 @@ case "$cmd" in
   approve|reject) body="{\"id\": $1, \"reason\": \"${2:-}\"}" ;;
   player|clear-flags|ban|test-code) body="{\"cid\": \"$1\", \"note\": \"${2:-}\", \"reason\": \"${2:-}\"}" ;;
   run-monthly) if [ -n "$1" ]; then body="{\"day\": \"$1\"}"; else body="{}"; fi ;;
-  pending|prizes) body="{}" ;;
-  *) sed -n '2,12p' "$0"; exit 1 ;;
+  pending|prizes|check-secrets) body="{}" ;;
+  *) sed -n '2,13p' "$0"; exit 1 ;;
 esac
 curl -s -X POST "$URL/admin/$cmd" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$body"
 echo

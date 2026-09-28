@@ -242,8 +242,9 @@ const setPrize = (env, id, status, note) => env.DB.prepare("UPDATE prizes SET st
 async function issue(env, pz) {
   if (!env.SHOPIFY_CLIENT_ID || !env.SHOPIFY_CLIENT_SECRET) { await setPrize(env, pz.id, "review", "Shopify app not connected yet"); return false; }
   try {
-    const tok = await fetch(`https://${SHOP}.myshopify.com/admin/oauth/access_token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "client_credentials", client_id: env.SHOPIFY_CLIENT_ID, client_secret: env.SHOPIFY_CLIENT_SECRET }) }).then(r => r.json());
+    const readJSON = async (step, r) => { const t = await r.text(); try { return JSON.parse(t); } catch { throw new Error(`${step} HTTP ${r.status}: ${t.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300)}`); } };
+    const tok = await readJSON("token", await fetch(`https://${SHOP}.myshopify.com/admin/oauth/access_token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "client_credentials", client_id: env.SHOPIFY_CLIENT_ID.trim(), client_secret: env.SHOPIFY_CLIENT_SECRET.trim() }) }));
     if (!tok.access_token) throw new Error("token: " + JSON.stringify(tok).slice(0, 200));
     const rand = [...crypto.getRandomValues(new Uint8Array(6))].map(b => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
     const code = `PDX-${pz.pct}-${rand}`, starts = now(), ends = new Date(Date.now() + REWARDS.days * 864e5).toISOString();
@@ -254,7 +255,7 @@ async function issue(env, pz) {
       minimumRequirement: { subtotal: { greaterThanOrEqualToSubtotal: String(REWARDS.minSubtotal) } },
       usageLimit: 1, appliesOncePerCustomer: true };
     const r = await fetch(`https://${SHOP}.myshopify.com/admin/api/2026-07/graphql.json`, { method: "POST",
-      headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": tok.access_token }, body: JSON.stringify({ query: q, variables: { d } }) }).then(r => r.json());
+      headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": tok.access_token }, body: JSON.stringify({ query: q, variables: { d } }) }).then(r => readJSON("graphql", r));
     const errs = (r.errors || []).concat(r.data ? r.data.discountCodeBasicCreate.userErrors : []);
     if (errs.length || !r.data) throw new Error(JSON.stringify(errs).slice(0, 300));
     await env.DB.prepare("UPDATE prizes SET status = 'issued', code = ?, issued = ?, expires = ?, note = NULL WHERE id = ?").bind(code, starts, ends, pz.id).run();
@@ -316,6 +317,12 @@ async function admin(req, env, path) {
     return j({ ok: true });
   }
   if (path === "/admin/run-monthly") return j(await monthlyPrizes(env, body.day));
+  if (path === "/admin/check-secrets") { // describes the stored Shopify credentials without revealing them
+    const shape = v => v == null ? null : { length: v.length, trimmedLength: v.trim().length, startsWithShpss: v.trim().startsWith("shpss_"),
+      hasWhitespace: /\s/.test(v), hasQuotes: /["'`]/.test(v), looksHex32: /^[0-9a-f]{32}$/.test(v.trim()) };
+    return j({ clientId: shape(env.SHOPIFY_CLIENT_ID), clientSecret: shape(env.SHOPIFY_CLIENT_SECRET),
+      secretEqualsClientId: !!env.SHOPIFY_CLIENT_ID && env.SHOPIFY_CLIENT_ID.trim() === (env.SHOPIFY_CLIENT_SECRET || "").trim() });
+  }
   if (path === "/admin/test-code") { // checks the Shopify connection by issuing a 5% test code to a customer you choose
     const cid = String(body.cid);
     await env.DB.prepare("INSERT OR IGNORE INTO prizes (cid, kind, ref, pct, label, status, created) VALUES (?, 'test', ?, 5, 'Setup test', 'review', ?)").bind(cid, now(), now()).run();
