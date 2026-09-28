@@ -225,9 +225,15 @@ function challengeSide(ch, picks) {
   for (const r of ch.rentals) if (side.length < 6 && !picks.includes(r)) side.push({ num: r, lvl: 50, rental: true });
   return side;
 }
+// Weekly leaderboard window: Monday–Sunday of the Pacific challenge day
+function challengeWeek(day) {
+  const [y, m, d] = day.split("-").map(Number), t = Date.UTC(y, m - 1, d), dow = (new Date(t).getUTCDay() + 6) % 7;
+  const iso = ms => new Date(ms).toISOString().slice(0, 10);
+  return { start: iso(t - dow * 864e5), end: iso(t + (6 - dow) * 864e5), dayOfWeek: dow + 1 };
+}
 // Ranked tries are seeded, so the Worker's scored battle and the game's replay are identical
 const challengeSeed = (day, cid, tryNo) => hashStr(`${day}|${cid}|${tryNo}`);
 
-G.ENGINE = { challengeDay, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, powerCost, xpNeed, TRANSFER,
+G.ENGINE = { challengeDay, challengeWeek, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, powerCost, xpNeed, TRANSFER,
   REGIONS, TRAINERS, trainerTeam, battle, winChance, makeBattler, mulberry32, hashStr, dailyChallenge, dayNumber, challengeScore };
 })(typeof window !== "undefined" ? window : globalThis);

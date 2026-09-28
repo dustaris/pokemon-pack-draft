@@ -44,7 +44,8 @@ export default {
     if (path === "/name") {
       const name = cleanName(body.name);
       if (!name) return json({ error: "name_rejected" }, 400);
-      await env.DB.prepare("UPDATE scores SET name = ? WHERE cid = ? AND day = ?").bind(name, cid, E.challengeDay()).run();
+      const wk = E.challengeWeek(E.challengeDay()); // rename across this week so the weekly board shows the new name
+      await env.DB.prepare("UPDATE scores SET name = ? WHERE cid = ? AND day BETWEEN ? AND ?").bind(name, cid, wk.start, wk.end).run();
       return json({ name });
     }
 
@@ -105,7 +106,28 @@ async function leaderboard(env, cid, json) {
       me = { rank: ahead.n + 1, name: mine.name, best: mine.best, stars: mine.stars, tries: mine.tries };
     }
   }
-  return json({ day, players: total.n, top: top.results.map((r, i) => ({ rank: i + 1, name: r.name, best: r.best, stars: r.stars, me: r.cid === cid })), me });
+  return json({ day, players: total.n, top: top.results.map((r, i) => ({ rank: i + 1, name: r.name, best: r.best, stars: r.stars, me: r.cid === cid })), me,
+    week: await weekBoard(env, cid, day) });
+}
+
+// Weekly board: each player's best daily score, added up Monday–Sunday (Pacific). Ties go to more stars.
+async function weekBoard(env, cid, day) {
+  const wk = E.challengeWeek(day);
+  const W = `WITH w AS (SELECT cid, SUM(best) AS total, SUM(stars) AS stars, COUNT(*) AS days,
+      (SELECT name FROM scores s2 WHERE s2.cid = s.cid AND s2.day BETWEEN ?1 AND ?2 ORDER BY s2.day DESC LIMIT 1) AS name
+    FROM scores s WHERE day BETWEEN ?1 AND ?2 GROUP BY cid)`;
+  const top = await env.DB.prepare(`${W} SELECT cid, name, total, stars, days FROM w ORDER BY total DESC, stars DESC, name ASC LIMIT 20`).bind(wk.start, wk.end).all();
+  const count = await env.DB.prepare(`${W} SELECT COUNT(*) AS n FROM w`).bind(wk.start, wk.end).first();
+  let me = null;
+  if (cid) {
+    const mine = await env.DB.prepare(`${W} SELECT name, total, stars, days FROM w WHERE cid = ?3`).bind(wk.start, wk.end, cid).first();
+    if (mine) {
+      const ahead = await env.DB.prepare(`${W} SELECT COUNT(*) AS n FROM w WHERE total > ?3 OR (total = ?3 AND stars > ?4)`).bind(wk.start, wk.end, mine.total, mine.stars).first();
+      me = { rank: ahead.n + 1, name: mine.name, total: mine.total, stars: mine.stars, days: mine.days };
+    }
+  }
+  return { start: wk.start, end: wk.end, dayOfWeek: wk.dayOfWeek, players: count.n,
+    top: top.results.map((r, i) => ({ rank: i + 1, name: r.name, total: r.total, stars: r.stars, days: r.days, me: r.cid === cid })), me };
 }
 
 async function verify(token, secret) {
