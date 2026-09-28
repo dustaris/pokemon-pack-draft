@@ -290,6 +290,24 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .hint { font-size: 13px; background: color-mix(in srgb, var(--candy) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--candy) 30%, var(--line)); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
 .hint b { color: var(--ink); }
 
+/* Leaderboard */
+.today .board { grid-column: 1 / -1; }
+.board-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.board-list li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto 36px; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); font-size: 14px; }
+.board-list li.me { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); outline: 1px solid var(--accent); }
+.board-list .bn { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-list .mono { text-align: right; font-weight: 700; }
+.medal, .rk { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-weight: 700; font-size: 12px; }
+.medal { color: #3A2A00; box-shadow: inset 0 -3px 0 rgba(0,0,0,.18); }
+.medal.m1 { background: #F2C230; } .medal.m2 { background: #C9CED8; } .medal.m3 { background: #D9955A; }
+.rk { color: var(--muted); }
+.board .you { font-size: 14px; }
+.namef { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
+.namef input { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font: inherit; color: var(--ink); width: 180px; max-width: 100%; }
+.board .err { color: var(--bad); font-size: 13px; }
+.rankline { font-size: 13px; color: var(--muted); }
+.rankline.on { color: var(--good); font-weight: 600; }
+
 /* Earn more packs */
 .earn { display: grid; gap: 6px; }
 .earn-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; border-top: 1px solid var(--line); padding: 8px 0 2px; }
@@ -662,6 +680,7 @@ async function connect(auth) {
   } catch { SY.state = "error"; }
   saveMeta(); renderAcct(); renderSheet();
   subBonus();
+  S.board = null; if (S.tab === "today" && !S.battle) render(); // reload the leaderboard with your rank and ranked tries
 }
 // Granted once per save, after the account's save has loaded so the packs land in the right save
 function subBonus() {
@@ -729,13 +748,14 @@ function visit() {
   const t = today(), wk = weekStart(t);
   if (C.week.key !== wk) C.week = { key: wk, days: [], claimed: false };
   if (!C.week.days.includes(t)) C.week.days.push(t);
-  if (C.chal.date !== t) { C.chal = { date: t, tries: 0, best: null, won: false, share: null }; S.chalPick = null; }
+  const cd = E.challengeDay(); // the Daily Challenge runs on Pacific time for everyone
+  if (C.chal.date !== cd) { C.chal = { date: cd, tries: 0, best: null, won: false, share: null }; S.chalPick = null; S.board = null; }
   save();
 }
 const dailyAvailable = () => Math.min(DAILY_BANK, Math.max(0, daysBetween(C.lastDaily, today())));
 const weekReady = () => C.week.days.length >= WEEK_GOAL && !C.week.claimed;
 let CH = null; // today's challenge, rebuilt when the date rolls over
-const challenge = () => { const t = today(); if (!CH || CH.date !== t) CH = dailyChallenge(t); return CH; };
+const challenge = () => { const t = E.challengeDay(); if (!CH || CH.date !== t) CH = dailyChallenge(t); return CH; };
 
 // ---------- Collection helpers ----------
 const candyOf = num => C.candy[family(num)] || 0;
@@ -1028,19 +1048,38 @@ function startJourney(idx) {
 function chalEligible(ch) {
   return Object.keys(C.dex).map(Number).filter(n => ch.rule.ok(byNum(n))).sort((a, b) => byNum(b).bst - byNum(a).bst);
 }
+const chalPicks = ch => (S.chalPick || chalEligible(ch).slice(0, 6)).slice(0, 6);
 function chalLineup(ch) {
-  const picks = (S.chalPick || chalEligible(ch).slice(0, 6)).slice(0, 6);
-  const side = picks.map(n => ({ num: n, lvl: 50, shiny: !!(C.dex[n] && C.dex[n].shiny) }));
-  for (const r of ch.rentals) if (side.length < 6 && !picks.includes(r)) side.push({ num: r, lvl: 50, rental: true });
-  return side;
+  return E.challengeSide(ch, chalPicks(ch)).map(s => ({ ...s, shiny: !s.rental && !!(C.dex[s.num] && C.dex[s.num].shiny) }));
 }
-function startChallenge() {
+const ranked = () => !!SY.auth && SY.state !== "expired";
+// Ranked tries are counted by the server (practice tries as a guest don't use them up)
+const triesUsed = () => ranked() ? (S.rankedTries || 0) : C.chal.tries;
+const firstDone = () => C.chal.firstDone ?? C.chal.tries > 0;
+async function startChallenge() {
   const ch = challenge();
-  if (C.chal.tries >= CHAL_TRIES) return;
-  const side = chalLineup(ch), res = battle(side, ch.team), score = challengeScore(res);
-  const reward = { packs: [], rare: 0, score };
-  if (C.chal.tries === 0) reward.rare = 1;
+  if (triesUsed() >= CHAL_TRIES || S.chalBusy) return;
+  const side = chalLineup(ch);
+  let rk = null;
+  if (ranked()) { // signed in: the Worker checks the lineup, counts the try and scores a seeded battle we replay exactly
+    S.chalBusy = true; render();
+    try {
+      if (SY.meta.dirty) await push(); // make sure the server's copy of your Pokédex includes today's picks
+      const { status, data } = await cloud("challenge", { picks: chalPicks(ch), name: C.trainer || undefined });
+      if (status === 200) rk = data;
+      else if (status === 409 && data.error === "no_tries") { S.chalBusy = false; S.rankedTries = CHAL_TRIES; toast("You've used today's 3 ranked tries. New challenge at midnight Pacific."); return render(); }
+      else toast("Couldn't reach the leaderboard, so this try isn't ranked.");
+    } catch { toast("Couldn't reach the leaderboard, so this try isn't ranked."); }
+    S.chalBusy = false;
+  }
+  const res = rk ? battle(side, ch.team, E.mulberry32(rk.seed)) : battle(side, ch.team);
+  const score = rk ? rk.score : challengeScore(res);
+  const reward = { packs: [], rare: 0, score, ranked: !!rk };
+  if (!firstDone()) reward.rare = 1;
+  C.chal.firstDone = true;
   C.chal.tries++;
+  if (rk) S.rankedTries = rk.tries;
+  if (rk) S.board = null; // refresh the leaderboard after a ranked try
   // Pay every star tier newly reached today (a better later try upgrades the rewards)
   const prev = C.chal.tier ?? (C.chal.won ? 2 : 0), tier = chalTier(res, score);
   let wild = 0;
@@ -1123,7 +1162,7 @@ function renderMeter() {
   document.getElementById("m-caught").textContent = caught.toLocaleString();
   document.getElementById("m-bar").style.width = (caught / 1025 * 100).toFixed(2) + "%";
   document.getElementById("m-sub").innerHTML = `<span><b>${bagCount()}</b> packs in bag</span><span><b>${C.rare}</b> Rare Candy</span><span><b>${badges()}</b>/9 Champions</span>`;
-  const todo = dailyAvailable() + (weekReady() ? 1 : 0) + (C.chal.tries === 0 ? 1 : 0);
+  const todo = dailyAvailable() + (weekReady() ? 1 : 0) + (!firstDone() ? 1 : 0);
   const ctT = document.getElementById("ct-today");
   ctT.textContent = todo ? `●${todo}` : ""; ctT.className = "ct hot";
   document.getElementById("ct-packs").textContent = bagCount();
@@ -1163,6 +1202,7 @@ function renderToday() {
     : `<p>Every Champion from Kanto to Paldea is beaten. Rematch anyone from the Journey tab.</p>`;
   return `<div class="today">
     ${renderChallengeCard()}
+    ${renderBoard()}
     <section class="panel tcard">
       <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(bagCount(), "pack", "packs")} in bag</span></div>
       ${avail ? `<div class="row"><span class="big">+${avail}</span><span class="muted" style="font-size:13px">${avail > 1 ? "Includes packs saved from days you missed." : "Today's free pack is ready."}</span></div>
@@ -1183,11 +1223,60 @@ function renderToday() {
     </section>
   </div>`;
 }
+// ---------- Leaderboard ----------
+async function loadBoard() {
+  if (S.boardLoading) return;
+  S.boardLoading = true;
+  try {
+    const r = await fetch(`${CLOUD}/leaderboard`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: SY.auth || undefined }) });
+    S.board = r.ok ? await r.json() : { error: true };
+    if (SY.auth && !S.board.error) S.rankedTries = S.board.me ? S.board.me.tries : 0;
+  } catch { S.board = { error: true }; }
+  S.boardAt = Date.now(); S.boardLoading = false;
+  if (S.tab === "today" && !S.battle) render();
+}
+function renderBoard() {
+  if (!S.boardLoading && (!S.board || Date.now() - (S.boardAt || 0) > 60000)) setTimeout(loadBoard, 0);
+  const b = S.board;
+  const medal = r => r <= 3 ? `<span class="medal m${r}">${r}</span>` : `<span class="rk">${r}</span>`;
+  let body;
+  if (!b) body = `<p class="muted" style="margin:0">Loading today's scores…</p>`;
+  else if (b.error) body = `<p class="muted" style="margin:0">The leaderboard is available when you play on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a>.</p>`;
+  else if (!b.top.length) body = `<p class="muted" style="margin:0">No ranked scores yet today. Be the first!</p>`;
+  else body = `<ol class="board-list">${b.top.slice(0, 10).map(r => `<li class="${r.me ? "me" : ""}">${medal(r.rank)}<span class="bn">${escapeHTML(r.name)}${r.me ? " (you)" : ""}</span><span class="stars-inline">${starsText(r.stars)}</span><span class="mono">${r.best}</span></li>`).join("")}</ol>`;
+  let mine = "";
+  if (b && !b.error) {
+    if (!SY.auth) mine = SY.shop ? `<div class="row"><span class="muted">Sign in to put your score on the board.</span>${SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in</a>` : ""}</div>`
+      : `<div class="row"><span class="muted">Scores come from signed-in players on wdcardshop.com.</span><a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play there</a></div>`;
+    else if (b.me) mine = `<div class="you">You're <b>#${b.me.rank}</b> of ${b.players} today · best <b>${b.me.best}</b></div>`;
+    else mine = `<div class="muted">Play a ranked try to get on today's board.</div>`;
+  }
+  const nameRow = SY.auth ? (S.editName
+    ? `<form class="namef" id="name-form"><label for="trainer-name" class="muted">Leaderboard name</label><input id="trainer-name" maxlength="16" value="${escapeHTML(C.trainer || "")}" placeholder="2–16 letters or numbers" autocomplete="off"><button class="btn btn-accent btn-sm" type="submit">Save</button><button class="btn btn-plain btn-sm" type="button" id="name-cancel">Cancel</button></form>
+       ${S.nameErr ? `<div class="err">${S.nameErr}</div>` : ""}`
+    : `<div class="row"><span class="muted">Leaderboard name: <b style="color:var(--ink)">${escapeHTML(C.trainer || (b && b.me ? b.me.name : "Trainer ####"))}</b></span><button class="btn btn-plain btn-sm" type="button" id="name-edit">Change</button></div>`) : "";
+  return `<section class="panel tcard board">
+    <div class="row spread"><h2>Today's leaderboard</h2><span class="muted mono" style="font-size:13px">${b && !b.error ? plural(b.players, "player", "players") : ""}</span></div>
+    ${body}${mine}${nameRow}
+    <p class="muted" style="margin:0;font-size:12px">Best score of the day counts; ties go to whoever got there first. Resets at midnight Pacific.</p>
+  </section>`;
+}
+const escapeHTML = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+async function saveName(name) {
+  S.nameErr = "";
+  try {
+    const { status, data } = await cloud("name", { name });
+    if (status === 200) { C.trainer = data.name; save(); S.editName = false; S.board = null; toast("Leaderboard name saved."); }
+    else S.nameErr = "Try a different name: 2–16 letters, numbers or spaces, nothing rude.";
+  } catch { S.nameErr = "Couldn't reach the server. Try again."; }
+  render();
+}
+
 function renderChallengeCard() {
   const ch = challenge();
   const side = chalLineup(ch), elig = chalEligible(ch);
   const picks = S.chalPick || elig.slice(0, 6);
-  const left = CHAL_TRIES - C.chal.tries;
+  const left = CHAL_TRIES - triesUsed();
   const lineup = side.map(s => `<div class="lm ${s.rental ? "rental" : ""}">${img(s.num, s.shiny)}<span class="nm">${byNum(s.num).name}</span><span class="tag">${s.rental ? "Rental" : "Yours"}</span></div>`).join("");
   const chooser = elig.length ? `<details class="pickbox" ${S.chalOpen ? "open" : ""} id="chal-details"><summary>Choose from your ${plural(elig.length, "eligible Pokémon", "eligible Pokémon")} (${picks.length}/6 picked)</summary>
       <div class="chips-pick">${elig.map(n => `<button type="button" data-cpick="${n}" aria-pressed="${picks.includes(n)}">${img(n, C.dex[n].shiny)}${byNum(n).name}</button>`).join("")}</div></details>`
@@ -1195,7 +1284,9 @@ function renderChallengeCard() {
   return `<section class="panel tcard chal">
     <div class="row spread"><h2>Daily Challenge #${ch.n}</h2><span class="muted mono" style="font-size:13px">${left}/${CHAL_TRIES} tries left</span></div>
     <div><span class="rule">${ch.rule.label}</span></div>
-    <p class="muted" style="margin:0;font-size:14px">Same battle for every player today. Everything is set to Lv 50, so levels don't matter. Your Pokédex does. Empty slots use rentals.</p>
+    <p class="muted" style="margin:0;font-size:14px">Same battle for every player today. Everything is set to Lv 50, so levels don't matter. Your Pokédex does. Empty slots use rentals. New challenge at midnight Pacific.</p>
+    <div class="rankline ${ranked() ? "on" : ""}">${ranked() ? "● Ranked: your tries are scored on our server and posted to today's leaderboard."
+      : SY.shop ? "○ Unranked practice. Sign in to get on the leaderboard." : "○ Unranked practice. Play on wdcardshop.com and sign in to get on the leaderboard."}</div>
     <div><div class="eyebrow">Boss · ${ch.boss.name} (${ch.boss.region} ${ch.boss.title})</div>
       <span class="sprites">${ch.team.map(o => img(o.num)).join("")}</span></div>
     <div><div class="eyebrow" style="margin-bottom:6px">Your lineup · leads first</div><div class="lineup-mini">${lineup}</div></div>
@@ -1203,14 +1294,14 @@ function renderChallengeCard() {
     <div><div class="eyebrow" style="margin-bottom:6px">Today's rewards · your best try counts</div>
       <div class="ladder">${CHAL_TIERS.map(t => { const got = (C.chal.tier || 0) >= t.stars;
         return `<div class="rung ${got ? "got" : ""}"><span class="stars">${starsText(t.stars)}</span><span>${t.need}</span><b>${got ? "✓ " : ""}${tierReward(t.reward)}</b></div>`; }).join("")}
-        <div class="rung ${C.chal.tries ? "got" : ""}"><span class="stars">▶</span><span>First try of the day</span><b>${C.chal.tries ? "✓ " : ""}+1 Rare Candy</b></div>
+        <div class="rung ${firstDone() ? "got" : ""}"><span class="stars">▶</span><span>First try of the day</span><b>${firstDone() ? "✓ " : ""}+1 Rare Candy</b></div>
       </div></div>
     <div class="starmeter"><div class="row spread"><span><b>Challenge stars</b> <span class="muted">· every ${STAR_CHEST} earns a gold Champion Pack</span></span><span class="mono">${(C.stars || 0) % STAR_CHEST}/${STAR_CHEST}</span></div>
       <div class="bar"><i style="width:${((C.stars || 0) % STAR_CHEST) / STAR_CHEST * 100}%"></i></div></div>
     <div class="row spread">
       <span style="font-size:14px">${C.chal.best != null ? `Best today <span class="score">${C.chal.best}/100</span> · <span class="stars-inline">${starsText(C.chal.tier || 0)}</span>` : `<span class="muted">3 tries a day. Each better score pays the next rewards.</span>`}</span>
       <span class="row">${C.chal.share ? `<button class="btn btn-plain btn-sm" type="button" id="share">Copy result</button>` : ""}
-        <button class="btn btn-accent" type="button" id="chal-go" ${left ? "" : "disabled"}>${left ? (C.chal.tries ? "Try again" : "Battle") : "Come back tomorrow"}</button></span>
+        <button class="btn btn-accent" type="button" id="chal-go" ${left && !S.chalBusy ? "" : "disabled"}>${S.chalBusy ? "Scoring…" : left ? (triesUsed() ? "Try again" : "Battle") : "Come back tomorrow"}</button></span>
     </div>
     ${C.chal.share ? `<textarea class="share" id="share-text" rows="5" readonly aria-label="Shareable result">${C.chal.share}</textarea>` : ""}
   </section>`;
@@ -1313,7 +1404,7 @@ function renderPacks() {
 function renderEarn() {
   const next = TRAINERS[C.beaten];
   const champ = TRAINERS.find(t => t.kind === "champ" && t.idx >= C.beaten);
-  const avail = dailyAvailable(), left = CHAL_TRIES - C.chal.tries;
+  const avail = dailyAvailable(), left = CHAL_TRIES - triesUsed();
   const done = t => `<span class="done">✓ ${t}</span>`, wait = t => `<span class="wait">${t}</span>`;
   const sub = C.subBonus ? done("Claimed")
     : !SY.shop ? `<a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">On wdcardshop.com</a>`
@@ -1389,6 +1480,7 @@ function renderBattle() {
     if (r.done) gains.push("Journey complete!");
     if (B.kind === "chal") {
       gains.unshift(`Score ${r.score}/100 · ${starsText(r.tier)}`);
+      gains.push(r.ranked ? "Ranked on today's leaderboard" : "Unranked practice");
       if (r.stars) gains.push(`+${plural(r.stars, "star", "stars")} · meter ${(C.stars || 0) % STAR_CHEST}/${STAR_CHEST}`);
       else if (C.chal.tier) gains.push(`Best today stays ${starsText(C.chal.tier)}`);
     }
@@ -1430,7 +1522,10 @@ function renderTeam() {
       <span class="ctl"><button type="button" data-mv="${n}" data-d="-1" aria-label="Move ${m.name} up" ${i === 0 ? "disabled" : ""}>↑</button><button type="button" data-mv="${n}" data-d="1" aria-label="Move ${m.name} down" ${i === team.length - 1 ? "disabled" : ""}>↓</button><button type="button" data-tm="${n}" aria-label="Remove ${m.name}">×</button></span></li>`;
   }).join("");
   const q = S.boxSearch.trim().toLowerCase();
-  let box = Object.keys(C.box).map(Number).filter(n => !q || byNum(n).name.toLowerCase().includes(q));
+  const show = S.boxShow || "all";
+  let box = Object.keys(C.box).map(Number).filter(n => !q || byNum(n).name.toLowerCase().includes(q))
+    .filter(n => show === "all" || (show === "shiny" && C.box[n].shiny) || (show === "lineup" && C.team.includes(n))
+      || (show === "evo" && evosOf(n).some(e => C.box[n].lvl >= e.lvl && candyOf(n) >= e.cost)));
   box.sort(S.boxSort === "lvl" ? (a, b) => C.box[b].lvl - C.box[a].lvl || a - b : S.boxSort === "candy" ? (a, b) => candyOf(b) - candyOf(a) || a - b : (a, b) => a - b);
   const grid = box.length ? box.map(n => {
     const b = C.box[n], m = byNum(n);
@@ -1438,7 +1533,7 @@ function renderTeam() {
     return `<button type="button" class="dm ${C.team.includes(n) ? "onteam" : ""}" data-detail="${n}" style="--rc:${rc(m.tier)}">
       <span class="pip" title="${RARITY[m.tier]}"></span><span class="x">Lv ${b.lvl}</span>${b.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
       ${img(n, b.shiny)}<span class="nm">${m.name}</span><span class="no">${canEvo ? `<b style="color:var(--good)">Can evolve</b>` : `<span class="candy">${candyOf(n)}</span> candy`}</span></button>`;
-  }).join("") : `<p class="empty-note">${q ? "No Pokémon in your box match." : "Your box is empty. Open packs to catch Pokémon."}</p>`;
+  }).join("") : `<p class="empty-note">${q || show !== "all" ? (show === "shiny" && !q ? "No Shinies yet. Every card has a 1 in 100 chance to be Shiny." : "No Pokémon in your box match.") : "Your box is empty. Open packs to catch Pokémon."}</p>`;
   return `<div class="team-grid">
     <section class="panel"><h2>Lineup <span>Fights in this order · HP carries over</span></h2><ol class="lineup">${rows}</ol></section>
     <aside class="panel stats"><h2>Team report</h2>${teamReport(team.map(byNum))}</aside></div>
@@ -1456,6 +1551,7 @@ function renderTeam() {
     <section class="panel"><h2>Box <span>${plural(Object.keys(C.box).length, "Pokémon", "Pokémon")} · <span class="candy">${C.rare}</span> Rare Candy</span></h2>
       <div class="toolbar">
         <input type="search" id="box-search" placeholder="Search your box…" value="${S.boxSearch.replace(/"/g, "&quot;")}" aria-label="Search your box">
+        <select id="box-show" aria-label="Show">${[["all", "All Pokémon"], ["shiny", `★ Shiny (${Object.values(C.box).filter(b => b.shiny).length})`], ["evo", "Can evolve"], ["lineup", "In lineup"]].map(([v, l]) => `<option value="${v}" ${show === v ? "selected" : ""}>${l}</option>`).join("")}</select>
         <select id="box-sort" aria-label="Sort box"><option value="lvl" ${S.boxSort === "lvl" ? "selected" : ""}>Highest level</option><option value="candy" ${S.boxSort === "candy" ? "selected" : ""}>Most candy</option><option value="num" ${S.boxSort === "num" ? "selected" : ""}>Pokédex number</option></select>
         <span class="count">Tap a Pokémon to level, evolve or add it</span>
       </div>
@@ -1492,6 +1588,7 @@ function renderDex() {
   let list = DEX.slice(r.lo - 1, r.hi);
   if (S.dexFilter === "owned") list = list.filter(m => C.dex[m.num]);
   if (S.dexFilter === "missing") list = list.filter(m => !C.dex[m.num]);
+  if (S.dexFilter === "shiny") list = list.filter(m => C.dex[m.num] && C.dex[m.num].shiny);
   if (q) list = list.filter(m => (C.dex[m.num] && m.name.toLowerCase().includes(q)) || String(m.num) === q);
   const grid = list.length ? list.map(m => {
     const d = C.dex[m.num], b = C.box[m.num];
@@ -1500,7 +1597,7 @@ function renderDex() {
       <img class="px" src="${sprite(m.num)}" alt="" loading="lazy" style="${d.shiny ? SHINY_CSS : ""}"><span class="nm">${m.name}</span><span class="no">#${pad(m.num)}</span>`;
     return b ? `<button type="button" class="dm ${C.team.includes(m.num) ? "onteam" : ""}" data-detail="${m.num}" style="--rc:${rc(m.tier)}">${inner}</button>`
       : `<div class="dm gone" style="--rc:${rc(m.tier)}" title="Registered, but not in your box (evolved or released)">${inner}</div>`;
-  }).join("") : `<p class="empty-note">${S.dexFilter === "owned" || q ? "No caught Pokémon match. Open some packs." : "Nothing missing here. Region complete."}</p>`;
+  }).join("") : `<p class="empty-note">${S.dexFilter === "shiny" ? "No Shinies in this region yet." : S.dexFilter === "owned" || q ? "No caught Pokémon match. Open some packs." : "Nothing missing here. Region complete."}</p>`;
   return `
     <div class="toolbar">
       <select id="dex-region" aria-label="Region">${PACKS.map(x => `<option value="${x.id}" ${x.id === S.dexRegion ? "selected" : ""}>${x.name} (${regionProgress(x)})</option>`).join("")}</select>
@@ -1508,6 +1605,7 @@ function renderDex() {
         <option value="all" ${S.dexFilter === "all" ? "selected" : ""}>All entries</option>
         <option value="owned" ${S.dexFilter === "owned" ? "selected" : ""}>Caught</option>
         <option value="missing" ${S.dexFilter === "missing" ? "selected" : ""}>Missing</option>
+        <option value="shiny" ${S.dexFilter === "shiny" ? "selected" : ""}>★ Shiny</option>
       </select>
       <input type="search" id="dex-search" placeholder="Search caught…" value="${S.dexSearch.replace(/"/g, "&quot;")}" aria-label="Search caught Pokémon">
       <span class="count">Evolving and releasing keep entries registered</span>
@@ -1678,6 +1776,8 @@ document.getElementById("view").addEventListener("click", e => {
   if ((el = on("[data-rip]"))) { if (S.battle) { clearTimers(); S.battle = null; } S.packKind = el.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
   if ((el = on("[data-bag]"))) { S.packKind = el.dataset.bag; if (S.phase === "kept" || S.phase === "batchDone") { S.phase = "sealed"; S.cards = []; S.batch = null; } return render(); }
   if (on("#chal-go")) return startChallenge();
+  if (on("#name-edit")) { S.editName = true; S.nameErr = ""; render(); const i = document.getElementById("trainer-name"); if (i) i.focus(); return; }
+  if (on("#name-cancel")) { S.editName = false; S.nameErr = ""; return render(); }
   if (on("#share")) {
     const text = C.chal.share;
     const fallback = () => { const ta = document.getElementById("share-text"); if (ta) { ta.focus(); ta.select(); } toast("Select the text and copy it."); };
@@ -1687,6 +1787,11 @@ document.getElementById("view").addEventListener("click", e => {
   if (on("#fast")) { S.battle.fast = !S.battle.fast; return render(); }
   if (on("#skip")) return skipBattle();
   if (on("#leave")) return leaveBattle();
+});
+document.getElementById("view").addEventListener("submit", e => {
+  if (e.target.id !== "name-form") return;
+  e.preventDefault();
+  saveName(document.getElementById("trainer-name").value.trim());
 });
 document.getElementById("view").addEventListener("toggle", e => { if (e.target.id === "chal-details") S.chalOpen = e.target.open; }, true);
 document.getElementById("sheet").addEventListener("click", e => {
@@ -1721,6 +1826,7 @@ document.getElementById("view").addEventListener("change", e => {
   if (e.target.id === "dex-region") { S.dexRegion = e.target.value; render(); }
   if (e.target.id === "dex-filter") { S.dexFilter = e.target.value; render(); }
   if (e.target.id === "box-sort") { S.boxSort = e.target.value; render(); }
+  if (e.target.id === "box-show") { S.boxShow = e.target.value; render(); }
 });
 document.getElementById("view").addEventListener("input", e => {
   const id = e.target.id;
@@ -1777,6 +1883,6 @@ function boot() {
 }
 boot();
 // A day can roll over while the page is open
-setInterval(() => { if (!S.battle && C.chal.date !== today()) { visit(); render(); } }, 60000);
+setInterval(() => { if (!S.battle && (C.chal.date !== E.challengeDay() || !C.week.days.includes(today()))) { visit(); render(); } }, 60000);
 })();
 </script>

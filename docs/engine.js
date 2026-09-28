@@ -214,6 +214,20 @@ function challengeScore(res) {
   return 50 + Math.round(left * 50);
 }
 
-G.ENGINE = { TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, powerCost, xpNeed, TRANSFER,
+// One Daily Challenge day for everyone (the store is in California), so the leaderboard compares the same battle
+const CHAL_TZ = "America/Los_Angeles";
+const challengeDay = (d = new Date()) => new Intl.DateTimeFormat("en-CA", { timeZone: CHAL_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+const CHAL_GOLD = 75;
+const challengeTier = (win, kos, score) => win ? (score >= CHAL_GOLD ? 3 : 2) : kos >= 3 ? 1 : 0;
+// Picks lead in order; rentals fill any empty slots
+function challengeSide(ch, picks) {
+  const side = picks.slice(0, 6).map(num => ({ num, lvl: 50 }));
+  for (const r of ch.rentals) if (side.length < 6 && !picks.includes(r)) side.push({ num: r, lvl: 50, rental: true });
+  return side;
+}
+// Ranked tries are seeded, so the Worker's scored battle and the game's replay are identical
+const challengeSeed = (day, cid, tryNo) => hashStr(`${day}|${cid}|${tryNo}`);
+
+G.ENGINE = { challengeDay, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, powerCost, xpNeed, TRANSFER,
   REGIONS, TRAINERS, trainerTeam, battle, winChance, makeBattler, mulberry32, hashStr, dailyChallenge, dayNumber, challengeScore };
 })(typeof window !== "undefined" ? window : globalThis);
