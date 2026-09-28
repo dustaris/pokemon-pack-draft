@@ -62,7 +62,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const path = new URL(req.url).pathname;
     if (req.method === "POST" && path.startsWith("/admin/")) return admin(req, env, path);
-    if (req.method !== "POST" || !["/load", "/save", "/leaderboard", "/name", "/rewards", "/eligibility", "/showcase", "/gallery", "/roll"].includes(path)) return json({ error: "not_found" }, 404);
+    if (req.method !== "POST" || !["/load", "/save", "/leaderboard", "/name", "/rewards", "/eligibility", "/showcase", "/gallery", "/roll", "/redeem"].includes(path)) return json({ error: "not_found" }, 404);
 
     const text = await req.text();
     if (text.length > MAX_BYTES) return json({ error: "too_large" }, 413);
@@ -76,6 +76,7 @@ export default {
     if (path === "/showcase") return saveShowcase(env, cid, body, json);
     if (path === "/rewards") return json(await rewardsFor(env, cid));
     if (path === "/roll") return json(await rollPack(env, cid));
+    if (path === "/redeem") return redeem(env, cid, body, json);
     if (path === "/eligibility") {
       if (body.over18 !== true || body.us !== true || body.rules !== true) return json({ error: "must_agree" }, 400);
       await env.DB.prepare("UPDATE players SET eligible_at = COALESCE(eligible_at, ?) WHERE cid = ?").bind(now(), cid).run();
@@ -178,6 +179,31 @@ async function verify(token, secret) {
   return want.length === got.length && crypto.subtle.timingSafeEqual(want, got) ? cid : null;
 }
 
+// ---------- Pack codes: free packs, once per account; the server keeps the count so the audit allows them ----------
+const REDEEM_FAILS_PER_DAY = 10;
+async function redeem(env, cid, body, json) {
+  const code = String(body.code || "").trim().toUpperCase().replace(/\s+/g, "");
+  const day = E.challengeDay();
+  const fails = await env.DB.prepare("SELECT n FROM redeem_fails WHERE cid = ? AND day = ?").bind(cid, day).first();
+  if (fails && fails.n >= REDEEM_FAILS_PER_DAY) return json({ error: "too_many_tries" }, 429);
+  const fail = async error => {
+    await env.DB.prepare("INSERT INTO redeem_fails (cid, day, n) VALUES (?, ?, 1) ON CONFLICT (cid, day) DO UPDATE SET n = n + 1").bind(cid, day).run();
+    return json({ error }, 400);
+  };
+  if (!/^[A-Z0-9-]{3,32}$/.test(code)) return fail("invalid");
+  const c = await env.DB.prepare("SELECT * FROM codes WHERE code = ?").bind(code).first();
+  if (!c) return fail("invalid");
+  if (c.expires && c.expires < now()) return json({ error: "expired" }, 400);
+  if (c.max_uses != null && c.uses >= c.max_uses) return json({ error: "used_up" }, 400);
+  const done = await env.DB.prepare("INSERT OR IGNORE INTO redemptions (code, cid, at) VALUES (?, ?, ?)").bind(code, cid, now()).run();
+  if (!done.meta.changes) return json({ error: "already_redeemed" }, 400);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE codes SET uses = uses + 1 WHERE code = ?").bind(code),
+    env.DB.prepare("UPDATE players SET bonus_packs = bonus_packs + ? WHERE cid = ?").bind(c.packs, cid),
+  ]);
+  return json({ code, packs: c.packs });
+}
+
 // ---------- Anti-cheat: plausibility checks on every accepted save ----------
 function metrics(d) {
   const dex = Object.keys(d.dex || {}).map(Number);
@@ -190,12 +216,12 @@ function metrics(d) {
 async function audit(env, cid, rev, data) {
   const m = metrics(data);
   const prev = await env.DB.prepare("SELECT dex_n, packs FROM audit WHERE cid = ? ORDER BY id DESC LIMIT 1").bind(cid).first();
-  const p = await env.DB.prepare("SELECT first_seen FROM players WHERE cid = ?").bind(cid).first();
-  const days = Math.floor(daysSince(p ? p.first_seen : now())) + 1;
+  const p = await env.DB.prepare("SELECT first_seen, bonus_packs FROM players WHERE cid = ?").bind(cid).first();
+  const days = Math.floor(daysSince(p ? p.first_seen : now())) + 1, bonus = p ? p.bonus_packs || 0 : 0;
   const flags = [];
   if (m.dex > 2 + m.packs * 1.8) flags.push("dex");                                                // more entries than packs + evolutions explain
   if (prev && m.dex - prev.dex_n > (m.packs - prev.packs) + 6) flags.push("dexjump");               // many entries appeared at once
-  if (m.packs + m.bag > 15 + days * 8 + m.beaten * 5) flags.push("packs");                          // more packs than the calendar allows
+  if (m.packs + m.bag > 15 + days * 8 + m.beaten * 5 + bonus) flags.push("packs");                          // more packs than the calendar allows
   if (m.legends > 3 + m.packs * 0.15) flags.push("legend");                                          // far luckier than the pull rates
   if (m.copies > m.packs + 30 + days * 5) flags.push("grade");                                         // more upgrades than packs + Rare Candy explain
   await env.DB.prepare("INSERT INTO audit (cid, at, rev, dex_n, packs, bag_n, beaten, rare, legends, max_lvl, flags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
@@ -410,6 +436,17 @@ async function admin(req, env, path) {
     await issue(env, pz);
     return j(await env.DB.prepare("SELECT * FROM prizes WHERE id = ?").bind(pz.id).first());
   }
+  if (path === "/admin/create-code") { // a pack code: create-code CODE packs [maxUses] [days valid]
+    const code = String(body.code || "").trim().toUpperCase();
+    const packs = Math.floor(Number(body.packs));
+    if (!/^[A-Z0-9-]{3,32}$/.test(code) || !(packs >= 1 && packs <= 100)) return j({ error: "code must be 3-32 letters/numbers/dashes; packs 1-100" }, 400);
+    const maxUses = body.maxUses ? Math.floor(Number(body.maxUses)) : null;
+    const expires = body.days ? new Date(Date.now() + Number(body.days) * 864e5).toISOString() : null;
+    await env.DB.prepare("INSERT INTO codes (code, packs, max_uses, expires, note, created) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (code) DO UPDATE SET packs = excluded.packs, max_uses = excluded.max_uses, expires = excluded.expires")
+      .bind(code, packs, maxUses, expires, body.note || null, now()).run();
+    return j(await env.DB.prepare("SELECT * FROM codes WHERE code = ?").bind(code).first());
+  }
+  if (path === "/admin/codes") return j((await env.DB.prepare("SELECT * FROM codes ORDER BY created DESC").all()).results);
   if (path === "/admin/test-credit") { // checks store credit by adding $1 to a customer you choose
     const cid = String(body.cid), t = now();
     await env.DB.prepare("INSERT INTO prizes (cid, kind, ref, pct, amount, label, status, created) VALUES (?, 'test', ?, 0, 1, '$1 store credit (setup test)', 'review', ?)").bind(cid, "credit-" + t, t).run();

@@ -361,6 +361,12 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .fan-done { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; background: var(--surface-2); color: var(--muted); }
 @media (max-width: 520px) { .tcard.daily { grid-template-columns: 1fr; justify-items: center; } .daily-body { width: 100%; } }
 
+/* Pack codes */
+.code-form { flex-wrap: nowrap; }
+.code-form input { flex: 1; min-width: 0; font: 600 15px var(--mono); letter-spacing: .06em; text-transform: uppercase; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); }
+.code-form input::placeholder { text-transform: none; letter-spacing: 0; font-family: var(--body); color: var(--muted); }
+.tcard .err { color: var(--bad); }
+
 /* Golden Ticket */
 .ticket { position: relative; display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; padding: 18px 26px; border-radius: 16px; color: #2A1D00; overflow: hidden;
   background: linear-gradient(135deg, #7A5410, #E7B53A 28%, #FFE89A 48%, #D19A22 68%, #6E4A0C);
@@ -1238,6 +1244,16 @@ function nextDailyText() {
   const h = 23 - pt.getHours(), m = 59 - pt.getMinutes();
   return h > 0 ? ` (in about ${plural(h + (m >= 30 ? 1 : 0), "hour", "hours")})` : ` (in ${plural(m + 1, "minute", "minutes")})`;
 }
+// Pack codes (from WD Card Shop emails, events and posts): checked by the server, once per account
+function codeBoxHTML() {
+  const body = !SY.shop ? `<p class="muted" style="margin:0;font-size:14px">Pack codes work when you play on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a> signed in.</p>`
+    : !SY.auth ? `<p class="muted" style="margin:0;font-size:14px">${SY.loginUrl ? `<a href="${SY.loginUrl}" target="_top">Sign in</a>` : "Sign in"} to redeem pack codes.</p>`
+    : `<form class="row code-form" id="code-form" autocomplete="off">
+        <input id="code-in" name="code" type="text" inputmode="text" autocapitalize="characters" spellcheck="false" maxlength="32" placeholder="Enter code" aria-label="Pack code" value="${(S.codeDraft || "").replace(/"/g, "")}">
+        <button class="btn btn-accent btn-sm" type="submit" ${S.codeBusy ? "disabled" : ""}>${S.codeBusy ? "Checking…" : "Redeem"}</button>
+      </form>${S.codeMsg ? `<p class="${S.codeOk ? "" : "err"}" style="margin:0;font-size:13px">${S.codeMsg}</p>` : ""}`;
+  return `<section class="panel tcard"><div class="row spread"><h2>Have a pack code?</h2><span class="muted" style="font-size:13px">From WD Card Shop emails and events</span></div>${body}</section>`;
+}
 // The Golden Ticket teaser: the store prize worth hunting for
 function goldenTicketHTML() {
   const r = S.rewards;
@@ -1289,6 +1305,7 @@ function renderToday() {
         : `<p class="muted" style="margin:0">Visit on any ${WEEK_GOAL} days this week for ${WEEK_PACKS} bonus packs. The days don't need to be in a row.</p>`}
     </section>` : ""}
     ${renderRewards()}
+    ${codeBoxHTML()}
     ${FEATURES.boards ? renderBoard() : ""}
   </div>`;
 }
@@ -1740,6 +1757,22 @@ document.getElementById("view").addEventListener("click", e => {
   if (on("#name-cancel")) { S.editName = false; S.nameErr = ""; return render(); }
 });
 document.getElementById("view").addEventListener("submit", async e => {
+  if (e.target.id === "code-form") {
+    e.preventDefault();
+    const code = document.getElementById("code-in").value.trim();
+    if (!code || S.codeBusy) return;
+    S.codeDraft = code; S.codeBusy = true; S.codeMsg = ""; render();
+    const why = { invalid: "That code isn't valid. Check the spelling and try again.", expired: "That code has expired.", used_up: "That code has been fully claimed.",
+      already_redeemed: "You've already used that code on this account.", too_many_tries: "Too many tries today. Try again tomorrow." };
+    try {
+      const { status, data } = await cloud("redeem", { code });
+      if (status === 200) {
+        addPacks("all", data.packs, `Code ${data.code}`); save();
+        S.codeOk = true; S.codeMsg = `Code ${data.code} redeemed: +${plural(data.packs, "Wild pack", "Wild packs")}!`; S.codeDraft = "";
+      } else { S.codeOk = false; S.codeMsg = why[data.error] || "Couldn't redeem that right now. Try again."; }
+    } catch { S.codeOk = false; S.codeMsg = "Couldn't reach the server. Try again."; }
+    S.codeBusy = false; render(); return;
+  }
   if (e.target.id === "join-form") {
     e.preventDefault();
     const over18 = document.getElementById("j-18").checked, us = document.getElementById("j-us").checked, rules = document.getElementById("j-rules").checked;
@@ -1778,6 +1811,7 @@ document.getElementById("view").addEventListener("change", e => {
 });
 document.getElementById("view").addEventListener("input", e => {
   const id = e.target.id;
+  if (id === "code-in") { S.codeDraft = e.target.value; return; }
   if (id !== "dex-search" && id !== "box-search") return;
   if (id === "dex-search") S.dexSearch = e.target.value; else S.boxSearch = e.target.value;
   const pos = e.target.selectionStart;
