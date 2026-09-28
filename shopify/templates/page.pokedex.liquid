@@ -13,6 +13,14 @@
   endif
   assign pd_login = '/account/login?return_url=' | append: request.path
 -%}
+{%- if customer and customer.accepts_marketing == false -%}
+  <div id="pd-subscribe" hidden>
+    {%- form 'customer' -%}
+      <input type="hidden" name="contact[email]" value="{{ customer.email | escape }}">
+      <input type="hidden" name="contact[tags]" value="newsletter,pokedex-game">
+    {%- endform -%}
+  </div>
+{%- endif -%}
 <div class="pokedex-game" style="max-width:1200px;margin:0 auto;padding:0 8px">
   <iframe id="pokedex-frame" src="https://dustaris.github.io/pokemon-pack-draft/" title="Pokédex Pack Draft"
     style="display:block;width:100%;height:calc(100vh - 120px);min-height:640px;border:0;border-radius:12px"
@@ -22,14 +30,18 @@
   (function () {
     var frame = document.getElementById('pokedex-frame');
     var GAME = 'https://dustaris.github.io';
+    var justPosted = /[?&]customer_posted=true/.test(location.search);
     var msg = {
       type: 'pd-auth',
       loginUrl: {{ pd_login | json }},
-      auth: {% if customer %}{ token: {{ pd_token | json }}, name: {{ customer.first_name | json }} }{% else %}null{% endif %}
+      auth: {% if customer %}{ token: {{ pd_token | json }}, name: {{ customer.first_name | json }} }{% else %}null{% endif %},
+      subscribed: {% if customer and customer.accepts_marketing %}true{% else %}false{% endif %} || justPosted
     };
     window.addEventListener('message', function (e) {
-      if (e.origin !== GAME || e.source !== frame.contentWindow || !e.data || e.data.type !== 'pd-hello') return;
-      frame.contentWindow.postMessage(msg, GAME);
+      if (e.origin !== GAME || e.source !== frame.contentWindow || !e.data) return;
+      if (e.data.type === 'pd-hello') frame.contentWindow.postMessage(msg, GAME);
+      // The player confirmed the opt-in inside the game: submit Shopify's own newsletter form for their email
+      if (e.data.type === 'pd-subscribe') { var f = document.querySelector('#pd-subscribe form'); if (f) f.submit(); }
     });
   })();
 </script>

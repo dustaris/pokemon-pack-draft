@@ -446,7 +446,8 @@ const syncStore = {
   set(v) { try { localStorage.setItem(KEY + "-sync", JSON.stringify(v)); } catch {} },
 };
 // meta: which customer this browser's save belongs to, the cloud revision it's based on, and unsynced edits
-const SY = { shop: false, auth: null, cid: null, name: "", loginUrl: null, state: "guest", conflict: null,
+const SUB_PACKS = 3; // one-time thank-you for joining the WD Card Shop email list
+const SY = { shop: false, shopOrigin: null, auth: null, cid: null, name: "", loginUrl: null, state: "guest", conflict: null, subscribed: null,
              meta: syncStore.get() || { cid: null, rev: 0, dirty: false } };
 let pushTimer = null, pushing = false;
 const saveMeta = () => syncStore.set(SY.meta);
@@ -486,6 +487,14 @@ async function connect(auth) {
     else { SY.conflict = data; SY.state = "conflict"; }
   } catch { SY.state = "error"; }
   saveMeta(); renderAcct(); renderSheet();
+  subBonus();
+}
+// Granted once per save, after the account's save has loaded so the packs land in the right save
+function subBonus() {
+  if (!SY.subscribed || !SY.auth || C.subBonus || !C.starter || SY.state === "conflict" || SY.state === "loading") return;
+  C.subBonus = true; C.bank += SUB_PACKS; save();
+  toast(`Thanks for subscribing! +${SUB_PACKS} packs added to your bag.`);
+  render();
 }
 function adopt(data) {
   clearTimers();
@@ -508,7 +517,7 @@ function resolveConflict(keep) {
   }
   SY.meta = { cid: SY.cid, rev: cf.rev, dirty: true }; saveMeta();
   SY.conflict = null; SY.state = "synced";
-  push(); render();
+  push(); render(); subBonus();
 }
 const summary = c => c ? `${Object.keys(c.dex || {}).length} caught · ${c.beaten || 0}/${TRAINERS.length} trainers beaten · ${plural(c.bank || 0, "pack", "packs")} in bag · ${plural(c.packs || 0, "pack", "packs")} opened` : "No save on your account yet";
 function renderAcct() {
@@ -523,7 +532,10 @@ function renderAcct() {
     action = SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in to save</a>` : "";
   } else if (SY.state === "loading") { dot = "busy"; msg = `Loading your save${who}…`; }
   else if (SY.state === "saving") { dot = "busy"; msg = `Saving to your account${who}…`; }
-  else if (SY.state === "synced") { dot = "ok"; msg = `Saved to your account${who}. Sign in on any device to keep playing.`; }
+  else if (SY.state === "synced") {
+    dot = "ok"; msg = `Saved to your account${who}. Sign in on any device to keep playing.`;
+    if (SY.subscribed === false) action = `<button class="btn btn-accent btn-sm" type="button" id="acct-sub">Get drop alerts + ${SUB_PACKS} free packs</button>`;
+  }
   else if (SY.state === "conflict") { dot = "err"; msg = "Your account and this device have different saves. Choose one to keep."; action = `<button class="btn btn-accent btn-sm" type="button" id="acct-resolve">Choose save</button>`; }
   else if (SY.state === "expired") { dot = "err"; msg = "Your sign-in expired. Reload the page to keep saving to your account."; }
   else { dot = "err"; msg = "Couldn't reach the save server. Your progress is safe on this device and will upload when it's back."; action = `<button class="btn btn-plain btn-sm" type="button" id="acct-retry">Retry now</button>`; }
@@ -709,6 +721,7 @@ function chooseStarter(num) {
   toast(`${byNum(num).name} is your partner. Open your ${START_PACKS} starter packs to build a team.`);
   S.tab = "packs";
   render();
+  subBonus();
 }
 
 // ---------- Battles ----------
@@ -1139,6 +1152,15 @@ function renderStarter() {
 // ---------- Rendering: detail sheet ----------
 function renderSheet() {
   const el = document.getElementById("sheet");
+  if (S.subOffer) {
+    el.innerHTML = `<div class="sheet-wrap" id="sub-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="Join the email list">
+      <div><div class="eyebrow">WD Card Shop emails</div><h2 style="font-size:24px">Get drop alerts and ${SUB_PACKS} free packs</h2></div>
+      <p style="margin:0;font-size:14px">Subscribe to WD Card Shop marketing emails at the email on your account: new drops, restocks, giveaways and Daily Challenge news. Unsubscribe anytime from any email.</p>
+      <p class="muted" style="margin:0;font-size:13px">You'll get ${SUB_PACKS} packs once per account. The page reloads after you subscribe.</p>
+      <div class="row"><button class="btn btn-accent" type="button" id="sub-yes">Subscribe</button><button class="btn btn-plain" type="button" id="sub-no">Not now</button></div>
+    </div></div>`;
+    return;
+  }
   if (SY.state === "conflict" && SY.conflict && S.showConflict !== false) {
     const cf = SY.conflict, when = cf.updatedAt ? new Date(cf.updatedAt).toLocaleString() : "";
     el.innerHTML = `<div class="sheet-wrap"><div class="sheet" role="dialog" aria-modal="true" aria-label="Choose a save">
@@ -1243,6 +1265,8 @@ document.getElementById("view").addEventListener("click", e => {
 document.getElementById("view").addEventListener("toggle", e => { if (e.target.id === "chal-details") S.chalOpen = e.target.open; }, true);
 document.getElementById("sheet").addEventListener("click", e => {
   const t = e.target, n = S.detail;
+  if (t.closest("#sub-yes")) { S.subOffer = false; renderSheet(); if (SY.shopOrigin) window.parent.postMessage({ type: "pd-subscribe" }, SY.shopOrigin); toast("Subscribing…"); return; }
+  if (t.closest("#sub-no") || t.id === "sub-bg") { S.subOffer = false; return renderSheet(); }
   const keep = t.closest("[data-keep]");
   if (keep) return resolveConflict(keep.dataset.keep);
   if (t.closest("#conflict-later")) { S.showConflict = false; return renderSheet(); }
@@ -1273,12 +1297,14 @@ document.getElementById("view").addEventListener("input", e => {
 document.getElementById("acct").addEventListener("click", e => {
   if (e.target.closest("#acct-resolve")) { S.showConflict = true; renderSheet(); }
   if (e.target.closest("#acct-retry")) push();
+  if (e.target.closest("#acct-sub")) { S.subOffer = true; renderSheet(); }
 });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && SY.auth && SY.meta.dirty) push(); });
 // The store page answers this hello with the sign-in state (and a signed token when a customer is signed in)
 window.addEventListener("message", e => {
   if (!SHOP_ORIGINS.includes(e.origin) || !e.data || e.data.type !== "pd-auth") return;
-  SY.shop = true;
+  SY.shop = true; SY.shopOrigin = e.origin;
+  if (typeof e.data.subscribed === "boolean") SY.subscribed = e.data.subscribed;
   document.getElementById("home-link").hidden = true; // the store's own header is right above the game
   SY.loginUrl = typeof e.data.loginUrl === "string" && e.data.loginUrl.startsWith("/") ? e.origin + e.data.loginUrl : null;
   if (e.data.auth && typeof e.data.auth.token === "string" && !SY.auth) connect(e.data.auth);
