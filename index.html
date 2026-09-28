@@ -234,6 +234,43 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .pull-banner small { display: block; margin-top: 6px; font-family: var(--body); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); text-shadow: none; }
 @keyframes bannerIn { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } }
 
+/* Items row in the bag + Rare Candy */
+.items { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); align-items: center; }
+.items .eyebrow { width: 100%; }
+.item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 6px 12px 6px 8px; text-align: left; }
+.item:hover { border-color: var(--accent); }
+.item b { display: block; font-size: 14px; }
+.item small { display: block; font-size: 12px; color: var(--muted); }
+.item .qty { font-family: var(--mono); font-weight: 700; font-size: 16px; margin-left: 4px; }
+.rc { position: relative; isolation: isolate; display: inline-block; flex: none; width: 34px; height: 22px; }
+.rc::before { content: ""; position: absolute; left: 8px; top: 1px; width: 20px; height: 20px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff 0 12%, transparent 13%), repeating-conic-gradient(from 20deg, #8B5CF6 0 30deg, #C4B5FD 30deg 60deg); box-shadow: inset 0 -2px 0 rgba(0,0,0,.2); }
+.rc::after { content: ""; position: absolute; inset: 5px 0; background: #A78BFA; z-index: -1;
+  clip-path: polygon(0 0, 30% 50%, 0 100%, 0 0, 100% 0, 70% 50%, 100% 100%, 100% 0); }
+.rc.big { transform: scale(1.6); margin: 6px 12px; }
+.guide { display: grid; gap: 10px; font-size: 14px; }
+.guide h3 { font-size: 15px; margin-bottom: 2px; }
+.guide p { margin: 0; color: var(--muted); }
+.guide p b { color: var(--ink); }
+.guide ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); }
+.statdiff { font-family: var(--mono); font-size: 12px; display: flex; flex-wrap: wrap; gap: 2px 10px; color: var(--muted); }
+.statdiff b { color: var(--good); font-weight: 700; }
+.uselist { display: grid; gap: 6px; }
+.use { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 2px 8px 2px 2px; }
+.use img { width: 48px; height: 48px; }
+.use b { font-size: 14px; }
+.use small { display: block; font-size: 12px; color: var(--muted); }
+.evoprog { height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; margin-top: 4px; }
+.evoprog i { display: block; height: 100%; background: var(--good); }
+
+/* Open all */
+.batchbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: center; font-size: 14px; }
+.batchbar .mono { font-weight: 700; }
+.summary { display: grid; gap: 14px; width: 100%; max-width: 860px; justify-items: center; text-align: center; }
+.summary .gains { justify-content: center; }
+.summary .dex { width: 100%; }
+.dm .newb { position: absolute; top: 4px; left: 4px; font-size: 9px; font-weight: 800; letter-spacing: .05em; background: var(--good); color: #fff; border-radius: 4px; padding: 0 4px; }
+
 /* Earn more packs */
 .earn { display: grid; gap: 6px; }
 .earn-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; border-top: 1px solid var(--line); padding: 8px 0 2px; }
@@ -740,7 +777,7 @@ function makePack(region, premium, noLegend) {
     return { num: m.num, shiny: Math.random() < SHINY_ODDS };
   }).sort((a, b) => byNum(a.num).tier - byNum(b.num).tier || byNum(a.num).bst - byNum(b.num).bst);
 }
-function openPack() {
+function openPack(fast) {
   const kind = selectedKind();
   if (S.phase !== "sealed" || !kind) return;
   const pool = isWild(kind) ? PACKS.find(r => r.id === S.region) : packKind(kind);
@@ -753,7 +790,44 @@ function openPack() {
   if (packEl) packEl.classList.add("tearing");
   renderMeter();
   S.premium = kind === "champ"; S.banner = null;
+  if (fast) { // Open all: skip the tear and flips, but still celebrate a big hit
+    S.revealed = S.cards.length; S.phase = "picking";
+    const c = S.cards[S.cards.length - 1];
+    if (bigHit(c)) celebrate(null, c);
+    return render();
+  }
   timers.push(setTimeout(() => { S.phase = "revealing"; render(); revealNext(); }, reduced ? 0 : S.premium ? 1100 : 520));
+}
+// Open all: rip a whole stack back to back, still keeping one card per pack
+function openAll() {
+  const kind = selectedKind();
+  if (!kind || S.phase !== "sealed") return;
+  S.batch = { kind, total: C.bag.filter(p => p.k === kind).length, done: 0, kept: [], candy: 0, auto: false };
+  openPack(true);
+}
+// Auto-pick: a new Pokédex entry first, then Shiny, then the rarest and strongest card
+function bestPick() {
+  let best = 0, score = -1;
+  S.cards.forEach((c, i) => {
+    const m = byNum(c.num);
+    const v = (C.dex[c.num] ? 0 : 10000) + (c.shiny ? 5000 : 0) + m.tier * 1000 + m.bst;
+    if (v > score) { score = v; best = i; }
+  });
+  return best;
+}
+function afterBatchKeep(entry) {
+  const B = S.batch;
+  B.kept.push(entry); B.done++; B.candy += entry.candy;
+  const more = B.done < B.total && C.bag.some(p => p.k === B.kind);
+  const next = () => {
+    if (S.batch !== B) return;
+    S.phase = "sealed"; S.cards = []; S.banner = null;
+    if (more) { openPack(true); if (B.auto) { S.selected = bestPick(); keep(); } }
+    else { S.phase = "batchDone"; render(); }
+  };
+  if (B.auto) return next();
+  render();
+  timers.push(setTimeout(next, reduced ? 0 : 320));
 }
 // Champion Packs and Legendary pulls get the big moment: the other cards dim, the hit card charges up, then bursts open
 const glowOf = c => c.shiny ? "#F07AB0" : ["#9AA0B2", "#45C184", "#6D96FF", "#F2B531"][byNum(c.num).tier];
@@ -764,6 +838,11 @@ function celebrate(el, c) {
   if (el) { el.style.setProperty("--glow", S.banner.glow); el.classList.add("bursting"); }
   const slot = document.getElementById("pull-slot");
   if (slot) slot.innerHTML = bannerHTML();
+}
+function statDiff(n, from, to) {
+  const a = E.makeBattler({ num: n, lvl: from }), b = E.makeBattler({ num: n, lvl: Math.min(100, to) });
+  return [["HP", "maxhp"], ["Atk", "atk"], ["Def", "def"], ["SpA", "spa"], ["SpD", "spd"], ["Spe", "spe"]]
+    .map(([l, k]) => `<span>${l} ${a[k]}${b[k] > a[k] ? ` → <b>${b[k]}</b>` : ""}</span>`).join("");
 }
 const bannerHTML = () => S.banner ? `<div class="pull-banner" style="--glow:${S.banner.glow}">${S.banner.text}<small>${S.banner.sub}</small></div>` : "";
 function revealNext() {
@@ -796,9 +875,9 @@ function revealAll() {
 function keep() {
   if (S.selected == null) return;
   const c = S.cards[S.selected], m = byNum(c.num);
-  const isNew = register(c.num, c.shiny);
+  const isNew = register(c.num, c.shiny), inBoxBefore = inBox(c.num);
   let msg;
-  if (!inBox(c.num)) {
+  if (!inBoxBefore) {
     C.box[c.num] = { lvl: pullLvl(), xp: 0, shiny: c.shiny };
     addCandy(c.num, 1);
     msg = `${c.shiny ? "Shiny " : ""}${m.name} joined your box at Lv ${C.box[c.num].lvl}${isNew ? " and your Pokédex" : ""}. +1 candy.`;
@@ -814,10 +893,11 @@ function keep() {
   if (!C.team.length) C.team.push(c.num);
   save();
   S.kept = S.selected; S.phase = "kept"; S.banner = null;
+  if (S.batch) return afterBatchKeep({ num: c.num, shiny: c.shiny, isNew, candy: (inBoxBefore ? 3 : 1) + rest.length });
   toast(isNew ? `New Pokédex entry: ${m.name} (#${pad(m.num)})` : `${m.name} kept`);
   render();
 }
-function nextPack() { clearTimers(); S.phase = "sealed"; S.cards = []; S.banner = null; render(); }
+function nextPack() { clearTimers(); S.phase = "sealed"; S.cards = []; S.banner = null; S.batch = null; render(); }
 // The stack picked in the bag (falls back to the first stack when it runs out)
 function selectedKind() {
   const groups = bagGroups();
@@ -1006,6 +1086,8 @@ function renderMeter() {
   document.getElementById("ct-team").textContent = `${C.team.length}/6`;
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", !S.battle && b.dataset.tab === S.tab));
 }
+// Level this Pokémon became obtainable at (its own evolution level), for the evolution progress bar
+const PREV_LVL = n => E.PREV[n] ? E.PREV[n].lvl : 1;
 const regionProgress = r => { let n = 0; for (let i = r.lo; i <= r.hi; i++) if (C.dex[i]) n++; return `${n}/${r.hi - r.lo + 1}`; };
 const xpBar = b => `<span class="xpbar"><i style="width:${b.lvl >= 100 ? 100 : Math.round(b.xp / xpNeed(b.lvl) * 100)}%"></i></span>`;
 function trainerSprites(t, known) {
@@ -1105,12 +1187,15 @@ function cardHTML(c, i) {
 }
 function renderPacks() {
   const kind = selectedKind(), groups = bagGroups();
-  const busy = S.phase !== "sealed" && S.phase !== "kept";
+  const busy = S.phase !== "sealed" && S.phase !== "kept" && S.phase !== "batchDone";
   const bag = `<section class="bagshelf" aria-label="Your pack bag">
     <div class="hd"><h2>Your bag</h2><span>${groups.length ? `${plural(bagCount(), "pack", "packs")} · tap a stack to pick your next rip` : "Empty"}</span></div>
     ${groups.length ? `<div class="bagrow" role="group" aria-label="Pack stacks">${groups.map(g => `<button class="stackb" type="button" data-bag="${g.kind}" aria-pressed="${g.kind === kind}" ${busy ? "disabled" : ""} aria-label="${gainText(g).slice(1)}">
         ${miniPack(g.kind, g.n, g.fresh > 0)}<span class="cap">${packLabel(g.kind)}<small>${g.kind === "all" ? "Any unlocked region" : g.kind === "starter" ? "No Legendaries" : g.kind === "champ" ? "Rare or better hit" : "Region pack"}</small></span></button>`).join("")}</div>`
       : `<p class="bag-empty">Out of packs. Earn more by beating trainers on your Journey, winning the Daily Challenge, and claiming your daily pack.</p>`}
+    <div class="items"><span class="eyebrow">Items</span>
+      <button class="item" type="button" id="candy-info"><span class="rc"></span><span><b>Rare Candy <span class="qty">×${C.rare}</span></b><small>+1 level for any Pokémon · tap to learn and use</small></span></button>
+    </div>
   </section>`;
   let stage;
   if (S.phase === "sealed" || S.phase === "tearing") {
@@ -1130,15 +1215,29 @@ function renderPacks() {
           <span class="lbl"><small>${k.premium ? "Champion Pack" : isWild(kind) ? `${packLabel(kind)} Pack` : "Pack Draft"}</small><b>${k.premium ? "Champion" : pool.name}</b><span>${pool.gen ? `Gen ${pool.gen} · #${pad(pool.lo)}–${pad(pool.hi)}` : "#0001–1025"}</span></span>
         </button>
         <p class="pack-from">From <b>${from}</b></p>
+        ${groups.find(g => g.kind === kind).n > 1 ? `<button class="btn btn-plain" type="button" id="open-all">Open all ×${groups.find(g => g.kind === kind).n} ${packLabel(kind)}</button>` : ""}
         ${wild}
         <p class="note">Tap the pack to rip it. Keep one card. The other four become candy for their evolution families.</p>
         <div class="odds">${k.premium ? `<span>2 <b style="color:var(--r0)">Common</b></span><span>2 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> or better · <b style="color:var(--r3)">Legendary</b> 1 in 4</span>`
           : `<span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 4 · ${k.noLegend ? "no Legendaries" : `<b style="color:var(--r3)">Legendary</b> 1 in 20`}</span>`}<span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
     }
+  } else if (S.phase === "batchDone") {
+    const B = S.batch, fresh = B.kept.filter(k => k.isNew).length;
+    const legends = B.kept.filter(k => byNum(k.num).tier === 3).length, shinies = B.kept.filter(k => k.shiny).length;
+    stage = `<div class="summary">
+      <div><div class="eyebrow">Open all</div><h2 style="font-size:28px">Opened ${plural(B.done, "pack", "packs")}</h2></div>
+      <div class="gains"><span class="gain">${fresh} new Pokédex ${fresh === 1 ? "entry" : "entries"}</span><span class="gain">+${B.candy} candy</span>${legends ? `<span class="gain">${legends} Legendary</span>` : ""}${shinies ? `<span class="gain shiny-tag">${shinies} Shiny</span>` : ""}</div>
+      <div class="dex">${B.kept.map(k => { const m = byNum(k.num); return `<button type="button" class="dm" data-detail="${k.num}" style="--rc:${rc(m.tier)}">
+        ${k.isNew ? `<span class="newb">NEW</span>` : ""}<span class="pip" style="left:auto;right:5px" title="${RARITY[m.tier]}"></span>${k.shiny ? `<span class="sh">★</span>` : ""}
+        ${img(k.num, k.shiny)}<span class="nm">${m.name}</span><span class="no">${RARITY[m.tier]}</span></button>`; }).join("")}</div>
+      <div class="actions"><button class="btn btn-accent" type="button" id="batch-done">${bagCount() ? "Back to your bag" : "Done"}</button><button class="btn btn-plain" type="button" data-go="team">Go to Team</button></div>
+    </div>`;
   } else {
     const picked = S.selected != null ? byNum(S.cards[S.selected].num) : null;
     let actions;
     if (S.phase === "revealing") actions = `<button class="btn btn-plain" id="reveal-all" type="button">Reveal all</button>`;
+    else if (S.phase === "picking" && S.batch) actions = `<div class="batchbar"><span>Pack <span class="mono">${S.batch.done + 1}</span> of <span class="mono">${S.batch.total}</span> · tap a card to keep it</span>
+        <button class="btn btn-plain btn-sm" type="button" id="auto-rest">Auto-pick the rest</button><button class="btn btn-line btn-sm" type="button" id="stop-batch">Stop after this pack</button></div>`;
     else if (S.phase === "picking") actions = `<button class="btn btn-accent" id="keep" type="button" ${picked ? "" : "disabled"}>${picked ? `Keep ${picked.name}` : "Choose one to keep"}</button>`;
     else {
       const kn = S.cards[S.kept].num, left = bagCount();
@@ -1146,11 +1245,11 @@ function renderPacks() {
         ${inBox(kn) && !C.team.includes(kn) && C.team.length < 6 ? `<button class="btn btn-plain" id="add-kept" type="button">Add to lineup</button>` : ""}
         ${inBox(kn) ? `<button class="btn btn-plain" type="button" data-detail="${kn}">View ${byNum(kn).name}</button>` : ""}`;
     }
-    const note = S.phase === "picking" ? "Pick one to keep. New Pokémon join your box at about your lineup's level." : S.phase === "kept" ? S.keptMsg : "Revealing…";
+    const note = S.phase === "picking" ? (S.batch ? "Auto-pick keeps new Pokédex entries first, then Shinies, then the rarest card." : "Pick one to keep. New Pokémon join your box at about your lineup's level.") : S.phase === "kept" ? (S.batch ? "Kept! Next pack…" : S.keptMsg) : "Revealing…";
     stage = `<div class="pull-slot" id="pull-slot">${bannerHTML()}</div><div class="cards">${S.cards.map(cardHTML).join("")}</div>
       <p class="note">${note}</p><div class="actions">${actions}</div>`;
   }
-  const earn = S.phase === "sealed" || S.phase === "kept" ? `<div style="margin-top:16px">${renderEarn()}</div>` : "";
+  const earn = S.phase === "sealed" || (S.phase === "kept" && !S.batch) || S.phase === "batchDone" ? `<div style="margin-top:16px">${renderEarn()}</div>` : "";
   return `${bag}<section class="stage" aria-live="polite"><div class="stage-inner">${stage}</div></section>${earn}`;
 }
 
@@ -1378,6 +1477,29 @@ function renderSheet() {
     </div></div>`;
     return;
   }
+  if (S.candyInfo) {
+    const lead = C.team.find(inBox) || Object.keys(C.box).map(Number)[0];
+    const diff = lead ? statDiff(lead, C.box[lead].lvl, C.box[lead].lvl + 1) : "";
+    const pool = [...new Set([...C.team.filter(inBox), ...Object.keys(C.box).map(Number)])];
+    const toEvo = n => { const e = evosOf(n); return e.length ? Math.max(0, Math.min(...e.map(x => x.lvl)) - C.box[n].lvl) : Infinity; };
+    const list = pool.sort((a, b) => (C.team.includes(b) - C.team.includes(a)) || toEvo(a) - toEvo(b)).slice(0, 8);
+    el.innerHTML = `<div class="sheet-wrap" id="candy-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="Rare Candy">
+      <div class="hd" style="grid-template-columns:auto minmax(0,1fr) auto"><span class="rc big"></span><div><div class="eyebrow">Item</div><h2>Rare Candy ×${C.rare}</h2></div>
+        <button class="close" type="button" id="candy-close" aria-label="Close">✕</button></div>
+      <div class="guide">
+        <div><h3>What it does</h3><p>Raises <b>any</b> Pokémon by <b>1 level</b> instantly.</p></div>
+        <div><h3>What a level changes</h3><p>Every stat goes up (HP a little more), so your Pokémon hits harder, lasts longer and moves faster in battle.${lead ? ` For your ${byNum(lead).name} at Lv ${C.box[lead].lvl}:` : ""}</p>${diff ? `<div class="statdiff" style="margin-top:4px">${diff}</div>` : ""}</div>
+        <div><h3>Evolution</h3><p>Each Pokémon evolves at a set level <b>plus</b> its family candy. Rare Candy can close the level gap; the family candy still comes from duplicates and discarded pack cards.</p></div>
+        <div><h3>Rare Candy vs family candy</h3><p><b>Rare Candy</b> works on any Pokémon. <b>Family candy</b> (the pink number on each Pokémon) only works on that evolution family, for Power up and Evolve.</p></div>
+        <div><h3>How to get more</h3><ul><li>Rematch a trainer you've beaten and win: +1</li><li>Beat a Champion: +3</li><li>Release a Pokémon from your box: +1 (Common or Uncommon), +2 (Rare), +4 (Legendary)</li><li>First Daily Challenge try each day: +1</li></ul></div>
+        <div><h3>Use now</h3><div class="uselist">${list.map(n => { const b = C.box[n], m = byNum(n), e = evosOf(n)[0], gap = toEvo(n);
+          return `<div class="use">${img(n, b.shiny)}<span><b>${m.name}</b> <span class="lv">Lv ${b.lvl}</span>${C.team.includes(n) ? ` <span class="muted" style="font-size:12px">· lineup</span>` : ""}
+            <small>${e ? (gap ? `Evolves into ${byNum(e.to).name} at Lv ${e.lvl} · ${plural(gap, "level", "levels")} to go` : `Level ready to evolve into ${byNum(e.to).name} · needs ${e.cost} family candy`) : "Fully evolved"}</small></span>
+            <span class="row" style="gap:4px"><button class="btn btn-accent btn-sm" type="button" data-quick-rare="${n}" ${C.rare > 0 && b.lvl < 100 ? "" : "disabled"}>+1 Lv</button><button class="btn btn-plain btn-sm" type="button" data-candy-detail="${n}">Details</button></span></div>`; }).join("") || `<p>Catch a Pokémon first.</p>`}</div></div>
+      </div>
+    </div></div>`;
+    return;
+  }
   if (SY.state === "conflict" && SY.conflict && S.showConflict !== false) {
     const cf = SY.conflict, when = cf.updatedAt ? new Date(cf.updatedAt).toLocaleString() : "";
     el.innerHTML = `<div class="sheet-wrap"><div class="sheet" role="dialog" aria-modal="true" aria-label="Choose a save">
@@ -1397,9 +1519,14 @@ function renderSheet() {
   const cost = powerCost(b.lvl), onTeam = C.team.includes(n);
   const s = E.makeBattler({ num: n, lvl: b.lvl });
   const evo = evosOf(n).map(e => {
-    const t = byNum(e.to), okL = b.lvl >= e.lvl, okC = candy >= e.cost;
+    const t = byNum(e.to), okL = b.lvl >= e.lvl, okC = candy >= e.cost, gap = Math.max(0, e.lvl - b.lvl);
+    const start = PREV_LVL(n);
+    const prog = okL ? 100 : Math.round((b.lvl - start) / Math.max(1, e.lvl - start) * 100);
+    const rush = !okL && gap <= C.rare ? `<button class="btn btn-plain btn-sm" type="button" data-rare-to="${e.lvl}">Use ${gap} Rare Candy → Lv ${e.lvl}</button>` : "";
     return `<div class="opt"><div><div class="what">Evolve into ${img(e.to, b.shiny)} ${t.name}</div>
-      <div class="why">Needs Lv ${e.lvl} ${okL ? "✓" : `(now ${b.lvl})`} · ${e.cost} candy ${okC ? "✓" : `(have ${candy})`}${C.dex[e.to] ? "" : " · New Pokédex entry"}</div></div>
+      <div class="why">Needs Lv ${e.lvl} ${okL ? "✓" : `(${plural(gap, "level", "levels")} to go)`} · ${e.cost} ${fam} candy ${okC ? "✓" : `(have ${candy})`}${C.dex[e.to] ? "" : " · New Pokédex entry"}</div>
+      <div class="evoprog"><i style="width:${Math.max(4, Math.min(100, prog))}%"></i></div>
+      <div class="why" style="margin-top:4px">Base stats ${m.bst} → <b style="color:var(--good)">${t.bst}</b> after evolving</div>${rush ? `<div style="margin-top:6px">${rush}</div>` : ""}</div>
       <button class="btn btn-accent btn-sm" type="button" data-evolve="${e.to}" ${okL && okC ? "" : "disabled"}>Evolve</button></div>`;
   }).join("");
   const canRelease = !onTeam && Object.keys(C.box).length > 1;
@@ -1412,7 +1539,8 @@ function renderSheet() {
     <div class="opts">
       <div class="opt"><div><div class="what">Power up</div><div class="why">+1 level for ${cost} ${fam} candy</div></div>
         <button class="btn btn-plain btn-sm" type="button" id="power" ${candy >= cost && b.lvl < 100 ? "" : "disabled"}>+1 Lv</button></div>
-      <div class="opt"><div><div class="what">Rare Candy</div><div class="why">+1 level for any Pokémon</div></div>
+      <div class="opt"><div><div class="what"><span class="rc" style="transform:scale(.8);margin:-4px -4px"></span> Rare Candy <span class="muted" style="font-weight:500">(have ${C.rare})</span></div><div class="why">+1 level. Next level:</div>
+        ${b.lvl < 100 ? `<div class="statdiff">${statDiff(n, b.lvl, b.lvl + 1)}</div>` : ""}</div>
         <button class="btn btn-plain btn-sm" type="button" id="rare" ${C.rare > 0 && b.lvl < 100 ? "" : "disabled"}>Use one</button></div>
       ${evo}
       <div class="opt"><div><div class="what">${onTeam ? "In your lineup" : "Not in your lineup"}</div><div class="why">${onTeam ? `Slot ${C.team.indexOf(n) + 1} of 6` : `${C.team.length}/6 slots used`}</div></div>
@@ -1465,12 +1593,17 @@ document.getElementById("view").addEventListener("click", e => {
   if (on("#keep")) return keep();
   if (on("#next")) return nextPack();
   if (on("#add-kept")) return toggleTeam(S.cards[S.kept].num);
-  if ((el = on(".card.pickable"))) { S.selected = +el.dataset.i; return render(); }
+  if ((el = on(".card.pickable"))) { S.selected = +el.dataset.i; return S.batch ? keep() : render(); }
+  if (on("#open-all")) return openAll();
+  if (on("#candy-info")) { S.candyInfo = true; return renderSheet(); }
+  if (on("#auto-rest")) { S.batch.auto = true; S.selected = bestPick(); return keep(); }
+  if (on("#stop-batch")) { S.batch.total = S.batch.done + 1; return render(); }
+  if (on("#batch-done")) return nextPack();
   if (on("#earn-sub")) { S.subOffer = true; return renderSheet(); }
   if (on("#claim-daily")) { const n = dailyAvailable(); addPacks("all", n, "Daily pack"); C.lastDaily = today(); save(); return render(); }
   if (on("#claim-week")) { addPacks("all", WEEK_PACKS, "Weekly bonus"); C.week.claimed = true; save(); return render(); }
   if ((el = on("[data-rip]"))) { if (S.battle) { clearTimers(); S.battle = null; } S.packKind = el.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
-  if ((el = on("[data-bag]"))) { S.packKind = el.dataset.bag; if (S.phase === "kept") { S.phase = "sealed"; S.cards = []; } return render(); }
+  if ((el = on("[data-bag]"))) { S.packKind = el.dataset.bag; if (S.phase === "kept" || S.phase === "batchDone") { S.phase = "sealed"; S.cards = []; S.batch = null; } return render(); }
   if (on("#chal-go")) return startChallenge();
   if (on("#share")) {
     const text = C.chal.share;
@@ -1486,6 +1619,11 @@ document.getElementById("view").addEventListener("toggle", e => { if (e.target.i
 document.getElementById("sheet").addEventListener("click", e => {
   const t = e.target, n = S.detail;
   if (t.closest("#reveal-later") || t.id === "reveal-bg") { S.reveal = null; return renderSheet(); }
+  if (t.closest("#candy-close") || t.id === "candy-bg") { S.candyInfo = false; return renderSheet(); }
+  const qr = t.closest("[data-quick-rare]");
+  if (qr) return useRare(+qr.dataset.quickRare);
+  const cd = t.closest("[data-candy-detail]");
+  if (cd) { S.candyInfo = false; S.detail = +cd.dataset.candyDetail; return renderSheet(); }
   const rip = t.closest("[data-rip]");
   if (rip) { S.reveal = null; S.packKind = rip.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
   if (t.closest("#sub-yes")) { S.subOffer = false; renderSheet(); if (SY.shopOrigin) window.parent.postMessage({ type: "pd-subscribe" }, SY.shopOrigin); toast("Subscribing…"); return; }
@@ -1495,6 +1633,8 @@ document.getElementById("sheet").addEventListener("click", e => {
   if (t.closest("#conflict-later")) { S.showConflict = false; return renderSheet(); }
   if (t.id === "sheet-bg" || t.closest("#sheet-close")) { S.detail = null; return renderSheet(); }
   if (t.closest("#power")) return powerUp(n);
+  const rt = t.closest("[data-rare-to]");
+  if (rt) { const b = C.box[n], need = +rt.dataset.rareTo - b.lvl; if (need > 0 && need <= C.rare) { C.rare -= need; b.lvl += need; b.xp = 0; save(); render(); } return; }
   if (t.closest("#rare")) return useRare(n);
   const ev = t.closest("[data-evolve]");
   if (ev && !ev.disabled) return evolve(n, +ev.dataset.evolve);
