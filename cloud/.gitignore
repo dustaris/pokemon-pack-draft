@@ -4,3 +4,5 @@ node_modules/
 secret.txt
 theme-out/
 admin-token.txt
+puzzles.sql
+puzzles-year.sql

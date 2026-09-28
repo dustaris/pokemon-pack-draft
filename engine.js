@@ -239,6 +239,20 @@ function challengeMonth(day) {
 // Ranked tries are seeded, so the Worker's scored battle and the game's replay are identical
 const challengeSeed = (day, cid, tryNo) => hashStr(`${day}|${cid}|${tryNo}`);
 
-G.ENGINE = { challengeDay, challengeWeek, challengeMonth, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, powerCost, xpNeed, TRANSFER,
+// ---------- Daily Puzzle ----------
+// Everyone gets the same 6 Pokémon; the only choice is their order. Battles are fully deterministic (no crits, a fixed
+// damage roll), so one order (occasionally two) gives the best result. The boss's order is secret until you battle.
+const PUZZLE_RNG = () => 0.5;
+const puzzleBattle = (order, bossOrder, log = true) => battle(order.map(num => ({ num, lvl: 50 })), bossOrder.map(num => ({ num, lvl: 50 })), PUZZLE_RNG, log);
+// Perfect order = 100 on try 1, 90 on try 2, 80 on try 3; otherwise % of the best possible result, minus 10 per extra try
+function puzzleScore(raw, bestRaw, tryNo) {
+  const perfect = raw >= bestRaw;
+  const pct = perfect ? 100 : Math.min(99, Math.floor(raw / bestRaw * 100));
+  return { perfect, pct, score: Math.max(0, pct - 10 * tryNo) };
+}
+const puzzleStars = (win, perfect, score) => perfect ? 3 : score >= 90 ? 2 : win ? 1 : 0;
+const permutations = a => a.length < 2 ? [a.slice()] : a.flatMap((x, i) => permutations([...a.slice(0, i), ...a.slice(i + 1)]).map(p => [x, ...p]));
+
+G.ENGINE = { PUZZLE_RNG, puzzleBattle, puzzleScore, puzzleStars, permutations, challengeDay, challengeWeek, challengeMonth, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, powerCost, xpNeed, TRANSFER,
   REGIONS, TRAINERS, trainerTeam, battle, winChance, makeBattler, mulberry32, hashStr, dailyChallenge, dayNumber, challengeScore };
 })(typeof window !== "undefined" ? window : globalThis);

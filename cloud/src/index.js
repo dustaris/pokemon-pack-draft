@@ -48,7 +48,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const path = new URL(req.url).pathname;
     if (req.method === "POST" && path.startsWith("/admin/")) return admin(req, env, path);
-    if (req.method !== "POST" || !["/load", "/save", "/challenge", "/leaderboard", "/name", "/rewards", "/eligibility"].includes(path)) return json({ error: "not_found" }, 404);
+    if (req.method !== "POST" || !["/load", "/save", "/challenge", "/leaderboard", "/name", "/rewards", "/eligibility", "/puzzle"].includes(path)) return json({ error: "not_found" }, 404);
 
     const text = await req.text();
     if (text.length > MAX_BYTES) return json({ error: "too_large" }, 413);
@@ -56,6 +56,7 @@ export default {
     try { body = JSON.parse(text); } catch { return json({ error: "bad_json" }, 400); }
     const cid = await verify(body.token, env.PD_SECRET);
     if (path === "/leaderboard") return leaderboard(env, cid, json); // guests may look; cid is null for them
+    if (path === "/puzzle") return puzzle(env, cid, body, json);      // today's puzzle (boss order hidden) or a past day's in full
     if (!cid) return json({ error: "unauthorized" }, 401);
     await env.DB.prepare("INSERT OR IGNORE INTO players (cid, first_seen) VALUES (?, ?)").bind(cid, now()).run();
     if (path === "/challenge") return rankedTry(env, cid, body, json);
@@ -91,31 +92,49 @@ export default {
   },
 };
 
-// Runs a ranked Daily Challenge try on the server: the lineup must follow today's rule and be in the player's
-// cloud-saved Pokédex, tries are capped here, and the battle is seeded so the game can replay it exactly.
+// ---------- Daily Puzzle ----------
+const puzzleRow = (env, day) => env.DB.prepare("SELECT * FROM puzzles WHERE day = ?").bind(day).first();
+function publicPuzzle(p, reveal) {
+  const out = { day: p.day, n: p.n, label: p.label, boss: { name: p.boss_name, title: p.boss_title, region: p.boss_region },
+    roster: JSON.parse(p.roster), bossSet: JSON.parse(p.boss_set) };
+  if (reveal) Object.assign(out, { bossOrder: JSON.parse(p.boss_order), bestRaw: p.best_raw, bestCount: p.best_count });
+  return out;
+}
+// Today's puzzle for everyone (without the boss order). Signed-in players also get their tries so far, and once they
+// have battled, the boss order (their battle already showed it). Past days come back in full for practice.
+async function puzzle(env, cid, body, json) {
+  const today = E.challengeDay();
+  const day = typeof body.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.day) && body.day < today ? body.day : today;
+  const p = await puzzleRow(env, day);
+  if (!p) return json({ error: "no_puzzle", day }, 404);
+  if (day < today) return json({ ...publicPuzzle(p, true), past: true });
+  const tries = cid ? (await env.DB.prepare("SELECT try, lineup, raw, score FROM attempts WHERE day = ? AND cid = ? ORDER BY try").bind(day, cid).all()).results : [];
+  return json({ ...publicPuzzle(p, tries.length > 0), past: false,
+    tries: tries.map(t => ({ try: t.try, lineup: JSON.parse(t.lineup), raw: t.raw, score: t.score })) });
+}
+
+// A ranked try: must be an ordering of today's 6; scored against the secret boss order; 3 per day
 async function rankedTry(env, cid, body, json) {
-  const day = E.challengeDay(), ch = E.dailyChallenge(day);
-  const picks = Array.isArray(body.picks) ? body.picks : [];
-  if (picks.length > 6 || new Set(picks).size !== picks.length || !picks.every(n => Number.isInteger(n) && n >= 1 && n <= 1025 && ch.rule.ok(E.byNum(n)))) return json({ error: "bad_lineup" }, 400);
-  if (picks.length) {
-    const saved = await env.DB.prepare("SELECT data FROM saves WHERE cid = ?").bind(cid).first();
-    const dex = saved ? JSON.parse(saved.data).dex || {} : {};
-    if (!picks.every(n => dex[n])) return json({ error: "not_owned" }, 400);
-  }
-  const row = await env.DB.prepare("SELECT name, tries, best, stars, at FROM scores WHERE day = ? AND cid = ?").bind(day, cid).first();
+  const day = E.challengeDay(), p = await puzzleRow(env, day);
+  if (!p) return json({ error: "no_puzzle", day }, 404);
+  const roster = JSON.parse(p.roster), order = Array.isArray(body.order) ? body.order : [];
+  if (order.length !== 6 || new Set(order).size !== 6 || !order.every(n => roster.includes(n))) return json({ error: "bad_order" }, 400);
+  const row = await env.DB.prepare("SELECT name, tries, best FROM scores WHERE day = ? AND cid = ?").bind(day, cid).first();
   const tryNo = row ? row.tries : 0;
   if (tryNo >= CHAL_TRIES) return json({ error: "no_tries", day, tries: tryNo, best: row.best }, 409);
-  const seed = await secretSeed(env, `challenge|${day}|${cid}|${tryNo}`); // unpredictable until played
-  const res = E.battle(E.challengeSide(ch, picks), ch.team, E.mulberry32(seed), false);
-  const score = E.challengeScore(res), stars = E.challengeTier(res.win, res.kos, score);
+  const bossOrder = JSON.parse(p.boss_order);
+  const res = E.puzzleBattle(order, bossOrder, false), raw = E.challengeScore(res);
+  const { perfect, pct, score } = E.puzzleScore(raw, p.best_raw, tryNo);
+  const stars = E.puzzleStars(res.win, perfect, score);
   const name = cleanName(body.name) || (row && row.name) || `Trainer ${cid.slice(-4)}`;
   const at = now(), better = !row || score > row.best;
+  await env.DB.prepare("INSERT INTO attempts (day, cid, try, lineup, raw, score, at) VALUES (?, ?, ?, ?, ?, ?, ?)").bind(day, cid, tryNo, JSON.stringify(order), raw, score, at).run();
   await env.DB.prepare(`INSERT INTO scores (day, cid, name, tries, best, stars, at) VALUES (?, ?, ?, 1, ?, ?, ?)
     ON CONFLICT(day, cid) DO UPDATE SET name = excluded.name, tries = tries + 1,
       best = CASE WHEN excluded.best > best THEN excluded.best ELSE best END,
-      stars = CASE WHEN excluded.best > best THEN excluded.stars ELSE stars END,
+      stars = CASE WHEN excluded.best > best OR (excluded.best = best AND excluded.stars > stars) THEN excluded.stars ELSE stars END,
       at = CASE WHEN excluded.best > best THEN excluded.at ELSE at END`).bind(day, cid, name, score, stars, at).run();
-  return json({ day, try: tryNo, seed, score, win: res.win, kos: res.kos, stars, tries: tryNo + 1, best: better ? score : row.best, name });
+  return json({ day, try: tryNo, raw, pct, perfect, score, stars, win: res.win, kos: res.kos, bossOrder, tries: tryNo + 1, best: better ? score : row.best, name });
 }
 
 async function leaderboard(env, cid, json) {
