@@ -346,6 +346,7 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .prizecard .pz-top { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .12em; }
 .prizecard .pz-val { font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1; }
 .prizecard .pz-note { margin: 0; font-size: 13px; max-width: 34ch; }
+.prizecard .pz-saved { font-size: 12px; opacity: .8; }
 .prizecard .code .mono { background: rgba(255,255,255,.6); color: #2A1D00; }
 .prizecard .code small { color: #3A2A00; }
 .prize-line { margin: 0; font-size: 13px; color: var(--muted); text-align: center; max-width: 60ch; }
@@ -955,8 +956,8 @@ function openPack(fast) {
   C.bag.splice(C.bag.findIndex(p => p.k === kind), 1);
   C.bag.forEach(p => { if (p.k === kind) p.fresh = false; });
   C.pending = { kind, region: S.region, cards: S.cards }; save(); // a refresh resumes this pack instead of re-rolling it
-  S.prize = null;
-  if (S.testPrizes && S.testPrizes.length) { const pz = S.testPrizes.shift(), batch = S.batch; setTimeout(() => showPrize(pz, batch), 300); }
+  S.prize = null; S.packSeq = (S.packSeq || 0) + 1;
+  if (S.testPrizes && S.testPrizes.length) { const pz = S.testPrizes.shift(), batch = S.batch, seq = S.packSeq; setTimeout(() => showPrize(pz, batch, seq), 300); }
   else if (prizeEligible()) rollPrize();
   S.phase = "tearing"; S.revealed = 0; S.selected = null; S.kept = null;
   const packEl = document.getElementById("pack");
@@ -976,19 +977,22 @@ function openPack(fast) {
 const prizeEligible = () => !!(SY.auth && S.rewards && S.rewards.eligible && !S.rewards.banned && S.rewards.chances > 0);
 async function rollPrize() {
   S.rewards.chances--; // optimistic; the server's count comes back with the roll
-  const batch = S.batch;
+  const batch = S.batch, seq = S.packSeq;
   try {
     const { status, data } = await cloud("roll", {});
     if (status !== 200) return;
     if (S.rewards) S.rewards.chances = data.chances;
     if (!data.prize) return;
     S.rewardsAt = 0; // refresh "Your prizes"
-    showPrize(data.prize, batch);
+    showPrize(data.prize, batch, seq);
   } catch {}
 }
-function showPrize(pz, batch) {
-  if (batch) (batch.prizes = batch.prizes || []).push(pz); else S.prize = pz;
-  S.banner = { glow: "#F2B531", text: pz.test ? "Test prize" : "Store prize!", sub: pz.label };
+// The golden ticket shows under the cards of the pack it came from (also during Open all), and again in the Open all summary
+function showPrize(pz, batch, seq) {
+  pz.found = new Date().toISOString();
+  if (pz.test) (S.testWon = S.testWon || []).unshift(pz);
+  if (batch) (batch.prizes = batch.prizes || []).push(pz);
+  if (seq === S.packSeq) { S.prize = pz; S.banner = { glow: "#F2B531", text: pz.test ? "Test prize" : "Store prize!", sub: pz.label }; }
   toast(pz.test ? `Test prize: ${pz.label}. Nothing real was issued.` : `You found a WD Card Shop prize: ${pz.label}!`);
   render();
 }
@@ -1007,7 +1011,8 @@ function prizeCardHTML(pz) {
     : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. It's applied automatically at checkout${pz.expires ? ` and expires ${new Date(pz.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}.</p>
         <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>`
     : codeHTML(pz);
-  return `<div class="prizecard"><div class="pz-top">${pz.test ? "TEST PRIZE · NOT REAL" : "WD CARD SHOP PRIZE"}</div><div class="pz-val">${pz.label}</div>${how}</div>`;
+  return `<div class="prizecard"><div class="pz-top">${pz.test ? "TEST PRIZE · NOT REAL" : "WD CARD SHOP PRIZE"}</div><div class="pz-val">${pz.label}</div>${how}
+    <p class="pz-note pz-saved">${pz.test ? "Test prizes are listed under Your prizes until you refresh." : "Saved to your account under Your prizes on the Today tab."}</p></div>`;
 }
 
 // Open all: rip a whole stack back to back, still keeping one card per pack
@@ -1249,7 +1254,7 @@ function renderRewards() {
   // A secret reward only shows up once it's earned
   const secret = r.prizes.filter(p => p.kind === "shiny").map(p => `<div class="rw secret"><span class="pct">${p.pct}%</span><span><b>Secret reward unlocked!</b><small>${p.label}</small></span>${state(p)}</div>`).join("");
   const won = r.prizes.filter(p => p.kind === "monthly" || p.kind === "featured").map(p => `<div class="rw"><span class="pct">${p.pct}%</span><span><b>${p.label}</b></span>${state(p)}</div>`).join("");
-  const packWins = r.prizes.filter(p => p.kind === "pack").map(p => `<div class="rw"><span class="pct">${p.amount > 0 ? "$" + Math.round(p.amount) : p.pct + "%"}</span><span><b>${p.label}</b><small>Found ${new Date(p.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></span>${p.amount > 0 && p.status === "issued" ? `<span class="code"><span class="pill">In your store credit</span><a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a></span>` : state(p)}</div>`).join("");
+  const packWins = (S.testWon || []).map(p => ({ ...p, kind: "pack", created: p.found })).concat(r.prizes.filter(p => p.kind === "pack")).map(p => `<div class="rw"><span class="pct">${p.amount > 0 ? "$" + Math.round(p.amount) : p.pct + "%"}</span><span><b>${p.test ? "TEST · " : ""}${p.label}</b><small>Found ${new Date(p.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></span>${p.amount > 0 && p.status === "issued" ? `<span class="code"><span class="pill">In your store credit</span><a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a></span>` : state(p)}</div>`).join("");
   const join = r.eligible ? "" : `<form class="join" id="join-form">
       <b>Join WD Card Shop rewards</b>
       <label><input type="checkbox" id="j-18"> I'm 18 or older</label>
@@ -1379,7 +1384,7 @@ function renderPacks() {
     <div class="hd"><h2>Your bag</h2><span>${groups.length ? `${plural(bagCount(), "pack", "packs")} · tap a stack to pick your next rip` : "Empty"}</span></div>
     ${groups.length ? `<div class="bagrow" role="group" aria-label="Pack stacks">${groups.map(g => `<button class="stackb" type="button" data-bag="${g.kind}" aria-pressed="${g.kind === kind}" ${busy ? "disabled" : ""} aria-label="${gainText(g).slice(1)}">
         ${miniPack(g.kind, g.n, g.fresh > 0)}<span class="cap">${packLabel(g.kind)}<small>${g.kind === "all" ? "Any unlocked region" : g.kind === "starter" ? "No Legendaries" : g.kind === "champ" ? "Rare or better hit" : "Region pack"}</small></span></button>`).join("")}</div>`
-      : `<p class="bag-empty">Out of packs. Claim your ${DAILY_PACKS} free packs every day, keep your visit streak going, and check in 5 days a week for bonus packs.</p>`}
+      : `<p class="bag-empty">Out of packs. Come back tomorrow for ${DAILY_PACKS} more free packs${C.subBonus ? "" : `, or subscribe at the top for +${SUB_PACKS} now`}.</p>`}
   </section>`;
   let stage;
   if (S.phase === "sealed" || S.phase === "tearing") {
