@@ -1,5 +1,5 @@
 {%- comment -%}
-  Pokédex Pack Draft game page. Assign a page (handle "pokedex") to the "pokedex" template.
+  WD Pack Hunt game page (formerly Pokédex Pack Draft). Assign a page (handle "pokedex") to the "pokedex" template.
   Signed-in customers get a short-lived token: "<customer id>.<unix time>.<hmac>", signed with the same secret as the
   pokedex-saves Cloudflare Worker's PD_SECRET. __PD_SECRET__ is filled in by build/make_theme.sh (never commit the real value).
 {%- endcomment -%}
@@ -22,7 +22,7 @@
   </div>
 {%- endif -%}
 <div class="pokedex-game" style="max-width:1200px;margin:0 auto;padding:0 8px">
-  <iframe id="pokedex-frame" src="https://dustaris.github.io/pokemon-pack-draft/?v={{ 'now' | date: '%Y%m%d%H%M' }}" title="Pokédex Pack Draft"
+  <iframe id="pokedex-frame" src="https://dustaris.github.io/pokemon-pack-draft/?v={{ 'now' | date: '%Y%m%d%H%M' }}" title="WD Pack Hunt"
     style="display:block;width:100%;height:calc(100vh - 120px);min-height:640px;border:0;border-radius:12px"
     allow="clipboard-write"></iframe>
 </div>

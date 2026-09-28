@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Pokédex Pack Draft</title>
+<title>WD Pack Hunt</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
@@ -675,7 +675,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
   <header class="top">
     <div class="brand">
       <a id="home-link" class="home-link" href="https://wdcardshop.com/" target="_top" hidden>← Back to WD Card Shop</a>
-      <h1>Pokédex <em>Pack</em> Draft</h1>
+      <h1>WD <em>Pack</em> Hunt</h1>
       <p>Rip free packs every day and keep one card from each. Signed-in members can find WD Card Shop discount codes and store credit inside packs.</p>
       <p class="beta"><span class="beta-tag">Beta</span> More is on the way. Everything you pull now stays in your Pokédex and collection and carries over to upcoming features like collection showcases and challenges.</p>
     </div>
@@ -1541,7 +1541,7 @@ function renderPacks() {
           <span class="foil"></span><span class="ball"></span>
           <span class="top">5 POKÉMON · KEEP 1</span>
           ${img(k.premium || kind === "starter" ? k.mascot : pool.mascot)}
-          <span class="lbl"><small>${k.premium ? "Champion Pack" : kind === "starter" ? `${pool.name} · No Legendaries` : isWild(kind) ? `${packLabel(kind)} Pack` : "Pack Draft"}</small><b>${k.premium ? "Champion" : kind === "starter" ? "Starter Pack" : pool.name}</b><span>${pool.gen ? `Gen ${pool.gen} · #${pad(pool.lo)}–${pad(pool.hi)}` : "#0001–1025"}</span></span>
+          <span class="lbl"><small>${k.premium ? "Champion Pack" : kind === "starter" ? `${pool.name} · No Legendaries` : isWild(kind) ? `${packLabel(kind)} Pack` : "Region Pack"}</small><b>${k.premium ? "Champion" : kind === "starter" ? "Starter Pack" : pool.name}</b><span>${pool.gen ? `Gen ${pool.gen} · #${pad(pool.lo)}–${pad(pool.hi)}` : "#0001–1025"}</span></span>
         </button>
         <p class="pack-from">From <b>${from}</b></p>
         ${groups.find(g => g.kind === kind).n > 1 ? `<button class="btn btn-plain" type="button" id="open-all">Open all ×${groups.find(g => g.kind === kind).n} ${packLabel(kind)}</button>` : ""}
