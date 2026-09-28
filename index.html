@@ -990,29 +990,30 @@ async function rollPrize() {
 // The golden ticket shows under the cards of the pack it came from (also during Open all), and again in the Open all summary
 function showPrize(pz, batch, seq) {
   pz.found = new Date().toISOString();
-  if (pz.test) (S.testWon = S.testWon || []).unshift(pz);
+  if (pz.test) { (S.testWon = S.testWon || []).unshift(pz); try { localStorage.setItem("pd-test-won", JSON.stringify(S.testWon)); } catch {} }
   if (batch) (batch.prizes = batch.prizes || []).push(pz);
   if (seq === S.packSeq) { S.prize = pz; S.banner = { glow: "#F2B531", text: pz.test ? "Test prize" : "Store prize!", sub: pz.label }; }
   toast(pz.test ? `Test prize: ${pz.label}. Nothing real was issued.` : `You found a WD Card Shop prize: ${pz.label}!`);
   render();
 }
 // Testing only (remove with the Reset button before launch): the next packs show sample prizes; nothing is issued
+try { S.testWon = JSON.parse(localStorage.getItem("pd-test-won") || "[]"); } catch { S.testWon = []; }
 function testPrizes() {
   const d = n => new Date(Date.now() + n * 864e5).toISOString();
   return [
     { test: true, type: "code", label: "5% off your order", pct: 5, amount: 0, status: "issued", code: "TEST-NOT-REAL", expires: d(30) },
     { test: true, type: "credit", label: "$5 store credit", pct: 0, amount: 5, status: "issued", expires: d(90) },
     { test: true, type: "credit", label: "$20 store credit", pct: 0, amount: 20, status: "issued", expires: d(90) },
-    { test: true, type: "credit", label: "$20 store credit", pct: 0, amount: 20, status: "review" },
+    { test: true, type: "credit", label: "$20 store credit", pct: 0, amount: 20, status: "review", example: "What a brand-new or flagged account sees: store credit waits for your approval" },
   ];
 }
 function prizeCardHTML(pz) {
   const how = pz.status !== "issued" ? `<p class="pz-note">We're verifying this prize. It will appear under <b>Your prizes</b> on the Today tab.</p>`
-    : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. It's applied automatically at checkout${pz.expires ? ` and expires ${new Date(pz.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}.</p>
+    : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. To use it, sign in at checkout and choose Apply store credit${pz.expires ? `. Expires ${new Date(pz.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}.</p>
         <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>`
     : codeHTML(pz);
   return `<div class="prizecard"><div class="pz-top">${pz.test ? "TEST PRIZE · NOT REAL" : "WD CARD SHOP PRIZE"}</div><div class="pz-val">${pz.label}</div>${how}
-    <p class="pz-note pz-saved">${pz.test ? "Test prizes are listed under Your prizes until you refresh." : "Saved to your account under Your prizes on the Today tab."}</p></div>`;
+    <p class="pz-note pz-saved">${pz.test ? "Test prizes are listed under Your prizes on the Today tab (this browser only)." : "Saved to your account under Your prizes on the Today tab."}</p></div>`;
 }
 
 // Open all: rip a whole stack back to back, still keeping one card per pack
@@ -1254,7 +1255,7 @@ function renderRewards() {
   // A secret reward only shows up once it's earned
   const secret = r.prizes.filter(p => p.kind === "shiny").map(p => `<div class="rw secret"><span class="pct">${p.pct}%</span><span><b>Secret reward unlocked!</b><small>${p.label}</small></span>${state(p)}</div>`).join("");
   const won = r.prizes.filter(p => p.kind === "monthly" || p.kind === "featured").map(p => `<div class="rw"><span class="pct">${p.pct}%</span><span><b>${p.label}</b></span>${state(p)}</div>`).join("");
-  const packWins = (S.testWon || []).map(p => ({ ...p, kind: "pack", created: p.found })).concat(r.prizes.filter(p => p.kind === "pack")).map(p => `<div class="rw"><span class="pct">${p.amount > 0 ? "$" + Math.round(p.amount) : p.pct + "%"}</span><span><b>${p.test ? "TEST · " : ""}${p.label}</b><small>Found ${new Date(p.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></span>${p.amount > 0 && p.status === "issued" ? `<span class="code"><span class="pill">In your store credit</span><a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a></span>` : state(p)}</div>`).join("");
+  const packWins = (S.testWon || []).map(p => ({ ...p, kind: "pack", created: p.found })).concat(r.prizes.filter(p => p.kind === "pack")).map(p => `<div class="rw"><span class="pct">${p.amount > 0 ? "$" + Math.round(p.amount) : p.pct + "%"}</span><span><b>${p.test ? "TEST · " : ""}${p.label}</b><small>${p.example ? p.example + ". " : ""}Found ${new Date(p.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></span>${p.amount > 0 && p.status === "issued" ? `<span class="code"><span class="pill">In your store credit</span><a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a></span>` : state(p)}</div>`).join("");
   const join = r.eligible ? "" : `<form class="join" id="join-form">
       <b>Join WD Card Shop rewards</b>
       <label><input type="checkbox" id="j-18"> I'm 18 or older</label>
@@ -1749,6 +1750,7 @@ document.getElementById("reset").addEventListener("click", e => {
   clearTimeout(resetTimer); resetArmed = false; b.classList.remove("armed"); b.textContent = "Reset save";
   clearTimers();
   C = blank(); visit();
+  S.testWon = []; S.testPrizes = []; try { localStorage.removeItem("pd-test-won"); } catch {}
   S.showConflict = true;
   Object.assign(S, { tab: "today", phase: "sealed", cards: [], battle: null, detail: null });
   render(); toast("Save reset.");
