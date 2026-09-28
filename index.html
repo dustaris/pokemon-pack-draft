@@ -303,6 +303,35 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .gradeladder small { font-size: 11px; color: var(--muted); }
 .side .grade { margin-left: 6px; }
 
+/* Collection */
+.showcase { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) { .showcase { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.scard { --rc: var(--r0); position: relative; display: grid; justify-items: center; align-content: start; gap: 3px; text-align: center; min-width: 0; padding: 6px 4px 8px; border-radius: 12px; border: 2px solid color-mix(in srgb, var(--rc) 60%, var(--line)); background: linear-gradient(color-mix(in srgb, var(--rc) 18%, var(--surface)), var(--surface) 60%); }
+.scard img { width: 72px; height: 72px; margin: -4px 0 -6px; }
+.scard .nm { font-size: 12px; font-weight: 700; line-height: 1.15; overflow-wrap: anywhere; }
+.scard.gr4 { box-shadow: 0 0 0 2px var(--r3), 0 8px 22px -10px var(--r3); }
+.scard.shiny::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(115deg, transparent 20%, rgba(255,120,200,.22) 38%, rgba(120,220,255,.22) 52%, transparent 70%); background-size: 250% 250%; animation: holo 3s linear infinite; }
+.scard.empty { border-style: dashed; background: var(--surface-2); color: var(--muted); font-size: 12px; min-height: 130px; place-content: center; }
+.scard.empty small { display: block; font-size: 11px; margin-top: 4px; }
+.scard .ctl { display: flex; gap: 2px; margin-top: 2px; }
+.scard .ctl button { border: 0; background: var(--surface-2); color: var(--muted); border-radius: 6px; width: 24px; height: 24px; font-size: 12px; }
+.scard .ctl button:disabled { opacity: .35; }
+.galleryl { display: grid; gap: 12px; }
+.gal { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; display: grid; gap: 8px; }
+.gal.me { border-color: var(--accent); }
+.galcards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 640px) { .galcards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.galcards .scard img { width: 56px; height: 56px; }
+.featured { border-radius: 16px; padding: 10px; background: linear-gradient(135deg, color-mix(in srgb, var(--r3) 22%, var(--surface)), var(--surface)); display: grid; gap: 6px; }
+.sets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin-bottom: 14px; }
+.setc { --c: var(--accent); text-align: left; border: 1px solid var(--line); border-left: 4px solid var(--c); background: var(--surface); border-radius: 10px; padding: 6px 10px; display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 13px; }
+.setc .xpbar { grid-column: 1 / -1; }
+.setc .xpbar i { background: var(--c); }
+.setc.done { background: color-mix(in srgb, var(--good) 12%, var(--surface)); }
+.week.streak span i { width: 22px; height: 22px; }
+.rw .xpbar { margin-top: 4px; max-width: 220px; }
+@media (prefers-reduced-motion: reduce) { .scard.shiny::after { animation: none; } }
+
 /* Rewards */
 .today .rewards { grid-column: 1 / -1; }
 .rw { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
@@ -549,7 +578,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
     <div class="brand">
       <a id="home-link" class="home-link" href="https://wdcardshop.com/" target="_top" hidden>← Back to WD Card Shop</a>
       <h1>Pokédex <em>Pack</em> Draft</h1>
-      <p>Rip packs, keep one card from each, and raise a team to beat every Gym, Elite Four and Champion from Kanto to Paldea.</p>
+      <p>Rip free packs every day, keep one card from each, and build a collection worth showing off. Complete sets and top the monthly board for WD Card Shop rewards.</p>
     </div>
     <div class="meter" aria-live="polite">
       <div class="nums"><span>Pokédex</span><span><b id="m-caught">0</b> / 1,025</span></div>
@@ -563,8 +592,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
   <nav class="tabs" role="tablist" aria-label="Sections" id="tabs">
     <button id="tab-today" role="tab" type="button" data-tab="today">Today <span class="ct" id="ct-today"></span></button>
     <button id="tab-packs" role="tab" type="button" data-tab="packs">Packs <span class="ct" id="ct-packs"></span></button>
-    <button id="tab-journey" role="tab" type="button" data-tab="journey">Journey</button>
-    <button id="tab-team" role="tab" type="button" data-tab="team">Team <span class="ct" id="ct-team"></span></button>
+    <button id="tab-collection" role="tab" type="button" data-tab="collection">Collection <span class="ct" id="ct-collection"></span></button>
     <button id="tab-dex" role="tab" type="button" data-tab="dex">Pokédex</button>
   </nav>
 
@@ -585,8 +613,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <script>
 (() => {
 const E = window.ENGINE;
-const { TYPE_COLORS, TYPES, eff, mult, DEX, byNum, TRANSFER, GRADES, GRADE_BOOST, GRADE_COST, MAX_GRADE, addCopy, gradeFromCopies, REGIONS, TRAINERS,
-        trainerTeam, battle, winChance, dailyChallenge, challengeScore } = E;
+const { TYPE_COLORS, TYPES, eff, mult, DEX, byNum, TRANSFER, GRADES, GRADE_BOOST, GRADE_COST, MAX_GRADE, addCopy, gradeFromCopies, REGIONS } = E;
 
 // ---------- Static data ----------
 const PACKS = [{ id: "all", name: "All Regions", lo: 1, hi: 1025, color: "#1F55D0", mascot: 493 }, ...REGIONS];
@@ -603,20 +630,8 @@ const RARITY = ["Common", "Uncommon", "Rare", "Legendary"];
 const SHINY_ODDS = 1 / 100;
 const HIT = { leg: 1 / 20, rare: 1 / 4 }; // hit slot: Legendary 1/20, Rare 1/4, otherwise Uncommon
 const STARTERS = [1, 4, 7];
-const START_PACKS = 6, STARTER_LVL = 8, DAILY_BANK = 3, WEEK_GOAL = 5, WEEK_PACKS = 3, CHAL_TRIES = 3;
-// Daily Challenge star ladder: your best try each day earns up to 3 stars; each star pays once per day.
-// Stars also fill a meter that never resets: every STAR_CHEST stars earns a gold Champion Pack.
-const STAR_CHEST = 10;
-const CHAL_TIERS = [
-  { stars: 1, need: "Win the battle", reward: { packs: 1 } },
-  { stars: 2, need: "Score 90+", reward: { packs: 2 } },
-  { stars: 3, need: "Find the perfect order", reward: { rare: 3 } },
-];
-const tierReward = r => [r.packs ? `+${plural(r.packs, "Wild pack", "Wild packs")}` : "", r.rare ? `+${r.rare} Rare Candy` : ""].filter(Boolean).join(" · ");
-const starsText = n => "★".repeat(n) + "☆".repeat(3 - n);
+const START_PACKS = 6, DAILY_PACKS = 3, DAILY_BANK_DAYS = 2, WEEK_GOAL = 5, WEEK_PACKS = 3, STREAK_GOAL = 7;
 const SITE = "https://wdcardshop.com/pages/pokedex-pack-drafts";
-// Results saved before the store page became home still name the old github.io address
-const shareText = () => (C.chal.share || "").replace(/https:\/\/dustaris\.github\.io\/pokemon-pack-draft\/?/g, SITE);
 const SHINY_CSS = "filter:hue-rotate(150deg) saturate(1.3)";
 
 const sprite = n => "data:image/png;base64," + window.SPRITES[n - 1];
@@ -714,7 +729,7 @@ async function push() {
   const seq = editSeq;
   try {
     const { status, data } = await cloud("save", { baseRev: SY.meta.rev, data: C });
-    if (status === 200) { SY.meta.rev = data.rev; SY.meta.dirty = editSeq !== seq; SY.state = "synced"; }
+    if (status === 200) { SY.meta.rev = data.rev; SY.meta.dirty = editSeq !== seq; SY.state = "synced"; if (Date.now() - (S.boardAt || 0) > 10000) S.board = null; }
     else if (status === 409) { SY.conflict = data; SY.state = "conflict"; }
     else if (status === 401) SY.state = "expired";
     else SY.state = "error";
@@ -738,7 +753,8 @@ async function connect(auth) {
   } catch { SY.state = "error"; }
   saveMeta(); renderAcct(); renderSheet();
   subBonus();
-  S.board = null; S.puz = null; if (S.tab === "today" && !S.battle) render(); // reload the leaderboard and puzzle with your tries
+  S.board = null; S.gallery = null; if (showcase().length) publishShowcase(); if (!S.battle) render(); // reload boards with your rank
+  if (C.trainer) cloud("name", { name: C.trainer }).catch(() => {}); // carry your collector name to the boards
 }
 // Granted once per save, after the account's save has loaded so the packs land in the right save
 function subBonus() {
@@ -806,42 +822,34 @@ function visit() {
   const t = today(), wk = weekStart(t);
   if (C.week.key !== wk) C.week = { key: wk, days: [], claimed: false };
   if (!C.week.days.includes(t)) C.week.days.push(t);
-  const cd = E.challengeDay(); // the Daily Challenge runs on Pacific time for everyone
-  if (C.chal.date !== cd) { C.chal = { date: cd, tries: 0, best: null, won: false, share: null }; S.puz = null; S.puzOrder = null; S.board = null; }
+  // Visit streak: consecutive days; every 7th day in a row earns a gold Champion Pack
+  const st = C.streak || (C.streak = { last: null, count: 0 });
+  if (st.last !== t) {
+    st.count = st.last === addDays(t, -1) ? st.count + 1 : 1;
+    st.last = t;
+    if (C.starter && st.count % STREAK_GOAL === 0) addPacks("champ", 1, `${st.count}-day visit streak`);
+  }
   save();
 }
-const dailyAvailable = () => Math.min(DAILY_BANK, Math.max(0, daysBetween(C.lastDaily, today())));
+// Free packs: DAILY_PACKS a day; missed days bank up to DAILY_BANK_DAYS days' worth
+const dailyAvailable = () => Math.min(DAILY_BANK_DAYS, Math.max(0, daysBetween(C.lastDaily, today()))) * DAILY_PACKS;
 const weekReady = () => C.week.days.length >= WEEK_GOAL && !C.week.claimed;
-let CH = null; // today's challenge, rebuilt when the date rolls over
-const challenge = () => { const t = E.challengeDay(); if (!CH || CH.date !== t) CH = dailyChallenge(t); return CH; };
-
 // ---------- Collection helpers ----------
 const inBox = num => !!C.box[num];
-const teamSide = () => C.team.filter(inBox).map(n => ({ num: n, grade: C.box[n].grade || 0, shiny: C.box[n].shiny }));
 const gradeName = g => GRADES[g || 0];
 const gradeChip = g => `<span class="grade g${g || 0}">${gradeName(g)}</span>`;
 // Copies toward the next grade, e.g. "1/2 to ★★"
 const nextGradeText = b => b.grade >= MAX_GRADE ? "Max grade" : `${b.dupes || 0}/${GRADE_COST[b.grade]} to ${gradeName(b.grade + 1)}`;
 const gradeBar = b => `<span class="xpbar"><i style="width:${b.grade >= MAX_GRADE ? 100 : Math.round((b.dupes || 0) / GRADE_COST[b.grade] * 100)}%"></i></span>`;
 const power = n => byNum(n).bst * GRADE_BOOST[C.box[n] ? C.box[n].grade || 0 : 0];
-const regionOpen = ri => ri * 13 <= C.beaten;
-const badges = () => Math.floor(C.beaten / 13);
+const regionOpen = () => true; // every region's packs are open from the start
+const score = () => E.collectionScore(C);
+const shinies = () => E.shinyCount(C);
 function register(num, shiny, bump = true) {
   const d = C.dex[num];
   C.dex[num] = { n: (d ? d.n : 0) + (bump ? 1 : 0) || 1, shiny: !!((d && d.shiny) || shiny) };
   return !d;
 }
-let wcMemo = { key: "", val: 0 };
-function nextWinChance() {
-  const t = TRAINERS[C.beaten];
-  if (!t) return null;
-  const side = teamSide();
-  if (!side.length) return 0;
-  const key = C.beaten + "|" + side.map(s => s.num + ":" + s.grade).join(",");
-  if (wcMemo.key !== key) wcMemo = { key, val: winChance(side, trainerTeam(t), 160) };
-  return wcMemo.val;
-}
-
 // ---------- Pack bag ----------
 const bagCount = () => C.bag.length;
 function addPacks(kind, n, src, reveal = true) {
@@ -994,7 +1002,6 @@ function keep() {
   }
   S.keptMsg = `${msg} The other four go back.`;
   C.packs++; C.pending = null;
-  if (!C.team.length) C.team.push(c.num);
   save();
   S.kept = S.selected; S.phase = "kept"; S.banner = null;
   if (S.batch) return afterBatchKeep({ num: c.num, shiny: c.shiny, isNew, ups });
@@ -1011,198 +1018,47 @@ function selectedKind() {
   return S.packKind;
 }
 
-// ---------- Card grades ----------
-// Rare Candy counts as one copy of any Pokémon
-function useRare(num) {
-  const b = C.box[num];
-  if (!b || b.grade >= MAX_GRADE || C.rare < 1) return;
-  C.rare--;
-  const ups = addCopy(b);
-  save();
-  toast(ups ? `${byNum(num).name} upgraded to ${gradeName(b.grade)}!` : `${byNum(num).name}: ${nextGradeText(b)}`);
-  render();
+// ---------- Showcase ----------
+// Up to 6 cards pinned to show off; signed-in players' showcases are published to the gallery
+const SHOW_MAX = 6;
+const showcase = () => (C.showcase || []).filter(inBox);
+function toggleShow(num) {
+  const sc = C.showcase = showcase(), i = sc.indexOf(num);
+  if (i >= 0) sc.splice(i, 1);
+  else if (sc.length >= SHOW_MAX) { toast("Your showcase holds 6 cards. Unpin one first."); return; }
+  else sc.push(num);
+  save(); publishShowcase(); render();
 }
-function transfer(num) {
-  if (C.team.includes(num) || Object.keys(C.box).length <= 1) return;
-  const got = TRANSFER[byNum(num).tier];
-  C.rare += got;
-  delete C.box[num];
-  save();
-  S.detail = null; S.confirmTransfer = false;
-  toast(`Released ${byNum(num).name}: +${got} Rare Candy. It stays in your Pokédex.`);
-  render();
+function moveShow(i, d) {
+  const sc = C.showcase = showcase(), j = i + d;
+  if (j < 0 || j >= sc.length) return;
+  [sc[i], sc[j]] = [sc[j], sc[i]];
+  save(); publishShowcase(); render();
 }
-function toggleTeam(num) {
-  const i = C.team.indexOf(num);
-  if (i >= 0) C.team.splice(i, 1);
-  else if (C.team.length >= 6) { toast("Your lineup is full. Remove one first."); return; }
-  else C.team.push(num);
-  save(); render();
-}
-function moveTeam(num, d) {
-  const i = C.team.indexOf(num), j = i + d;
-  if (i < 0 || j < 0 || j >= C.team.length) return;
-  [C.team[i], C.team[j]] = [C.team[j], C.team[i]];
-  save(); render();
+let showTimer;
+function publishShowcase() {
+  if (!SY.auth) return;
+  clearTimeout(showTimer);
+  S.showStatus = "saving";
+  showTimer = setTimeout(async () => {
+    try {
+      if (SY.meta.dirty) await push(); // the server checks showcase cards against your saved collection
+      const { status } = await cloud("showcase", { cards: showcase() });
+      S.showStatus = status === 200 ? "published" : "error"; S.gallery = null;
+    } catch { S.showStatus = "error"; }
+    render();
+  }, 900);
 }
 function chooseStarter(num) {
   C.starter = num;
   register(num, false);
   if (!C.box[num]) C.box[num] = { grade: 0, dupes: 0, shiny: false };
-  if (!C.team.includes(num)) { if (C.team.length >= 6) C.team.pop(); C.team.unshift(num); }
   save();
-  toast(`${byNum(num).name} is your partner. Open your ${START_PACKS} starter packs to build a team.`);
+  toast(`${byNum(num).name} starts your collection. Open your ${START_PACKS} starter packs!`);
   S.tab = "packs";
   render();
   subBonus();
 }
-
-// ---------- Battles ----------
-function startJourney(idx) {
-  const t = TRAINERS[idx];
-  if (!t || idx !== C.beaten) return; // beaten trainers stay beaten: no rematches
-  const side = teamSide();
-  if (!side.length) { toast("Add a Pokémon to your lineup first."); S.tab = "team"; render(); return; }
-  const opp = trainerTeam(t), res = battle(side, opp), first = true;
-  const reward = { packs: [], rare: 0, unlocked: null, done: false };
-  if (res.win) {
-    C.beaten++;
-    reward.rare = t.reward.rare;
-    if (t.kind === "champ") {
-      reward.packs.push({ kind: t.region.id, n: t.reward.packs - 1 }, { kind: "champ", n: 1 });
-      if (t.ri + 1 < REGIONS.length) reward.unlocked = REGIONS[t.ri + 1].name; else reward.done = true;
-    } else reward.packs.push({ kind: t.region.id, n: t.reward.packs });
-    reward.packs.forEach(g => addPacks(g.kind, g.n, `${t.name} · ${t.region.name} ${t.title}`, false));
-  }
-  C.rare += reward.rare;
-  save();
-  if (res.win && first && t.kind === "champ" && SY.auth) setTimeout(async () => { if (SY.meta.dirty) await push(); loadRewards(true); }, 400);
-  S.battle = { kind: "journey", idx, head: `${t.region.name} · ${t.title}`, foe: t.name, res, reward, from: S.tab };
-  playBattle();
-}
-// ---------- Daily Puzzle data ----------
-// Today's puzzle comes from the save server (the boss order stays secret until you battle). Practice uses
-// yesterday's puzzle, which comes back in full, so it can be played locally as often as you like.
-async function loadPuzzle() {
-  if (S.puzLoading) return;
-  S.puzLoading = true;
-  try {
-    const r = await fetch(`${CLOUD}/puzzle`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: SY.auth || undefined }) });
-    const d = await r.json();
-    S.puz = r.ok ? d : { error: d.error || "unavailable" };
-    if (r.ok && (!S.puzOrder || S.puzOrder.join() === "" || !S.puzOrder.every(n => d.roster.includes(n)))) S.puzOrder = d.roster.slice();
-    if (r.ok && SY.auth) S.rankedTries = d.tries.length;
-  } catch { S.puz = { error: "offline" }; }
-  S.puzLoading = false;
-  if (S.tab === "today" && !S.battle) render();
-}
-async function loadPractice() {
-  const y = new Date(Date.parse(E.challengeDay() + "T12:00:00Z") - 864e5).toISOString().slice(0, 10);
-  try {
-    const r = await fetch(`${CLOUD}/puzzle`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ day: y }) });
-    const d = await r.json();
-    if (!r.ok) { toast("Yesterday's puzzle isn't available."); return; }
-    S.prac = { ...d, tries: [] }; S.pracOrder = d.roster.slice(); S.pracOpen = true;
-  } catch { toast("Couldn't load yesterday's puzzle."); }
-  render();
-}
-const lv50 = n => E.makeBattler({ num: n, lvl: 50 });
-const ranked = () => !!SY.auth && SY.state !== "expired";
-// Ranked tries are counted by the server (practice tries as a guest don't use them up)
-const triesUsed = () => ranked() ? (S.rankedTries || 0) : C.chal.tries;
-const firstDone = () => C.chal.firstDone ?? C.chal.tries > 0;
-async function startChallenge() {
-  const P = S.puz;
-  if (!P || P.error || !ranked() || S.chalBusy || triesUsed() >= CHAL_TRIES) return;
-  const order = S.puzOrder.slice();
-  S.chalBusy = true; render();
-  let rk = null;
-  try {
-    const { status, data } = await cloud("challenge", { order, name: C.trainer || undefined });
-    if (status === 200) rk = data;
-    else if (status === 409 && data.error === "no_tries") { S.rankedTries = CHAL_TRIES; toast("You've used today's 3 tries. A new puzzle arrives at midnight Pacific."); }
-    else toast("Couldn't score that try. Please try again.");
-  } catch { toast("Couldn't reach the server. Please try again."); }
-  S.chalBusy = false;
-  if (!rk) return render();
-  const res = E.puzzleBattle(order, rk.bossOrder); // identical to the server's battle: it's deterministic
-  P.bossOrder = rk.bossOrder;
-  P.tries = [...(P.tries || []), { try: rk.try, lineup: order, raw: rk.raw, score: rk.score }];
-  S.rankedTries = rk.tries; S.board = null;
-  const reward = { packs: [], rare: 0, score: rk.score, pct: rk.pct, perfect: rk.perfect, tryNo: rk.try, ranked: true, tier: rk.stars };
-  if (!firstDone()) reward.rare = 1;
-  C.chal.firstDone = true; C.chal.tries++;
-  // Pay every star tier newly reached today (a better later try upgrades the rewards)
-  const prev = C.chal.tier || 0, tier = Math.max(prev, rk.stars);
-  let wild = 0;
-  for (let t = prev + 1; t <= tier; t++) { const r = CHAL_TIERS[t - 1].reward; wild += r.packs || 0; reward.rare += r.rare || 0; }
-  if (tier > prev) { C.chal.tier = tier; C.stars = (C.stars || 0) + tier - prev; reward.stars = tier - prev; }
-  if (wild) { reward.packs.push({ kind: "all", n: wild }); addPacks("all", wild, `Daily Puzzle #${P.n}`, false); }
-  while ((C.stars || 0) >= ((C.starChests || 0) + 1) * STAR_CHEST) {
-    C.starChests = (C.starChests || 0) + 1;
-    reward.packs.push({ kind: "champ", n: 1 }); addPacks("champ", 1, `${STAR_CHEST} Challenge stars`, false);
-  }
-  if (C.chal.best == null || rk.score > C.chal.best) C.chal.best = rk.score;
-  // One square per try: green = perfect order (scores exactly 100/90/80 on try 1/2/3), yellow = won, black = lost
-  const squares = P.tries.map(t => t.score === 100 - 10 * t.try ? "🟩" : t.raw >= 50 ? "🟨" : "⬛").join("");
-  C.chal.share = `Pokédex Pack Draft · Daily Puzzle #${P.n}\n${P.label} vs ${P.boss.name}\n${rk.perfect ? `Perfect order on try ${rk.try + 1}` : `Best ${C.chal.best}/100`} · ${starsText(C.chal.tier || 0)}\n${squares}\n${SITE}`;
-  C.rare += reward.rare;
-  save();
-  S.battle = { kind: "chal", head: `Daily Puzzle #${P.n} · ${P.label}`, foe: P.boss.name, res, reward, from: S.tab, bossOrder: rk.bossOrder };
-  playBattle();
-}
-function startPractice() {
-  const P = S.prac;
-  if (!P) return;
-  const order = S.pracOrder.slice(), res = E.puzzleBattle(order, P.bossOrder);
-  const raw = challengeScore(res), sc = E.puzzleScore(raw, P.bestRaw, Math.min(P.tries.length, 9));
-  P.tries.push({ lineup: order, raw, score: sc.score, perfect: sc.perfect });
-  S.battle = { kind: "practice", head: `Practice · Daily Puzzle #${P.n} (yesterday)`, foe: P.boss.name, res, from: S.tab, bossOrder: P.bossOrder,
-    reward: { packs: [], rare: 0, score: sc.score, pct: sc.pct, perfect: sc.perfect, tryNo: P.tries.length - 1, practice: true } };
-  playBattle();
-}
-function playBattle() {
-  clearTimers();
-  const B = S.battle;
-  B.view = { act: [-1, -1], hp: [B.res.A.map(b => b.maxhp), B.res.B.map(b => b.maxhp)], out: [[], []], log: [], hit: -1 };
-  B.step = 0; B.over = false; B.fast = !!B.fast;
-  S.detail = null;
-  window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" });
-  if (reduced) return skipBattle();
-  tick();
-}
-function applyEvent(B, e) {
-  const v = B.view, teams = [B.res.A, B.res.B];
-  const nm = (side, i) => teams[side][i].name;
-  v.hit = -1;
-  if (e.t === "send") { v.act[e.side] = e.i; v.log.push({ txt: e.side === 0 ? `Go, ${nm(0, e.i)}!` : `${B.foe} sent out ${nm(1, e.i)}.` }); }
-  else if (e.t === "hit") {
-    const tgt = 1 - e.side;
-    v.hp[tgt][v.act[tgt]] = e.hp; v.hit = tgt;
-    const who = e.side === 0 ? nm(0, v.act[0]) : `Foe ${nm(1, v.act[1])}`;
-    const note = e.mul > 1 ? " It's super effective!" : e.mul < 1 ? " It's not very effective." : "";
-    v.log.push({ txt: `${who} used ${e.move}.${e.crit ? " A critical hit!" : ""}${note}`, cls: e.mul > 1 ? "se" : e.mul < 1 ? "nve" : "" });
-  } else if (e.t === "faint") {
-    v.out[e.side].push(v.act[e.side]);
-    v.log.push({ txt: `${e.side === 0 ? "" : "Foe "}${nm(e.side, v.act[e.side])} fainted!`, cls: "ko" });
-  }
-}
-function tick() {
-  const B = S.battle;
-  if (!B || B.over) return;
-  if (B.step >= B.res.ev.length) { B.over = true; render(); return; }
-  applyEvent(B, B.res.ev[B.step++]);
-  render();
-  timers.push(setTimeout(tick, B.fast ? 160 : 620));
-}
-function skipBattle() {
-  clearTimers();
-  const B = S.battle;
-  while (B.step < B.res.ev.length) applyEvent(B, B.res.ev[B.step++]);
-  B.view.hit = -1; B.over = true;
-  render();
-}
-function leaveBattle() { clearTimers(); const from = S.battle.from; S.battle = null; S.tab = from; render(); }
 
 let toastTimer;
 function toast(msg) {
@@ -1217,19 +1073,15 @@ function renderMeter() {
   const caught = Object.keys(C.dex).length;
   document.getElementById("m-caught").textContent = caught.toLocaleString();
   document.getElementById("m-bar").style.width = (caught / 1025 * 100).toFixed(2) + "%";
-  document.getElementById("m-sub").innerHTML = `<span><b>${bagCount()}</b> packs in bag</span><span><b>${C.rare}</b> Rare Candy</span><span><b>${badges()}</b>/9 Champions</span>`;
-  const todo = dailyAvailable() + (weekReady() ? 1 : 0) + (!firstDone() ? 1 : 0);
+  document.getElementById("m-sub").innerHTML = `<span><b>${bagCount()}</b> packs in bag</span><span><b>${score().toLocaleString()}</b> collection points</span><span><b>${shinies()}</b> Shinies</span>`;
+  const todo = (dailyAvailable() ? 1 : 0) + (weekReady() ? 1 : 0);
   const ctT = document.getElementById("ct-today");
   ctT.textContent = todo ? `●${todo}` : ""; ctT.className = "ct hot";
   document.getElementById("ct-packs").textContent = bagCount();
-  document.getElementById("ct-team").textContent = `${C.team.length}/6`;
+  document.getElementById("ct-collection").textContent = Object.keys(C.box).length;
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", !S.battle && b.dataset.tab === S.tab));
 }
 const regionProgress = r => { let n = 0; for (let i = r.lo; i <= r.hi; i++) if (C.dex[i]) n++; return `${n}/${r.hi - r.lo + 1}`; };
-function trainerSprites(t, known) {
-  return `<span class="sprites">${trainerTeam(t).map(o => img(o.num, false, known ? "" : "unknown")).join("")}</span>`;
-}
-
 // ---------- Rendering: Today ----------
 function renderToday() {
   const avail = dailyAvailable();
@@ -1238,29 +1090,20 @@ function renderToday() {
     const date = addDays(ws, i);
     return `<span class="${C.week.days.includes(date) ? "on" : ""} ${date === t ? "now" : ""}"><i></i>${d}</span>`;
   }).join("");
-  const next = TRAINERS[C.beaten];
-  const wc = nextWinChance();
-  const journey = next ? `
-      <div class="row spread"><div><div class="eyebrow">${next.region.name} · ${next.title}</div><h3 style="font-size:22px">${next.name} ${next.type ? typeChips([next.type]) : ""}</h3></div>
-        ${gradeChip(next.grade)}</div>
-      ${trainerSprites(next, true)}
-      <div class="row spread"><span class="muted" style="font-size:13px">Your lineup's win chance: ${pct(wc)}</span>
-        <button class="btn btn-accent btn-sm" type="button" data-battle="${next.idx}">Battle ${next.name}</button></div>`
-    : `<p>Every Champion from Kanto to Paldea is beaten. Your Journey is complete!</p>`;
+  const st = C.streak || { count: 0 }, lit = st.count ? (st.count % STREAK_GOAL || STREAK_GOAL) : 0, earnedToday = st.count > 0 && st.count % STREAK_GOAL === 0;
+  const dots = Array.from({ length: STREAK_GOAL }, (_, i) => `<span class="${i < lit ? "on" : ""}"><i></i></span>`).join("");
   return `<div class="today">
-    ${renderChallengeCard()}
-    ${renderBoard()}
-    ${renderRewards()}
     <section class="panel tcard">
       <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(bagCount(), "pack", "packs")} in bag</span></div>
-      ${avail ? `<div class="row"><span class="big">+${avail}</span><span class="muted" style="font-size:13px">${avail > 1 ? "Includes packs saved from days you missed." : "Today's free pack is ready."}</span></div>
+      ${avail ? `<div class="row"><span class="big">+${avail}</span><span class="muted" style="font-size:13px">${avail > DAILY_PACKS ? "Includes packs saved from a day you missed." : `Today's ${DAILY_PACKS} free packs are ready.`}</span></div>
         <div class="row"><button class="btn btn-accent" type="button" id="claim-daily">Claim ${plural(avail, "pack", "packs")}</button><button class="btn btn-plain" type="button" data-go="packs">Open packs</button></div>`
-      : `<p class="muted" style="margin:0">Claimed today. A new pack arrives tomorrow; missed days save up to ${DAILY_BANK}.</p>
+      : `<p class="muted" style="margin:0">Claimed today. ${DAILY_PACKS} more arrive tomorrow; missed days save up to ${DAILY_BANK_DAYS * DAILY_PACKS}.</p>
         <div class="row"><button class="btn btn-plain" type="button" data-go="packs" ${bagCount() ? "" : "disabled"}>Open packs</button></div>`}
     </section>
     <section class="panel tcard">
-      <h2>Journey <span>${badges()}/9 Champions beaten</span></h2>
-      ${journey}
+      <div class="row spread"><h2>Visit streak</h2><span class="muted mono" style="font-size:13px">${plural(st.count || 0, "day", "days")} in a row</span></div>
+      <div class="week streak">${dots}</div>
+      <p class="muted" style="margin:0;font-size:14px">Every ${STREAK_GOAL} days in a row earns a gold Champion Pack. ${earnedToday ? "You earned one today! Keep going for the next." : `${plural(STREAK_GOAL - lit, "more day", "more days")} to go.`}</p>
     </section>
     <section class="panel tcard">
       <div class="row spread"><h2>This week</h2><span class="muted mono" style="font-size:13px">${Math.min(C.week.days.length, 7)}/${WEEK_GOAL} days</span></div>
@@ -1269,6 +1112,8 @@ function renderToday() {
         : weekReady() ? `<div class="row"><button class="btn btn-accent" type="button" id="claim-week">Claim ${WEEK_PACKS} bonus packs</button></div>`
         : `<p class="muted" style="margin:0">Visit on any ${WEEK_GOAL} days this week for ${WEEK_PACKS} bonus packs. The days don't need to be in a row.</p>`}
     </section>
+    ${renderBoard()}
+    ${renderRewards()}
   </div>`;
 }
 // ---------- WD Card Shop rewards ----------
@@ -1283,25 +1128,29 @@ async function loadRewards(announce) {
     const got = S.rewards.prizes.find(p => p.status === "issued" && !(before || "").includes(p.ref + "issued"));
     toast(got ? `You earned a WD Card Shop reward: ${got.pct}% off! Your code is on the Today tab.` : "Reward earned! See WD Card Shop rewards on the Today tab.");
   }
-  if (S.tab === "today" && !S.battle) render();
+  if (S.tab === "today") render();
 }
 function renderRewards() {
   const r = S.rewards;
   if (SY.auth && !S.rewardsLoading && (!r || Date.now() - (S.rewardsAt || 0) > 60000)) setTimeout(() => loadRewards(false), 0);
-  const small = `<p class="muted" style="margin:0;font-size:12px">Codes take up to $${r ? r.config.maxOff || 50 : 50} off, are single use, for your account only, need a $${r ? r.config.minSubtotal : 25}+ order and expire ${r ? r.config.days : 30} days after they're issued. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. WD Card Shop rewards are not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>`;
-  const head = `<div class="row spread"><h2>WD Card Shop rewards</h2><span class="muted" style="font-size:13px">Real store discounts for playing · up to $50 off</span></div>`;
-  if (!SY.shop) return `<section class="panel tcard rewards">${head}<p style="margin:0">The month's top 3 players and anyone who beats all 9 Champions earn discount codes at WD Card Shop.</p>
-    <div class="row"><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com to earn rewards</a></div>${small}</section>`;
-  if (!SY.auth) return `<section class="panel tcard rewards">${head}<p style="margin:0">Sign in to earn discount codes: finish top 3 on the monthly leaderboard, or beat all 9 Champions on your Journey.</p>
+  const small = `<p class="muted" style="margin:0;font-size:12px">Codes take up to $${r ? r.config.maxOff : 50} off, are single use, for your account only, need a $${r ? r.config.minSubtotal : 25}+ order and expire ${r ? r.config.days : 30} days after they're issued. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. WD Card Shop rewards are not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>`;
+  const head = `<div class="row spread"><h2>WD Card Shop rewards</h2><span class="muted" style="font-size:13px">Real store discounts for collecting · up to $50 off</span></div>`;
+  const pitch = `<p style="margin:0">Complete a region's Pokédex, collect Shinies, gain the most points in a month, or get your showcase picked as Showcase of the Month.</p>`;
+  if (!SY.shop) return `<section class="panel tcard rewards">${head}${pitch}
+    <div class="row"><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Collect on wdcardshop.com to earn rewards</a></div>${small}</section>`;
+  if (!SY.auth) return `<section class="panel tcard rewards">${head}${pitch}
     <div class="row">${SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in</a>` : ""}</div>${small}</section>`;
   if (!r) return `<section class="panel tcard rewards">${head}<p class="muted" style="margin:0">Loading your rewards…</p></section>`;
   if (r.banned) return `<section class="panel tcard rewards">${head}<p style="margin:0">This account isn't eligible for rewards. Questions? Email support@wdcardshop.com.</p></section>`;
-  const byRef = Object.fromEntries(r.prizes.map(p => [p.ref, p]));
+  const byKey = Object.fromEntries(r.prizes.map(p => [p.kind + ":" + p.ref, p]));
   const state = p => !p ? null : p.status === "issued" ? codeHTML(p) : p.status === "rejected" ? `<span class="muted">Not approved</span>`
     : p.status === "review" ? `<span class="pill">Earned · being reviewed</span>` : `<span class="pill">Earned · join rewards to claim</span>`;
-  const miles = r.config.milestones.map(m => { const p = byRef[m.key];
-    return `<div class="rw"><span class="pct">${m.pct}%</span><span><b>${m.label}</b><small>${p ? "" : `${Math.min(r.champs, m.champs)}/${m.champs} Champions`}</small></span>${state(p) || `<span class="muted" style="font-size:13px">Locked</span>`}</div>`; }).join("");
-  const monthly = r.prizes.filter(p => p.kind === "monthly").map(p => `<div class="rw"><span class="pct">${p.pct}%</span><span><b>Monthly ${p.label}</b></span>${state(p)}</div>`).join("");
+  const sets = r.config.sets.map(st => { const p = byKey["set:" + st.key];
+    let have = 0; for (let n = st.lo; n <= st.hi; n++) if (C.dex[n]) have++;
+    return `<div class="rw"><span class="pct">${st.pct}%</span><span><b>${st.label}</b><small>${have}/${st.hi - st.lo + 1} caught</small><span class="xpbar"><i style="width:${have / (st.hi - st.lo + 1) * 100}%"></i></span></span>${state(p) || `<span class="muted" style="font-size:13px">${have === st.hi - st.lo + 1 ? "Complete!" : "In progress"}</span>`}</div>`; }).join("");
+  const shiny = r.config.shiny.map(g => { const p = byKey["shiny:" + g.key];
+    return `<div class="rw"><span class="pct">${g.pct}%</span><span><b>Collect ${g.count} Shiny Pokémon</b><small>${Math.min(shinies(), g.count)}/${g.count} Shinies</small></span>${state(p) || `<span class="muted" style="font-size:13px">In progress</span>`}</div>`; }).join("");
+  const won = r.prizes.filter(p => p.kind === "monthly" || p.kind === "featured").map(p => `<div class="rw"><span class="pct">${p.pct}%</span><span><b>${p.label}</b></span>${state(p)}</div>`).join("");
   const join = r.eligible ? "" : `<form class="join" id="join-form">
       <b>Join WD Card Shop rewards</b>
       <label><input type="checkbox" id="j-18"> I'm 18 or older</label>
@@ -1309,9 +1158,11 @@ function renderRewards() {
       <label><input type="checkbox" id="j-rules"> I agree to the <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a> (one account per person)</label>
       <div class="row"><button class="btn btn-accent btn-sm" type="submit">Join rewards</button>${S.joinErr ? `<span class="err">${S.joinErr}</span>` : ""}</div></form>`;
   return `<section class="panel tcard rewards">${head}${join}
-    <div><div class="eyebrow" style="margin-bottom:6px">Monthly leaderboard · top 3 each month</div>
-      <div class="rw"><span class="pct">${r.config.monthly.map(w => w.pct + "%").join(" / ")}</span><span><b>1st / 2nd / 3rd place</b><small>Play ranked on ${r.config.monthlyMinDays}+ days that month. Winners are reviewed before codes go out.</small></span><span><button class="btn btn-plain btn-sm" type="button" data-board-jump="month">See standings</button></span></div>${monthly}</div>
-    <div><div class="eyebrow" style="margin-bottom:6px">Journey milestone · one time</div>${miles}</div>
+    <div><div class="eyebrow" style="margin-bottom:6px">Every month</div>
+      <div class="rw"><span class="pct">${r.config.monthly.map(w => w.pct + "%").join(" / ")}</span><span><b>Top 3 collectors of the month</b><small>Most collection points gained that month. Visit on ${r.config.monthlyMinDays}+ days. Winners are reviewed before codes go out.</small></span><span><button class="btn btn-plain btn-sm" type="button" data-board-jump="month">See standings</button></span></div>
+      <div class="rw"><span class="pct">${r.config.featured}%</span><span><b>Showcase of the Month</b><small>WD Card Shop picks a favorite published showcase each month.</small></span><span><button class="btn btn-plain btn-sm" type="button" data-go="collection">Your showcase</button></span></div>${won}</div>
+    <div><div class="eyebrow" style="margin-bottom:6px">Complete a set · one time each</div>${sets}</div>
+    <div><div class="eyebrow" style="margin-bottom:6px">Shiny hunter · one time each</div>${shiny}</div>
     ${small}</section>`;
 }
 function codeHTML(p) {
@@ -1320,55 +1171,47 @@ function codeHTML(p) {
     <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/discount/${encodeURIComponent(p.code)}?redirect=/collections/all" target="_top">Shop now</a><small class="muted">Expires ${exp}</small></span>`;
 }
 
-// ---------- Leaderboard ----------
+// ---------- Collection leaderboard ----------
 async function loadBoard() {
   if (S.boardLoading) return;
   S.boardLoading = true;
   try {
     const r = await fetch(`${CLOUD}/leaderboard`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: SY.auth || undefined }) });
     S.board = r.ok ? await r.json() : { error: true };
-    if (SY.auth && !S.board.error) S.rankedTries = S.board.me ? S.board.me.tries : 0;
   } catch { S.board = { error: true }; }
   S.boardAt = Date.now(); S.boardLoading = false;
-  if (S.tab === "today" && !S.battle) render();
+  if (S.tab === "today") render();
 }
 function renderBoard() {
   if (!S.boardLoading && (!S.board || Date.now() - (S.boardAt || 0) > 60000)) setTimeout(loadBoard, 0);
-  const b = S.board, view = S.boardView || "day", week = view !== "day", P = b && !b.error ? (view === "month" ? b.month : b.week) : null;
-  const fmt = d => { const [y, m, dd] = d.split("-").map(Number); return new Date(y, m - 1, dd).toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+  const b = S.board, view = S.boardView === "all" ? "all" : "month";
   const medal = r => r <= 3 ? `<span class="medal m${r}">${r}</span>` : `<span class="rk">${r}</span>`;
+  const monthName = b && !b.error ? new Date(b.month + "-15T12:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" }) : "";
   let body;
-  if (!b) body = `<p class="muted" style="margin:0">Loading today's scores…</p>`;
-  else if (b.error) body = `<p class="muted" style="margin:0">The leaderboard is available when you play on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a>.</p>`;
-  else if (week && !P) body = `<p class="muted" style="margin:0">Scores are loading…</p>`;
-  else if (week) {
-    const len = view === "month" ? P.days : 7;
-    body = P.top.length ? `<ol class="board-list week">${P.top.slice(0, 10).map(r => `<li class="${r.me ? "me" : ""}">${medal(r.rank)}<span class="bn">${escapeHTML(r.name)}${r.me ? " (you)" : ""}</span><span class="days mono">${r.days}/${len} days</span><span class="stars-inline">★${r.stars}</span><span class="mono">${r.total}</span></li>`).join("")}</ol>`
-      : `<p class="muted" style="margin:0">No ranked scores yet this ${view}. Be the first!</p>`;
+  if (!b) body = `<p class="muted" style="margin:0">Loading the leaderboard…</p>`;
+  else if (b.error) body = `<p class="muted" style="margin:0">The leaderboard is on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a>.</p>`;
+  else {
+    const rows = view === "month" ? b.monthTop : b.allTop;
+    body = rows.length ? `<ol class="board-list">${rows.slice(0, 10).map(r => `<li class="${r.me ? "me" : ""}">${medal(r.rank)}<span class="bn">${escapeHTML(r.name)}${r.me ? " (you)" : ""}</span><span class="muted mono" style="font-size:12px">${view === "month" ? `${r.score.toLocaleString()} total` : `${r.caught} caught · ${r.shinies}★`}</span><span class="mono">${view === "month" ? "+" + r.gain.toLocaleString() : r.score.toLocaleString()}</span></li>`).join("")}</ol>`
+      : `<p class="muted" style="margin:0">No collectors yet this month. Be the first!</p>`;
   }
-  else if (!b.top.length) body = `<p class="muted" style="margin:0">No ranked scores yet today. Be the first!</p>`;
-  else body = `<ol class="board-list">${b.top.slice(0, 10).map(r => `<li class="${r.me ? "me" : ""}">${medal(r.rank)}<span class="bn">${escapeHTML(r.name)}${r.me ? " (you)" : ""}</span><span class="stars-inline">${starsText(r.stars)}</span><span class="mono">${r.best}</span></li>`).join("")}</ol>`;
   let mine = "";
   if (b && !b.error) {
-    if (!SY.auth) mine = SY.shop ? `<div class="row"><span class="muted">Sign in to put your score on the board.</span>${SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in</a>` : ""}</div>`
-      : `<div class="row"><span class="muted">Scores come from signed-in players on wdcardshop.com.</span><a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play there</a></div>`;
-    else if (week && P && P.me) mine = `<div class="you">You're <b>#${P.me.rank}</b> of ${P.players} this ${view} · <b>${P.me.total}</b> points over ${plural(P.me.days, "day", "days")}${!b.me ? ` · play today to add up to 100 more` : ""}</div>`;
-    else if (!week && b.me) mine = `<div class="you">You're <b>#${b.me.rank}</b> of ${b.players} today · best <b>${b.me.best}</b></div>`;
-    else mine = `<div class="muted">Play a ranked try to get on ${week ? `this ${view}'s` : "today's"} board.</div>`;
+    if (!SY.auth) mine = SY.shop ? `<div class="row"><span class="muted">Sign in to get your collection on the board.</span>${SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in</a>` : ""}</div>`
+      : `<div class="row"><span class="muted">Boards show signed-in collectors on wdcardshop.com.</span><a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Collect there</a></div>`;
+    else if (b.me) mine = `<div class="you">${view === "month" ? `You're <b>#${b.me.monthRank || "–"}</b> this month with <b>+${b.me.gain.toLocaleString()}</b> points` : `You're <b>#${b.me.allRank}</b> overall with <b>${b.me.score.toLocaleString()}</b> points`}</div>`;
+    else mine = `<div class="muted">Open a pack to get on the board.</div>`;
   }
   const nameRow = SY.auth ? (S.editName
-    ? `<form class="namef" id="name-form"><label for="trainer-name" class="muted">Leaderboard name</label><input id="trainer-name" maxlength="16" value="${escapeHTML(C.trainer || "")}" placeholder="2–16 letters or numbers" autocomplete="off"><button class="btn btn-accent btn-sm" type="submit">Save</button><button class="btn btn-plain btn-sm" type="button" id="name-cancel">Cancel</button></form>
+    ? `<form class="namef" id="name-form"><label for="trainer-name" class="muted">Collector name</label><input id="trainer-name" maxlength="16" value="${escapeHTML(C.trainer || "")}" placeholder="2–16 letters or numbers" autocomplete="off"><button class="btn btn-accent btn-sm" type="submit">Save</button><button class="btn btn-plain btn-sm" type="button" id="name-cancel">Cancel</button></form>
        ${S.nameErr ? `<div class="err">${S.nameErr}</div>` : ""}`
-    : `<div class="row"><span class="muted">Leaderboard name: <b style="color:var(--ink)">${escapeHTML(C.trainer || (b && b.me ? b.me.name : "Trainer ####"))}</b></span><button class="btn btn-plain btn-sm" type="button" id="name-edit">Change</button></div>`) : "";
-  const count = b && !b.error ? (week ? (P ? P.players : 0) : b.players) : null;
-  const monthName = P && view === "month" ? new Date(P.start + "T12:00:00").toLocaleDateString(undefined, { month: "long", year: "numeric" }) : "";
+    : `<div class="row"><span class="muted">Collector name: <b style="color:var(--ink)">${escapeHTML(C.trainer || (b && b.me && b.me.name) || "Trainer ####")}</b></span><button class="btn btn-plain btn-sm" type="button" id="name-edit">Change</button></div>`) : "";
   return `<section class="panel tcard board">
-    <div class="row spread"><h2>Leaderboard</h2>
-      <div class="modes seg" role="tablist" aria-label="Leaderboard period">${[["day", "Today"], ["week", "Week"], ["month", "Month"]].map(([v, l]) => `<button type="button" role="tab" data-board="${v}" aria-selected="${view === v}">${l}</button>`).join("")}</div></div>
-    <div class="row spread muted" style="font-size:13px"><span>${view === "month" ? (P ? `${monthName} · day ${P.dayOfMonth} of ${P.days} · top 3 win store discounts` : "This month") : view === "week" ? (P ? `${fmt(P.start)} – ${fmt(P.end)} · day ${P.dayOfWeek} of 7` : "Monday – Sunday") : `Daily Challenge #${challenge().n}`}</span><span class="mono">${count != null ? plural(count, "player", "players") : ""}</span></div>
+    <div class="row spread"><h2>Collectors</h2>
+      <div class="modes seg" role="tablist" aria-label="Leaderboard">${[["month", "This month"], ["all", "All time"]].map(([v, l]) => `<button type="button" role="tab" data-board="${v}" aria-selected="${view === v}">${l}</button>`).join("")}</div></div>
+    <div class="row spread muted" style="font-size:13px"><span>${view === "month" ? `${monthName} · points gained this month · top 3 win store discounts` : "Total collection points"}</span><span class="mono">${b && !b.error ? plural(view === "month" ? b.monthPlayers : b.players, "collector", "collectors") : ""}</span></div>
     ${body}${mine}${nameRow}
-    <p class="muted" style="margin:0;font-size:12px">${view === "month" ? "Monthly score adds up your best Daily Challenge score from each day of the month (Pacific). Top 3 players with 10+ ranked days win WD Card Shop discount codes (see rewards below); ties go to more stars." : week ? "Weekly score adds up your best Daily Challenge score from each day, Monday to Sunday (Pacific). Play every day to climb; ties go to more stars."
-      : "Best score of the day counts; ties go to whoever got there first. Resets at midnight Pacific."}</p>
+    <p class="muted" style="margin:0;font-size:12px">Points: every Pokédex entry scores by rarity (Common 1, Uncommon 2, Rare 5, Legendary 20); each card grade adds its points again; each Shiny adds 10.</p>
   </section>`;
 }
 const escapeHTML = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -1376,84 +1219,22 @@ async function saveName(name) {
   S.nameErr = "";
   try {
     const { status, data } = await cloud("name", { name });
-    if (status === 200) { C.trainer = data.name; save(); S.editName = false; S.board = null; toast("Leaderboard name saved."); }
+    if (status === 200) { C.trainer = data.name; save(); S.editName = false; S.board = null; S.gallery = null; toast("Collector name saved."); }
     else S.nameErr = "Try a different name: 2–16 letters, numbers or spaces, nothing rude.";
   } catch { S.nameErr = "Couldn't reach the server. Try again."; }
   render();
 }
+async function loadGallery() {
+  if (S.galleryLoading) return;
+  S.galleryLoading = true;
+  try {
+    const r = await fetch(`${CLOUD}/gallery`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: SY.auth || undefined }) });
+    S.gallery = r.ok ? await r.json() : { error: true };
+  } catch { S.gallery = { error: true }; }
+  S.galleryAt = Date.now(); S.galleryLoading = false;
+  if (S.tab === "collection") render();
+}
 
-// Signed-in players see their ranked best; a practice score from before ranking (or as a guest) is labeled as such
-function bestLine() {
-  const b = S.board, me = ranked() && b && !b.error ? b.me : null;
-  if (me) return `Ranked best <span class="score">${me.best}/100</span> · <span class="stars-inline">${starsText(me.stars)}</span> · #${me.rank} today`;
-  if (C.chal.best == null) return `<span class="muted">3 tries a day. Each better score pays the next rewards.</span>`;
-  const practice = `Practice best <span class="score">${C.chal.best}/100</span> · <span class="stars-inline">${starsText(C.chal.tier || 0)}</span>`;
-  return ranked() ? `${practice}<br><span class="muted" style="font-size:13px">Not on the leaderboard yet. Press Battle for a ranked try.</span>` : practice;
-}
-function puzzleRows(order, key, locked) {
-  return `<ol class="lineup puz">${order.map((n, i) => { const m = byNum(n), b = lv50(n);
-    return `<li class="lu"><span class="pos">${i + 1}</span>${img(n)}
-      <span class="info"><b>${m.name}</b><span class="types" style="justify-content:flex-start">${typeChips(m.types)}</span>
-        <span class="mono muted st">HP ${b.maxhp} · Atk ${b.atk} · Def ${b.def} · SpA ${b.spa} · SpD ${b.spd} · <b>Spe ${b.spe}</b></span></span>
-      ${locked ? "<span></span>" : `<span class="ctl"><button type="button" data-${key}="${i}" data-d="-1" aria-label="Move ${m.name} up" ${i === 0 ? "disabled" : ""}>↑</button><button type="button" data-${key}="${i}" data-d="1" aria-label="Move ${m.name} down" ${i === order.length - 1 ? "disabled" : ""}>↓</button></span>`}</li>`; }).join("")}</ol>`;
-}
-function bossBlock(P) {
-  const known = P.bossOrder;
-  const list = known || P.bossSet;
-  return `<div><div class="eyebrow">Boss · ${P.boss.name} (${P.boss.region} ${P.boss.title}) · ${known ? "order revealed" : "order secret until you battle"}</div>
-    <div class="bossgrid">${list.map((n, i) => { const m = byNum(n), b = lv50(n);
-      return `<div class="bz"><span class="bo">${known ? i + 1 : "?"}</span>${img(n)}<span class="nm">${m.name}</span><span class="types">${typeChips(m.types)}</span><span class="mono muted st">Spe ${b.spe}</span></div>`; }).join("")}</div></div>`;
-}
-function renderChallengeCard() {
-  if (!S.puz && !S.puzLoading) setTimeout(loadPuzzle, 0);
-  const P = S.puz;
-  const head = n => `<div class="row spread"><h2>Daily Puzzle${n ? ` #${n}` : ""}</h2><span class="muted mono" style="font-size:13px">${P && !P.error && ranked() ? `${CHAL_TRIES - triesUsed()}/${CHAL_TRIES} tries left` : ""}</span></div>`;
-  const how = `<p class="muted" style="margin:0;font-size:14px">Everyone gets the same 6 Pokémon at Lv 50. Put them in the order that beats the boss best. Battles play out the same way every time, so the order is everything. Finding the perfect order scores 100 on try 1, 90 on try 2, 80 on try 3. New puzzle at midnight Pacific.</p>`;
-  const practiceBtn = `<button class="btn btn-plain btn-sm" type="button" id="prac-open">Practice yesterday's puzzle</button>`;
-  if (S.pracOpen && S.prac) return renderPractice();
-  if (!P) return `<section class="panel tcard chal">${head()}<p class="muted" style="margin:0">Loading today's puzzle…</p></section>`;
-  if (P.error) return `<section class="panel tcard chal">${head()}${how}
-    <p style="margin:0">${P.error === "no_puzzle" ? "Today's puzzle isn't ready yet. The Daily Puzzle starts at midnight Pacific." : `The Daily Puzzle is played on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a>.`}</p>
-    ${P.error === "no_puzzle" ? `<div class="row">${practiceBtn}</div>` : ""}</section>`;
-  const left = CHAL_TRIES - triesUsed(), done = ranked() && left <= 0;
-  const tries = (P.tries || []).map(t => `<div class="tryrow"><span class="mono">Try ${t.try + 1}</span><span class="sprites">${t.lineup.map(n => img(n)).join("")}</span><b class="mono">${t.score}</b></div>`).join("");
-  const action = !ranked()
-    ? `<div class="rankline">${SY.shop ? "Sign in to play today's puzzle and get on the leaderboard." : "Today's puzzle is played on wdcardshop.com while signed in."}</div>
-       <div class="row">${SY.shop && SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in to play</a>` : !SY.shop ? `<a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com</a>` : ""}${practiceBtn}</div>`
-    : `<div class="row spread"><span style="font-size:14px">${bestLine()}</span>
-        <span class="row">${C.chal.share ? `<button class="btn btn-plain btn-sm" type="button" id="share">Copy result</button>` : ""}
-        ${done ? "" : `<button class="btn btn-accent" type="button" id="chal-go" ${S.chalBusy ? "disabled" : ""}>${S.chalBusy ? "Scoring…" : `Battle (try ${triesUsed() + 1} of ${CHAL_TRIES})`}</button>`}</span></div>
-       <div class="row">${practiceBtn}</div>`;
-  return `<section class="panel tcard chal">
-    ${head(P.n)}
-    <div><span class="rule">${P.label}</span></div>
-    ${how}
-    ${bossBlock(P)}
-    <div><div class="eyebrow" style="margin-bottom:6px">Your order · first in leads · use ↑ ↓ to arrange</div>${puzzleRows(S.puzOrder, "po", done || !ranked())}</div>
-    ${tries ? `<div><div class="eyebrow" style="margin-bottom:4px">Your tries today</div>${tries}</div>` : ""}
-    <div><div class="eyebrow" style="margin-bottom:6px">Today's rewards · your best try counts</div>
-      <div class="ladder">${CHAL_TIERS.map(t => { const got = (C.chal.tier || 0) >= t.stars;
-        return `<div class="rung ${got ? "got" : ""}"><span class="stars">${starsText(t.stars)}</span><span>${t.need}</span><b>${got ? "✓ " : ""}${tierReward(t.reward)}</b></div>`; }).join("")}
-        <div class="rung ${firstDone() ? "got" : ""}"><span class="stars">▶</span><span>First try of the day</span><b>${firstDone() ? "✓ " : ""}+1 Rare Candy</b></div>
-      </div></div>
-    <div class="starmeter"><div class="row spread"><span><b>Challenge stars</b> <span class="muted">· every ${STAR_CHEST} earns a gold Champion Pack</span></span><span class="mono">${(C.stars || 0) % STAR_CHEST}/${STAR_CHEST}</span></div>
-      <div class="bar"><i style="width:${((C.stars || 0) % STAR_CHEST) / STAR_CHEST * 100}%"></i></div></div>
-    ${action}
-    ${C.chal.share && S.showShare ? `<textarea class="share" id="share-text" rows="5" readonly aria-label="Shareable result">${shareText()}</textarea>` : ""}
-  </section>`;
-}
-function renderPractice() {
-  const P = S.prac, best = P.tries.reduce((m, t) => Math.max(m, t.score), 0), solved = P.tries.some(t => t.perfect);
-  return `<section class="panel tcard chal">
-    <div class="row spread"><h2>Practice · Puzzle #${P.n}</h2><button class="btn btn-plain btn-sm" type="button" id="prac-close">Back to today</button></div>
-    <div><span class="rule">${P.label}</span></div>
-    <p class="muted" style="margin:0;font-size:14px">Yesterday's puzzle, for practice: unlimited tries, not ranked, no rewards. The boss's order is revealed after your first try.</p>
-    ${bossBlock({ ...P, bossOrder: P.tries.length ? P.bossOrder : null })}
-    <div><div class="eyebrow" style="margin-bottom:6px">Your order</div>${puzzleRows(S.pracOrder, "pr", false)}</div>
-    <div class="row spread"><span style="font-size:14px">${P.tries.length ? `${plural(P.tries.length, "try", "tries")} · best ${best}${solved ? " · <b style=\"color:var(--good)\">solved!</b>" : ""}` : `<span class="muted">Perfect orders this day: ${P.bestCount}</span>`}</span>
-      <button class="btn btn-accent" type="button" id="prac-go">Battle (practice)</button></div>
-  </section>`;
-}
 // ---------- Rendering: Packs ----------
 function cardHTML(c, i) {
   const m = byNum(c.num);
@@ -1487,16 +1268,13 @@ function renderPacks() {
     <div class="hd"><h2>Your bag</h2><span>${groups.length ? `${plural(bagCount(), "pack", "packs")} · tap a stack to pick your next rip` : "Empty"}</span></div>
     ${groups.length ? `<div class="bagrow" role="group" aria-label="Pack stacks">${groups.map(g => `<button class="stackb" type="button" data-bag="${g.kind}" aria-pressed="${g.kind === kind}" ${busy ? "disabled" : ""} aria-label="${gainText(g).slice(1)}">
         ${miniPack(g.kind, g.n, g.fresh > 0)}<span class="cap">${packLabel(g.kind)}<small>${g.kind === "all" ? "Any unlocked region" : g.kind === "starter" ? "No Legendaries" : g.kind === "champ" ? "Rare or better hit" : "Region pack"}</small></span></button>`).join("")}</div>`
-      : `<p class="bag-empty">Out of packs. Earn more by beating trainers on your Journey, winning the Daily Challenge, and claiming your daily pack.</p>`}
-    <div class="items"><span class="eyebrow">Items</span>
-      <button class="item" type="button" id="candy-info"><span class="rc"></span><span><b>Rare Candy <span class="qty">×${C.rare}</span></b><small>One copy of any Pokémon · tap to learn and use</small></span></button>
-    </div>
+      : `<p class="bag-empty">Out of packs. Claim your ${DAILY_PACKS} free packs every day, keep your visit streak going, and check in 5 days a week for bonus packs.</p>`}
   </section>`;
   let stage;
   if (S.phase === "sealed" || S.phase === "tearing") {
     if (!kind) {
       stage = `<p class="note">Your bag is empty.</p>
-        <div class="actions"><button class="btn btn-accent" type="button" data-go="journey">Go battle</button><button class="btn btn-plain" type="button" data-go="today">Today</button></div>`;
+        <div class="actions"><button class="btn btn-accent" type="button" data-go="today">Get today's packs</button></div>`;
     } else {
       const k = packKind(kind), pool = isWild(kind) ? PACKS.find(r => r.id === S.region) : k;
       const from = C.bag.find(p => p.k === kind).src;
@@ -1525,7 +1303,7 @@ function renderPacks() {
       <div class="dex">${B.kept.map(k => { const m = byNum(k.num); return `<button type="button" class="dm" data-detail="${k.num}" style="--rc:${rc(m.tier)}">
         ${k.isNew ? `<span class="newb">NEW</span>` : ""}<span class="pip" style="left:auto;right:5px" title="${RARITY[m.tier]}"></span>${k.shiny ? `<span class="sh">★</span>` : ""}
         ${img(k.num, k.shiny)}<span class="nm">${m.name}</span><span class="no">${RARITY[m.tier]}</span></button>`; }).join("")}</div>
-      <div class="actions"><button class="btn btn-accent" type="button" id="batch-done">${bagCount() ? "Back to your bag" : "Done"}</button><button class="btn btn-plain" type="button" data-go="team">Go to Team</button></div>
+      <div class="actions"><button class="btn btn-accent" type="button" id="batch-done">${bagCount() ? "Back to your bag" : "Done"}</button><button class="btn btn-plain" type="button" data-go="collection">See your collection</button></div>
     </div>`;
   } else {
     const picked = S.selected != null ? byNum(S.cards[S.selected].num) : null;
@@ -1537,7 +1315,7 @@ function renderPacks() {
     else {
       const kn = S.cards[S.kept].num, left = bagCount();
       actions = `<button class="btn btn-accent" id="next" type="button" ${left ? "" : "disabled"}>${left ? `Back to your bag (${left} left)` : "Bag empty"}</button>
-        ${inBox(kn) && !C.team.includes(kn) && C.team.length < 6 ? `<button class="btn btn-plain" id="add-kept" type="button">Add to lineup</button>` : ""}
+        ${inBox(kn) && !showcase().includes(kn) && showcase().length < SHOW_MAX ? `<button class="btn btn-plain" type="button" data-show="${kn}">Pin to showcase</button>` : ""}
         ${inBox(kn) ? `<button class="btn btn-plain" type="button" data-detail="${kn}">View ${byNum(kn).name}</button>` : ""}`;
     }
     const note = S.phase === "picking" ? (S.batch ? "Auto-pick keeps new Pokédex entries first, then Shinies, then the rarest card." : "Pick one to keep. A duplicate of a card you own counts toward its next grade.") : S.phase === "kept" ? (S.batch ? "Kept! Next pack…" : S.keptMsg) : "Revealing…";
@@ -1549,185 +1327,70 @@ function renderPacks() {
 }
 
 function renderEarn() {
-  const next = TRAINERS[C.beaten];
-  const champ = TRAINERS.find(t => t.kind === "champ" && t.idx >= C.beaten);
-  const avail = dailyAvailable(), left = CHAL_TRIES - triesUsed();
+  const avail = dailyAvailable(), st = C.streak || { count: 0 }, toGo = STREAK_GOAL - (st.count % STREAK_GOAL);  // after a bonus day this shows 7 again
   const done = t => `<span class="done">✓ ${t}</span>`, wait = t => `<span class="wait">${t}</span>`;
   const sub = C.subBonus ? done("Claimed")
     : !SY.shop ? `<a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">On wdcardshop.com</a>`
     : !SY.auth ? (SY.loginUrl ? `<a class="btn btn-plain btn-sm" href="${SY.loginUrl}" target="_top">Sign in first</a>` : wait("Sign in first"))
     : SY.subscribed ? wait("Arriving shortly") : `<button class="btn btn-accent btn-sm" type="button" id="earn-sub">Subscribe</button>`;
   const rows = [
-    { kind: "all", title: "Daily pack", why: `+1 Wild pack every day. Missed days save up to ${DAILY_BANK}.`,
+    { kind: "all", title: "Daily packs", why: `+${DAILY_PACKS} Wild packs every day. Missed days save up to ${DAILY_BANK_DAYS * DAILY_PACKS}.`,
       act: avail ? `<button class="btn btn-accent btn-sm" type="button" id="claim-daily">Claim ${avail}</button>` : done("Claimed today") },
-    { kind: "all", title: "Daily Puzzle", why: `Up to +3 Wild packs and +4 Rare Candy a day, plus stars toward a gold Champion Pack every ${STAR_CHEST}.`,
-      act: (C.chal.tier || 0) >= 3 ? done("3 stars today") : left ? `<button class="btn btn-plain btn-sm" type="button" data-go="today">Play (${left} ${left === 1 ? "try" : "tries"})</button>` : wait("Back tomorrow") },
-    { kind: "all", title: "Weekly check-in", why: `+${WEEK_PACKS} Wild packs for playing on any ${WEEK_GOAL} days of the week.`,
+    { kind: "champ", title: "Visit streak", why: `A gold Champion Pack for every ${STREAK_GOAL} days in a row.`, act: wait(`${st.count || 0} days · ${toGo} to go`) },
+    { kind: "all", title: "Weekly check-in", why: `+${WEEK_PACKS} Wild packs for visiting on any ${WEEK_GOAL} days of the week.`,
       act: C.week.claimed ? done("Claimed") : weekReady() ? `<button class="btn btn-accent btn-sm" type="button" id="claim-week">Claim ${WEEK_PACKS}</button>` : wait(`${Math.min(C.week.days.length, WEEK_GOAL)}/${WEEK_GOAL} days`) },
-    next && { kind: next.region.id, title: "Journey battles", why: `+${TRAINERS[0].reward.packs} region packs for each new Gym Leader or Elite Four member you beat.`,
-      act: `<button class="btn btn-plain btn-sm" type="button" data-battle="${next.idx}">Battle ${next.name}</button>` },
-    champ && { kind: "champ", title: "Champions", why: "+4 region packs and a gold Champion Pack with a guaranteed Rare-or-better hit.",
-      act: wait(champ.idx === C.beaten ? `${champ.name} is up next` : `${champ.name}: ${plural(champ.idx - C.beaten, "battle", "battles")} away`) },
     { kind: "all", title: "WD Card Shop emails", why: `+${SUB_PACKS} Wild packs, one time, for joining the email list.`, act: sub },
-  ].filter(Boolean);
+  ];
   return `<section class="panel" aria-label="Ways to earn packs"><h2>Earn more packs <span>Come back daily to keep your bag full</span></h2>
     <div class="earn">${rows.map(r => `<div class="earn-row">${miniPack(r.kind)}<span><b>${r.title}</b><span class="why">${r.why}</span></span>${r.act}</div>`).join("")}</div></section>`;
 }
 
-// ---------- Rendering: Journey ----------
-function renderJourney() {
-  const cur = TRAINERS[Math.min(C.beaten, TRAINERS.length - 1)].ri;
-  const ri = S.journeyRegion ?? cur;
-  const R = REGIONS[ri];
-  const wc = nextWinChance();
-  const rows = TRAINERS.filter(t => t.ri === ri).map(t => {
-    const st = t.idx < C.beaten ? "beaten" : t.idx === C.beaten ? "next" : "locked";
-    const btn = st === "beaten" ? `<span></span>`
-      : st === "next" ? `<button class="btn btn-accent btn-sm" type="button" data-battle="${t.idx}">Battle</button>` : `<span></span>`;
-    return `<div class="tr ${st}">
-      <span class="st">${st === "beaten" ? "✓ Beaten" : st === "next" ? "Next" : "Locked"}</span>
-      <span class="who"><b>${t.name}</b> ${t.type ? typeChips([t.type]) : ""}<small>${t.title}${st === "next" ? ` · win chance ${pct(wc)}` : ""}</small></span>
-      <span class="lvtag">${gradeChip(t.grade)}<br>${t.size} Pokémon</span>
-      ${btn}
-      ${trainerSprites(t, st !== "locked")}
-    </div>`;
-  }).join("");
-  return `
-    <div class="badges" aria-label="Champions beaten">${REGIONS.map((r, i) => `<span class="badge ${C.beaten >= (i + 1) * 13 ? "won" : ""}" style="--c:${r.color}" title="${r.name} Champion ${r.champ}">${r.gen}</span>`).join("")}
-      <span class="muted" style="font-size:13px">Beat all 9 Champions to finish the Journey.</span></div>
-    <div class="shelf" role="group" aria-label="Region">
-      ${REGIONS.map((r, i) => `<button type="button" data-jregion="${i}" style="--c:${r.color}" aria-pressed="${i === ri}" ${regionOpen(i) ? "" : "disabled"}><i></i>${r.name}</button>`).join("")}
-    </div>
-    <p class="muted" style="margin:0 0 12px;font-size:14px">Each trainer pays ${TRAINERS[0].reward.packs} packs from their region the first time you beat them (Champions: 4 region packs, a gold Champion Pack and 3 Rare Candy). Beaten trainers stay beaten, and you can retry the next one anytime. Everyone battles at Lv 50: your cards' grades and your lineup's types decide it. HP carries over between Pokémon.</p>
-    <div class="trainers">${rows}</div>`;
+// ---------- Rendering: Collection ----------
+function showCard(n, b, extra = "") {
+  const m = byNum(n);
+  return `<span class="scard r${m.tier} gr${b.grade || 0} ${b.shiny ? "shiny" : ""}" style="--rc:${rc(m.tier)}">${img(n, b.shiny)}<span class="nm">${m.name}</span><span class="row" style="gap:4px;justify-content:center">${gradeChip(b.grade)}${b.shiny ? `<span class="shiny-tag" style="font-size:11px">★ Shiny</span>` : ""}</span>${extra}</span>`;
 }
-
-// ---------- Rendering: Battle ----------
-function renderBattle() {
-  const B = S.battle, v = B.view, teams = [B.res.A, B.res.B];
-  const sideHTML = side => {
-    const i = v.act[side], mon = i >= 0 ? teams[side][i] : null;
-    const hp = mon ? v.hp[side][i] : 0, frac = mon ? hp / mon.maxhp : 0;
-    const pips = teams[side].map((_, k) => `<i class="${v.out[side].includes(k) ? "out" : ""}"></i>`).join("");
-    return `<div class="side ${side ? "foe" : ""} ${v.hit === side ? "hit" : ""} ${mon && hp === 0 ? "down" : ""}">
-      <div class="who"><span>${side ? B.foe : "You"}</span><span class="pips">${pips}</span></div>
-      ${mon ? img(mon.num, mon.shiny, "act") : "<span></span>"}
-      <div>${mon ? `<div class="nm">${mon.name}</div>${gradeChip(mon.grade)}
-        <div class="hp"><i class="${frac < .2 ? "lo" : frac < .5 ? "mid" : ""}" style="width:${(frac * 100).toFixed(1)}%"></i></div>
-        <span class="mono muted" style="font-size:12px">${hp}/${mon.maxhp} HP</span>` : ""}</div>
-    </div>`;
-  };
-  const log = v.log.slice(-7).map(l => `<li class="${l.cls || ""}">${l.txt}</li>`).join("");
-  let result = "";
-  if (B.over) {
-    const r = B.reward, win = B.res.win;
-    const gains = [];
-    if (r.rare) gains.push(`+${r.rare} Rare Candy`);
-    if (r.unlocked) gains.push(`${r.unlocked} unlocked`);
-    if (r.done) gains.push("Journey complete!");
-    if (B.kind === "chal" || B.kind === "practice") {
-      gains.unshift(r.perfect ? `Perfect order! Score ${r.score}` : `${r.pct}% of perfect · score ${r.score}`);
-      if (B.kind === "practice") gains.push("Practice: not ranked, no rewards");
-      else {
-        gains.push(`Try ${r.tryNo + 1} of ${CHAL_TRIES} · ranked`);
-        if (r.stars) gains.push(`+${plural(r.stars, "star", "stars")} · meter ${(C.stars || 0) % STAR_CHEST}/${STAR_CHEST}`);
-        else if (C.chal.tier) gains.push(`Best today stays ${starsText(C.chal.tier)}`);
-      }
-    }
-    const nextT = TRAINERS[C.beaten];
-    result = `<section class="panel result">
-      <div class="row"><span class="big ${win ? "win" : "loss"}">${win ? "Victory" : "Defeated"}</span>
-        <span class="muted">${win ? `${B.foe} is out of usable Pokémon.` : `${B.res.kos} of ${B.res.B.length} knocked out.`}</span></div>
-      ${B.bossOrder ? `<div><div class="eyebrow" style="margin-bottom:4px">${B.foe}'s order</div><span class="sprites">${B.bossOrder.map((n, i) => `<span class="ord"><b>${i + 1}</b>${img(n)}</span>`).join("")}</span></div>` : ""}
-      ${r.packs && r.packs.length ? `<div class="mini-gains">${r.packs.map((g, i) => `<span class="stackb" style="padding:0"><span class="drop" style="animation-delay:${.15 + i * .18}s">${miniPack(g.kind, g.n, true)}</span><span class="cap">${gainText(g)}</span></span>`).join("")}</div>` : ""}
-      ${gains.length ? `<div class="gains">${gains.map(g => `<span class="gain">${g}</span>`).join("")}</div>` : ""}
-      ${!win && B.kind === "journey" ? `<p class="muted" style="margin:0;font-size:14px">Get stronger by opening packs for new Pokémon and for duplicates that upgrade your cards' grades, then try again anytime.</p>` : ""}
-      <div class="row">
-        <button class="btn btn-accent" type="button" id="leave">Continue</button>
-        ${B.kind === "journey" && win && nextT && B.idx === C.beaten - 1 ? `<button class="btn btn-plain" type="button" data-battle="${nextT.idx}">Battle ${nextT.name} next</button>` : ""}
-        ${B.kind === "journey" && !win ? `<button class="btn btn-plain" type="button" data-go="team">Adjust team</button>` : ""}
-        ${r.packs && r.packs.length ? `<button class="btn btn-plain" type="button" data-rip="${r.packs[r.packs.length - 1].kind}">Rip your new packs</button>` : ""}
-        ${B.kind === "chal" && C.chal.share ? `<button class="btn btn-plain" type="button" id="share">Copy result</button>` : ""}
-      </div>
-    </section>`;
-  }
-  return `<div class="arena">
-    <div class="arena-head"><div><div class="eyebrow">${B.head}</div><h2>vs ${B.foe}</h2></div>
-      ${B.over ? "" : `<div class="row"><button class="btn btn-plain btn-sm" type="button" id="fast">${B.fast ? "Normal speed" : "Fast"}</button><button class="btn btn-plain btn-sm" type="button" id="skip">Skip to result</button></div>`}</div>
-    <div class="field">${sideHTML(0)}${sideHTML(1)}</div>
-    <ol class="log" aria-live="polite">${log}</ol>
-    ${result}
-  </div>`;
-}
-
-// ---------- Rendering: Team ----------
-function renderTeam() {
-  const team = C.team.filter(inBox);
-  const rows = Array.from({ length: 6 }, (_, i) => {
-    const n = team[i];
-    if (n == null) return `<li class="lu empty"><span class="pos">${i + 1}</span><span>Empty. Tap a Pokémon in your box below to add it.</span></li>`;
-    const b = C.box[n], m = byNum(n);
-    return `<li class="lu"><span class="pos">${i + 1}</span>${img(n, b.shiny)}
-      <button class="info" type="button" data-detail="${n}"><b>${m.name}</b><span class="row" style="gap:6px">${gradeChip(b.grade)}<span class="types">${typeChips(m.types)}</span></span>${gradeBar(b)}</button>
-      <span class="ctl"><button type="button" data-mv="${n}" data-d="-1" aria-label="Move ${m.name} up" ${i === 0 ? "disabled" : ""}>↑</button><button type="button" data-mv="${n}" data-d="1" aria-label="Move ${m.name} down" ${i === team.length - 1 ? "disabled" : ""}>↓</button><button type="button" data-tm="${n}" aria-label="Remove ${m.name}">×</button></span></li>`;
+function renderCollection() {
+  const sc = showcase();
+  const slots = Array.from({ length: SHOW_MAX }, (_, i) => {
+    const n = sc[i];
+    if (n == null) return `<span class="scard empty">Empty slot<small>Tap a card below, then "Pin to showcase"</small></span>`;
+    return showCard(n, C.box[n], `<span class="ctl"><button type="button" data-smv="${i}" data-d="-1" aria-label="Move left" ${i === 0 ? "disabled" : ""}>←</button><button type="button" data-show="${n}" aria-label="Unpin">×</button><button type="button" data-smv="${i}" data-d="1" aria-label="Move right" ${i === sc.length - 1 ? "disabled" : ""}>→</button></span>`);
   }).join("");
+  const pub = !SY.shop ? `<a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Publish on wdcardshop.com</a>`
+    : !SY.auth ? (SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in to publish</a>` : "")
+    : `<span class="muted" style="font-size:13px">${S.showStatus === "saving" ? "Publishing…" : S.showStatus === "error" ? "Couldn't publish. Try again." : sc.length ? "✓ Published to the gallery" : "Pin cards to publish your showcase"}</span>`;
   const q = S.boxSearch.trim().toLowerCase();
   const show = S.boxShow || "all";
   let box = Object.keys(C.box).map(Number).filter(n => !q || byNum(n).name.toLowerCase().includes(q))
-    .filter(n => show === "all" || (show === "shiny" && C.box[n].shiny) || (show === "lineup" && C.team.includes(n))
-      || (show === "graded" && C.box[n].grade > 0));
+    .filter(n => show === "all" || (show === "shiny" && C.box[n].shiny) || (show === "pinned" && sc.includes(n)) || (show === "graded" && C.box[n].grade > 0));
   box.sort(S.boxSort === "num" ? (a, b) => a - b : S.boxSort === "grade" ? (a, b) => (C.box[b].grade - C.box[a].grade) || power(b) - power(a) : (a, b) => power(b) - power(a) || a - b);
   const grid = box.length ? box.map(n => {
     const b = C.box[n], m = byNum(n);
-    return `<button type="button" class="dm ${C.team.includes(n) ? "onteam" : ""} gr${b.grade || 0}" data-detail="${n}" style="--rc:${rc(m.tier)}">
+    return `<button type="button" class="dm ${sc.includes(n) ? "onteam" : ""} gr${b.grade || 0}" data-detail="${n}" style="--rc:${rc(m.tier)}">
       <span class="pip" title="${RARITY[m.tier]}"></span><span class="x">${gradeName(b.grade)}</span>${b.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
       ${img(n, b.shiny)}<span class="nm">${m.name}</span><span class="no">${nextGradeText(b)}</span></button>`;
-  }).join("") : `<p class="empty-note">${q || show !== "all" ? (show === "shiny" && !q ? "No Shinies yet. Every card has a 1 in 100 chance to be Shiny." : "No Pokémon in your box match.") : "Your box is empty. Open packs to catch Pokémon."}</p>`;
-  return `<div class="team-grid">
-    <section class="panel"><h2>Lineup <span>Fights in this order · HP carries over</span></h2><ol class="lineup">${rows}</ol></section>
-    <aside class="panel stats"><h2>Team report</h2>${teamReport(team.map(byNum))}</aside></div>
-    <section class="panel" style="margin-bottom:20px"><h2>Upgrade your cards <span>Duplicates make your Pokémon stronger</span></h2>
-      <div class="candy-grid">
-        <div><h3>Card grades</h3>
-          <div class="gradeladder">${GRADES.map((g, i) => `<span>${gradeChip(i)}<small>${i ? `+${Math.round((GRADE_BOOST[i] - 1) * 100)}% stats` : "base"}</small><small>${i ? `${GRADE_COST[i - 1]} ${GRADE_COST[i - 1] === 1 ? "copy" : "copies"}` : "new card"}</small></span>`).join("")}</div>
-          <ul><li>Keep a card you already own and it counts as a copy toward the next grade.</li><li>Upgrades happen automatically. Gold takes 10 copies in total.</li><li>Want copies of a certain Pokémon? Open packs from its region, or open Wild packs as that region.</li></ul>
-          <div class="row" style="margin-top:8px"><button class="btn btn-accent btn-sm" type="button" data-go="packs">Open packs (${bagCount()})</button></div></div>
-        <div><h3><span class="rc" style="transform:scale(.8);margin:-4px -6px"></span> Rare Candy <span class="muted mono" style="font-size:13px">×${C.rare}</span></h3>
-          <p class="muted" style="margin:0 0 6px;font-size:13px">Counts as one copy of <b style="color:var(--ink)">any</b> Pokémon, so you can push a favorite toward its next grade.</p>
-          <ul><li>Daily Puzzle: <b>+1</b> for your first try, <b>+3</b> for the perfect order</li><li>Beat a Champion: <b>+3</b></li><li>Release a Pokémon: <b>+1</b> Common/Uncommon, <b>+2</b> Rare, <b>+4</b> Legendary</li></ul>
-          <div class="row" style="margin-top:8px"><button class="btn btn-plain btn-sm" type="button" data-go="today">Daily Puzzle</button><button class="btn btn-plain btn-sm" type="button" id="candy-info">Use Rare Candy</button></div></div>
-      </div></section>
-    <section class="panel"><h2>Box <span>${plural(Object.keys(C.box).length, "Pokémon", "Pokémon")} · <span class="candy">${C.rare}</span> Rare Candy</span></h2>
+  }).join("") : `<p class="empty-note">${q || show !== "all" ? (show === "shiny" && !q ? "No Shinies yet. Every card has a 1 in 100 chance to be Shiny." : "No cards match.") : "Your collection is empty. Open packs to catch Pokémon."}</p>`;
+  if (!S.galleryLoading && (!S.gallery || Date.now() - (S.galleryAt || 0) > 60000)) setTimeout(loadGallery, 0);
+  const g = S.gallery;
+  const gRow = x => `<div class="gal ${x.me ? "me" : ""}"><div class="row spread"><b>${escapeHTML(x.name)}${x.me ? " (you)" : ""}</b><span class="muted mono" style="font-size:12px">${x.score.toLocaleString()} pts · ${x.caught} caught</span></div>
+    <div class="galcards">${x.cards.map(c => showCard(c.num, c)).join("")}</div></div>`;
+  const gallery = !g ? `<p class="muted">Loading showcases…</p>` : g.error ? `<p class="muted">The gallery is on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a>.</p>`
+    : `${g.featured ? `<div class="featured"><div class="eyebrow">Showcase of the Month</div>${gRow(g.featured)}</div>` : ""}${g.showcases.length ? g.showcases.map(gRow).join("") : `<p class="muted">No showcases yet. Pin your best 6 and be the first!</p>`}`;
+  return `<section class="panel" style="margin-bottom:20px"><h2>Your showcase <span>Pin your best 6 cards · signed-in showcases appear in the gallery</span></h2>
+      <div class="showcase">${slots}</div><div class="row" style="margin-top:10px">${pub}</div></section>
+    <section class="panel" style="margin-bottom:20px"><h2>Card grades <span>Duplicates upgrade your cards</span></h2>
+      <div class="gradeladder">${GRADES.map((gr, i) => `<span>${gradeChip(i)}<small>${i ? `${GRADE_COST[i - 1]} ${GRADE_COST[i - 1] === 1 ? "copy" : "copies"}` : "new card"}</small><small>${i ? `×${i + 1} points` : "base points"}</small></span>`).join("")}</div>
+      <p class="muted" style="margin:0;font-size:13px">Keep a card you already own and it counts toward the next grade. Upgrades happen automatically; Gold takes 10 copies in total. Higher grades score more collection points and look better in your showcase.</p></section>
+    <section class="panel" style="margin-bottom:20px"><h2>Your cards <span>${plural(Object.keys(C.box).length, "card", "cards")} · ${score().toLocaleString()} points</span></h2>
       <div class="toolbar">
-        <input type="search" id="box-search" placeholder="Search your box…" value="${S.boxSearch.replace(/"/g, "&quot;")}" aria-label="Search your box">
-        <select id="box-show" aria-label="Show">${[["all", "All Pokémon"], ["shiny", `★ Shiny (${Object.values(C.box).filter(b => b.shiny).length})`], ["graded", "Upgraded (★ or better)"], ["lineup", "In lineup"]].map(([v, l]) => `<option value="${v}" ${show === v ? "selected" : ""}>${l}</option>`).join("")}</select>
-        <select id="box-sort" aria-label="Sort box"><option value="power" ${!S.boxSort || S.boxSort === "power" || S.boxSort === "lvl" ? "selected" : ""}>Strongest</option><option value="grade" ${S.boxSort === "grade" ? "selected" : ""}>Highest grade</option><option value="num" ${S.boxSort === "num" ? "selected" : ""}>Pokédex number</option></select>
-        <span class="count">Tap a Pokémon to upgrade or add it</span>
+        <input type="search" id="box-search" placeholder="Search your cards…" value="${S.boxSearch.replace(/"/g, "&quot;")}" aria-label="Search your cards">
+        <select id="box-show" aria-label="Show">${[["all", "All cards"], ["shiny", `★ Shiny (${Object.values(C.box).filter(b => b.shiny).length})`], ["graded", "Upgraded (★ or better)"], ["pinned", "In showcase"]].map(([v, l]) => `<option value="${v}" ${show === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <select id="box-sort" aria-label="Sort"><option value="power" ${!S.boxSort || S.boxSort === "power" ? "selected" : ""}>Rarest first</option><option value="grade" ${S.boxSort === "grade" ? "selected" : ""}>Highest grade</option><option value="num" ${S.boxSort === "num" ? "selected" : ""}>Pokédex number</option></select>
+        <span class="count">Tap a card to pin it or see its grade</span>
       </div>
-      <div class="dex">${grid}</div></section>`;
-}
-function teamReport(team) {
-  if (!team.length) return `<p class="muted" style="margin:0;font-size:13px">Add Pokémon to see how the lineup holds up.</p>`;
-  const avg = i => Math.round(team.reduce((a, m) => a + m.stats[i], 0) / team.length);
-  const labels = ["HP", "Atk", "Def", "SpA", "SpD", "Spe"];
-  const bars = labels.map((l, i) => `<div class="sb"><span>${l}</span><span class="bar"><i style="width:${Math.min(100, avg(i) / 150 * 100)}%"></i></span><span class="mono">${avg(i)}</span></div>`).join("");
-  const stab = new Set(team.flatMap(m => m.types));
-  const covered = TYPES.filter(d => [...stab].some(a => eff(a, d) === 2));
-  const uncovered = TYPES.filter(d => !covered.includes(d));
-  const threats = TYPES.map(a => ({ a, weak: team.filter(m => mult(a, m.types) > 1).length, res: team.filter(m => mult(a, m.types) < 1).length }))
-    .filter(x => x.weak >= 2 && x.weak > x.res).sort((x, y) => (y.weak - y.res) - (x.weak - x.res));
-  const wc = nextWinChance(), next = TRAINERS[C.beaten];
-  return `
-    ${next ? `<div class="kv"><span class="k">vs ${next.name} (next)</span><span class="v">${pct(wc)}</span></div>` : ""}
-    <div class="kv"><span class="k">Upgrades in lineup</span><span class="v">${team.map(m => gradeName(C.box[m.num].grade)).join(" ")}</span></div>
-    <div class="sect"><span class="eyebrow">Average base stats</span><div class="statbars">${bars}</div></div>
-    <div class="sect"><span class="eyebrow">Super-effective coverage · ${covered.length}/18</span>
-      <p>Types your lineup's own types hit for double damage.${uncovered.length ? " Not covered:" : ""}</p>
-      ${uncovered.length ? `<div class="chips">${typeChips(uncovered)}</div>` : ""}</div>
-    <div class="sect"><span class="eyebrow">Shared weaknesses</span>
-      ${threats.length ? `<p>Types that hit two or more of your lineup for extra damage, with fewer resisting:</p>
-        <div class="chips">${threats.map(x => `<span class="t" style="background:${TYPE_COLORS[x.a]}">${x.a} ×${x.weak}</span>`).join("")}</div>`
-        : `<p>No type hits more of your lineup than it resists.</p>`}</div>`;
+      <div class="dex">${grid}</div></section>
+    <section class="panel"><h2>Gallery <span>Showcases from collectors on wdcardshop.com</span></h2><div class="galleryl">${gallery}</div></section>`;
 }
 
 // ---------- Rendering: Pokédex ----------
@@ -1744,10 +1407,13 @@ function renderDex() {
     if (!d) return `<div class="dm missing" style="--rc:${rc(m.tier)}"><img class="px" src="${sprite(m.num)}" alt="" loading="lazy"><span class="nm">???</span><span class="no">#${pad(m.num)}</span></div>`;
     const inner = `<span class="pip" title="${RARITY[m.tier]}"></span>${b ? `<span class="x">${gradeName(b.grade)}</span>` : ""}${d.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
       <img class="px" src="${sprite(m.num)}" alt="" loading="lazy" style="${d.shiny ? SHINY_CSS : ""}"><span class="nm">${m.name}</span><span class="no">#${pad(m.num)}</span>`;
-    return b ? `<button type="button" class="dm ${C.team.includes(m.num) ? "onteam" : ""}" data-detail="${m.num}" style="--rc:${rc(m.tier)}">${inner}</button>`
+    return b ? `<button type="button" class="dm ${showcase().includes(m.num) ? "onteam" : ""}" data-detail="${m.num}" style="--rc:${rc(m.tier)}">${inner}</button>`
       : `<div class="dm gone" style="--rc:${rc(m.tier)}" title="Registered, but not in your box (released)">${inner}</div>`;
   }).join("") : `<p class="empty-note">${S.dexFilter === "shiny" ? "No Shinies in this region yet." : S.dexFilter === "owned" || q ? "No caught Pokémon match. Open some packs." : "Nothing missing here. Region complete."}</p>`;
+  const sets = REGIONS.map(R => { let have = 0; for (let n = R.lo; n <= R.hi; n++) if (C.dex[n]) have++; const tot = R.hi - R.lo + 1;
+    return `<button type="button" class="setc ${have === tot ? "done" : ""}" data-dexr="${R.id}" style="--c:${R.color}"><b>${R.name}</b><span class="mono">${have}/${tot}</span><span class="xpbar"><i style="width:${have / tot * 100}%"></i></span></button>`; }).join("");
   return `
+    <div class="sets">${sets}</div>
     <div class="toolbar">
       <select id="dex-region" aria-label="Region">${PACKS.map(x => `<option value="${x.id}" ${x.id === S.dexRegion ? "selected" : ""}>${x.name} (${regionProgress(x)})</option>`).join("")}</select>
       <select id="dex-filter" aria-label="Show">
@@ -1793,22 +1459,6 @@ function renderSheet() {
     </div></div>`;
     return;
   }
-  if (S.candyInfo) {
-    const list = [...new Set([...C.team.filter(inBox), ...Object.keys(C.box).map(Number).sort((a, b) => power(b) - power(a))])].slice(0, 8);
-    el.innerHTML = `<div class="sheet-wrap" id="candy-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="Rare Candy">
-      <div class="hd" style="grid-template-columns:auto minmax(0,1fr) auto"><span class="rc big"></span><div><div class="eyebrow">Item</div><h2>Rare Candy ×${C.rare}</h2></div>
-        <button class="close" type="button" id="candy-close" aria-label="Close">✕</button></div>
-      <div class="guide">
-        <div><h3>What it does</h3><p>Counts as <b>one copy of any Pokémon</b>, toward its next card grade.</p></div>
-        <div><h3>What a grade changes</h3><p>Every stat goes up: ★ +10%, ★★ +20%, ★★★ +35%, Gold +50%. Each grade takes more copies (1, then 2, 3 and 4).</p></div>
-        <div><h3>How to get more</h3><ul><li>Daily Puzzle: +1 for your first try, +3 for the perfect order</li><li>Beat a Champion: +3</li><li>Release a Pokémon from your box: +1 (Common or Uncommon), +2 (Rare), +4 (Legendary)</li></ul></div>
-        <div><h3>Use now</h3><div class="uselist">${list.map(n => { const b = C.box[n], m = byNum(n);
-          return `<div class="use">${img(n, b.shiny)}<span><b>${m.name}</b> ${gradeChip(b.grade)}${C.team.includes(n) ? ` <span class="muted" style="font-size:12px">· lineup</span>` : ""}<small>${nextGradeText(b)}</small></span>
-            <span class="row" style="gap:4px"><button class="btn btn-accent btn-sm" type="button" data-quick-rare="${n}" ${C.rare > 0 && b.grade < MAX_GRADE ? "" : "disabled"}>+1 copy</button><button class="btn btn-plain btn-sm" type="button" data-candy-detail="${n}">Details</button></span></div>`; }).join("") || `<p>Catch a Pokémon first.</p>`}</div></div>
-      </div>
-    </div></div>`;
-    return;
-  }
   if (SY.state === "conflict" && SY.conflict && S.showConflict !== false) {
     const cf = SY.conflict, when = cf.updatedAt ? new Date(cf.updatedAt).toLocaleString() : "";
     el.innerHTML = `<div class="sheet-wrap"><div class="sheet" role="dialog" aria-modal="true" aria-label="Choose a save">
@@ -1824,26 +1474,21 @@ function renderSheet() {
   }
   const n = S.detail;
   if (n == null || !C.box[n]) { el.innerHTML = ""; return; }
-  const b = C.box[n], m = byNum(n), onTeam = C.team.includes(n), maxed = b.grade >= MAX_GRADE;
+  const b = C.box[n], m = byNum(n), pinned = showcase().includes(n), maxed = b.grade >= MAX_GRADE;
   const s = E.makeBattler({ num: n, grade: b.grade });
   const home = REGIONS.find(r => n >= r.lo && n <= r.hi);
-  const canRelease = !onTeam && Object.keys(C.box).length > 1;
+  const pts = E.CARD_POINTS[m.tier];
   el.innerHTML = `<div class="sheet-wrap" id="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="${m.name}">
     <div class="hd">${img(n, b.shiny)}<div><div class="eyebrow">#${pad(n)} · ${RARITY[m.tier]}${b.shiny ? ` · <span class="shiny-tag">★ Shiny</span>` : ""}</div><h2>${m.name}</h2><div class="types">${typeChips(m.types)}</div></div>
       <button class="close" type="button" id="sheet-close" aria-label="Close">✕</button></div>
-    <div><div class="row spread"><span>Card grade ${gradeChip(b.grade)} <span class="muted" style="font-size:13px">${b.grade ? `+${Math.round((GRADE_BOOST[b.grade] - 1) * 100)}% stats` : "base stats"}</span></span><span class="mono muted" style="font-size:12px">${nextGradeText(b)}</span></div>${gradeBar(b)}</div>
-    <div class="row mono muted" style="font-size:12px;gap:4px 12px">Lv 50 · HP ${s.maxhp} · Atk ${s.atk} · Def ${s.def} · SpA ${s.spa} · SpD ${s.spd} · Spe ${s.spe}</div>
+    <div><div class="row spread"><span>Card grade ${gradeChip(b.grade)}</span><span class="mono muted" style="font-size:12px">${nextGradeText(b)}</span></div>${gradeBar(b)}</div>
+    <div class="row mono muted" style="font-size:12px;gap:4px 12px">Worth ${pts * ((b.grade || 0) + 1) + (b.shiny ? 10 : 0)} points · ${RARITY[m.tier]} ${pts} × grade ${b.grade ? "+" + b.grade : "base"}${b.shiny ? " + Shiny 10" : ""}</div>
     <div class="opts">
-      <div class="opt"><div><div class="what"><span class="rc" style="transform:scale(.8);margin:-4px -4px"></span> Rare Candy <span class="muted" style="font-weight:500">(have ${C.rare})</span></div>
-        <div class="why">${maxed ? "This card is already Gold." : `Counts as one copy. At ${gradeName(b.grade + 1)}:`}</div>
-        ${maxed ? "" : `<div class="statdiff">${statDiff(n, b.grade, b.grade + 1)}</div>`}</div>
-        <button class="btn btn-plain btn-sm" type="button" id="rare" ${C.rare > 0 && !maxed ? "" : "disabled"}>+1 copy</button></div>
-      ${maxed ? "" : `<div class="hint"><span><b>Want more ${m.name} copies?</b> ${m.name} shows up in <b>${home ? home.name : "Wild"}</b> packs, or Wild packs opened as ${home ? home.name : "any region"}. Every copy you keep counts toward the next grade.</span>
+      <div class="opt"><div><div class="what">${pinned ? "In your showcase" : "Showcase"}</div><div class="why">${pinned ? `Slot ${showcase().indexOf(n) + 1} of ${SHOW_MAX}` : `${showcase().length}/${SHOW_MAX} slots used`}</div></div>
+        <button class="btn ${pinned ? "btn-line" : "btn-accent"} btn-sm" type="button" data-show="${n}" ${!pinned && showcase().length >= SHOW_MAX ? "disabled" : ""}>${pinned ? "Unpin" : "Pin to showcase"}</button></div>
+      ${maxed ? `<div class="opt"><div><div class="what">Gold card</div><div class="why">This card is fully upgraded.</div></div></div>`
+        : `<div class="hint"><span><b>Upgrade ${m.name}:</b> ${nextGradeText(b)}. Copies show up in <b>${home ? home.name : "Wild"}</b> packs, or Wild packs opened as ${home ? home.name : "any region"}.</span>
         <span class="row" style="gap:6px"><button class="btn btn-plain btn-sm" type="button" data-go-packs="1">Open packs (${bagCount()})</button></span></div>`}
-      <div class="opt"><div><div class="what">${onTeam ? "In your lineup" : "Not in your lineup"}</div><div class="why">${onTeam ? `Slot ${C.team.indexOf(n) + 1} of 6` : `${C.team.length}/6 slots used`}</div></div>
-        <button class="btn ${onTeam ? "btn-line" : "btn-accent"} btn-sm" type="button" id="sheet-team" ${!onTeam && C.team.length >= 6 ? "disabled" : ""}>${onTeam ? "Remove" : "Add"}</button></div>
-      <div class="opt danger"><div><div class="what">Release</div><div class="why">${canRelease ? `+${TRANSFER[m.tier]} Rare Candy. Stays registered in your Pokédex, but its card grade is lost.` : onTeam ? "Remove it from your lineup first." : "You need at least one Pokémon."}</div></div>
-        <button class="btn btn-sm" type="button" id="release" ${canRelease ? "" : "disabled"}>${S.confirmTransfer ? "Tap again to release" : "Release"}</button></div>
     </div>
   </div></div>`;
 }
@@ -1853,8 +1498,7 @@ function render() {
   const view = document.getElementById("view");
   document.getElementById("tabs").hidden = !C.starter;
   if (!C.starter) view.innerHTML = renderStarter();
-  else if (S.battle) view.innerHTML = renderBattle();
-  else view.innerHTML = S.tab === "today" ? renderToday() : S.tab === "packs" ? renderPacks() : S.tab === "journey" ? renderJourney() : S.tab === "team" ? renderTeam() : renderDex();
+  else view.innerHTML = S.tab === "today" ? renderToday() : S.tab === "packs" ? renderPacks() : S.tab === "collection" ? renderCollection() : renderDex();
   renderSheet();
 }
 
@@ -1863,7 +1507,6 @@ document.getElementById("tabs").addEventListener("click", e => {
   const b = e.target.closest("button[data-tab]");
   if (!b || S.battle) return;
   S.tab = b.dataset.tab;
-  if (S.tab === "journey") S.journeyRegion = null;
   render();
 });
 document.getElementById("view").addEventListener("click", e => {
@@ -1871,49 +1514,30 @@ document.getElementById("view").addEventListener("click", e => {
   let el;
   if ((el = on("[data-starter]"))) return chooseStarter(+el.dataset.starter);
   if ((el = on("[data-go]")) && !el.disabled) { if (S.battle) { clearTimers(); S.battle = null; } S.tab = el.dataset.go; return render(); }
-  if ((el = on("[data-battle]"))) return startJourney(+el.dataset.battle);
   if ((el = on("[data-region]")) && !el.disabled) { S.region = el.dataset.region; return render(); }
-  if ((el = on("[data-jregion]")) && !el.disabled) { S.journeyRegion = +el.dataset.jregion; return render(); }
+  if ((el = on("[data-dexr]"))) { S.dexRegion = el.dataset.dexr; return render(); }
   if ((el = on("[data-detail]"))) { S.detail = +el.dataset.detail; S.confirmTransfer = false; return renderSheet(); }
-  if ((el = on("[data-mv]"))) return moveTeam(+el.dataset.mv, +el.dataset.d);
-  if ((el = on("[data-tm]"))) return toggleTeam(+el.dataset.tm);
-  if ((el = on("[data-po]"))) { const i = +el.dataset.po, j = i + +el.dataset.d, o = S.puzOrder; [o[i], o[j]] = [o[j], o[i]]; return render(); }
-  if ((el = on("[data-pr]"))) { const i = +el.dataset.pr, j = i + +el.dataset.d, o = S.pracOrder; [o[i], o[j]] = [o[j], o[i]]; return render(); }
-  if (on("#prac-open")) return loadPractice();
-  if (on("#prac-close")) { S.pracOpen = false; return render(); }
-  if (on("#prac-go")) return startPractice();
+  if ((el = on("[data-smv]"))) return moveShow(+el.dataset.smv, +el.dataset.d);
+  if ((el = on("[data-show]"))) return toggleShow(+el.dataset.show);
   if (on("#pack")) return openPack();
   if (on("#reveal-all")) return revealAll();
   if (on("#keep")) return keep();
   if (on("#next")) return nextPack();
-  if (on("#add-kept")) return toggleTeam(S.cards[S.kept].num);
   if ((el = on(".card.pickable"))) { S.selected = +el.dataset.i; return S.batch ? keep() : render(); }
   if (on("#open-all")) return openAll();
-  if (on("#candy-info")) { S.candyInfo = true; return renderSheet(); }
   if (on("#auto-rest")) { S.batch.auto = true; S.selected = bestPick(); return keep(); }
   if (on("#stop-batch")) { S.batch.total = S.batch.done + 1; return render(); }
   if (on("#batch-done")) return nextPack();
   if (on("#earn-sub")) { S.subOffer = true; return renderSheet(); }
-  if (on("#claim-daily")) { const n = dailyAvailable(); addPacks("all", n, "Daily pack"); C.lastDaily = today(); save(); return render(); }
+  if (on("#claim-daily")) { const n = dailyAvailable(); addPacks("all", n, "Daily packs"); C.lastDaily = today(); save(); return render(); }
   if (on("#claim-week")) { addPacks("all", WEEK_PACKS, "Weekly bonus"); C.week.claimed = true; save(); return render(); }
   if ((el = on("[data-rip]"))) { if (S.battle) { clearTimers(); S.battle = null; } S.packKind = el.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
   if ((el = on("[data-bag]"))) { S.packKind = el.dataset.bag; if (S.phase === "kept" || S.phase === "batchDone") { S.phase = "sealed"; S.cards = []; S.batch = null; } return render(); }
-  if (on("#chal-go")) return startChallenge();
   if ((el = on("[data-copy]"))) { const c = el.dataset.copy; try { navigator.clipboard.writeText(c).then(() => toast("Code copied"), () => toast(c)); } catch { toast(c); } return; }
   if ((el = on("[data-board]"))) { S.boardView = el.dataset.board; return render(); }
   if ((el = on("[data-board-jump]"))) { S.boardView = el.dataset.boardJump; render(); document.querySelector(".board")?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" }); return; }
   if (on("#name-edit")) { S.editName = true; S.nameErr = ""; render(); const i = document.getElementById("trainer-name"); if (i) i.focus(); return; }
   if (on("#name-cancel")) { S.editName = false; S.nameErr = ""; return render(); }
-  if (on("#share")) {
-    const text = shareText();
-    // Only if the clipboard is blocked: show the text so it can be copied by hand
-    const fallback = () => { S.showShare = true; render(); const ta = document.getElementById("share-text"); if (ta) { ta.focus(); ta.select(); } toast("Select the text and copy it."); };
-    try { navigator.clipboard.writeText(text).then(() => toast("Result copied. Paste it anywhere."), fallback); } catch { fallback(); }
-    return;
-  }
-  if (on("#fast")) { S.battle.fast = !S.battle.fast; return render(); }
-  if (on("#skip")) return skipBattle();
-  if (on("#leave")) return leaveBattle();
 });
 document.getElementById("view").addEventListener("submit", async e => {
   if (e.target.id === "join-form") {
@@ -1932,11 +1556,6 @@ document.getElementById("view").addEventListener("submit", async e => {
 document.getElementById("sheet").addEventListener("click", e => {
   const t = e.target, n = S.detail;
   if (t.closest("#reveal-later") || t.id === "reveal-bg") { S.reveal = null; return renderSheet(); }
-  if (t.closest("#candy-close") || t.id === "candy-bg") { S.candyInfo = false; return renderSheet(); }
-  const qr = t.closest("[data-quick-rare]");
-  if (qr) return useRare(+qr.dataset.quickRare);
-  const cd = t.closest("[data-candy-detail]");
-  if (cd) { S.candyInfo = false; S.detail = +cd.dataset.candyDetail; return renderSheet(); }
   const rip = t.closest("[data-rip]");
   if (rip) { S.reveal = null; S.packKind = rip.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
   if (t.closest("#sub-yes")) { S.subOffer = false; renderSheet(); if (SY.shopOrigin) window.parent.postMessage({ type: "pd-subscribe" }, SY.shopOrigin); toast("Subscribing…"); return; }
@@ -1947,10 +1566,8 @@ document.getElementById("sheet").addEventListener("click", e => {
   if (t.id === "sheet-bg" || t.closest("#sheet-close")) { S.detail = null; return renderSheet(); }
 
   if (t.closest("[data-go-packs]")) { S.detail = null; S.tab = "packs"; if (S.phase === "kept" || S.phase === "batchDone") { S.phase = "sealed"; S.cards = []; S.batch = null; } return render(); }
-  if (t.closest("#rare")) return useRare(n);
-  if (t.closest("#sheet-team")) return toggleTeam(n);
-  const rel = t.closest("#release");
-  if (rel && !rel.disabled) { if (S.confirmTransfer) return transfer(n); S.confirmTransfer = true; return renderSheet(); }
+  const pin = t.closest("[data-show]");
+  if (pin && !pin.disabled) return toggleShow(+pin.dataset.show);
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && S.detail != null) { S.detail = null; renderSheet(); } });
 document.getElementById("view").addEventListener("change", e => {
@@ -1998,7 +1615,7 @@ document.getElementById("reset").addEventListener("click", e => {
   clearTimers();
   C = blank(); visit();
   S.showConflict = true;
-  Object.assign(S, { tab: "today", phase: "sealed", cards: [], battle: null, detail: null, chalPick: null });
+  Object.assign(S, { tab: "today", phase: "sealed", cards: [], battle: null, detail: null });
   render(); toast("Save reset.");
 });
 
@@ -2014,6 +1631,6 @@ function boot() {
 }
 boot();
 // A day can roll over while the page is open
-setInterval(() => { if (!S.battle && (C.chal.date !== E.challengeDay() || !C.week.days.includes(today()))) { visit(); render(); } }, 60000);
+setInterval(() => { if (!C.week.days.includes(today())) { visit(); render(); } }, 60000);
 })();
 </script>

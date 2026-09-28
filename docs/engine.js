@@ -274,6 +274,22 @@ function puzzleScore(raw, bestRaw, tryNo) {
 const puzzleStars = (win, perfect, score) => perfect ? 3 : score >= 90 ? 2 : win ? 1 : 0;
 const permutations = a => a.length < 2 ? [a.slice()] : a.flatMap((x, i) => permutations([...a.slice(0, i), ...a.slice(i + 1)]).map(p => [x, ...p]));
 
-G.ENGINE = { BATTLE_LVL, GRADES, GRADE_BOOST, GRADE_COST, MAX_GRADE, addCopy, gradeFromCopies, setGradeCurve: v => { GRADE_CURVE = v; TRAINERS.forEach(t => { t.grade = trainerGrade(t); t.team = null; }); }, PUZZLE_RNG, puzzleBattle, puzzleScore, puzzleStars, permutations, challengeDay, challengeWeek, challengeMonth, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, TRANSFER,
+// ---------- Collection score ----------
+// Every Pokédex entry scores by rarity; each card grade adds the card's points again; each Shiny adds 10.
+const CARD_POINTS = [1, 2, 5, 20];
+function collectionScore(save) {
+  let score = 0;
+  for (const [k, d] of Object.entries(save.dex || {})) {
+    const m = byNum(+k); if (!m) continue;
+    const pts = CARD_POINTS[m.tier], b = (save.box || {})[k];
+    score += pts + (b ? pts * (b.grade || 0) : 0) + (d.shiny || (b && b.shiny) ? 10 : 0);
+  }
+  return score;
+}
+const SHINY_GOALS = [5, 10, 25];
+const shinyCount = save => Object.values(save.dex || {}).filter(d => d.shiny).length;
+const regionComplete = (save, r) => { for (let n = r.lo; n <= r.hi; n++) if (!(save.dex || {})[n]) return false; return true; };
+
+G.ENGINE = { CARD_POINTS, collectionScore, SHINY_GOALS, shinyCount, regionComplete, BATTLE_LVL, GRADES, GRADE_BOOST, GRADE_COST, MAX_GRADE, addCopy, gradeFromCopies, setGradeCurve: v => { GRADE_CURVE = v; TRAINERS.forEach(t => { t.grade = trainerGrade(t); t.team = null; }); }, PUZZLE_RNG, puzzleBattle, puzzleScore, puzzleStars, permutations, challengeDay, challengeWeek, challengeMonth, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, TRANSFER,
   REGIONS, TRAINERS, trainerTeam, battle, winChance, makeBattler, mulberry32, hashStr, dailyChallenge, dayNumber, challengeScore };
 })(typeof window !== "undefined" ? window : globalThis);
