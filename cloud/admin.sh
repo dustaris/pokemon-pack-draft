@@ -22,7 +22,7 @@ case "$cmd" in
   player|clear-flags|ban|test-code) body="{\"cid\": \"$1\", \"note\": \"${2:-}\", \"reason\": \"${2:-}\"}" ;;
   feature) if [ -n "$2" ]; then body="{\"cid\": \"$1\", \"day\": \"$2\"}"; else body="{\"cid\": \"$1\"}"; fi ;;
   run-monthly) if [ -n "$1" ]; then body="{\"day\": \"$1\"}"; else body="{}"; fi ;;
-  pending|prizes|check-secrets|showcases) body="{}" ;;
+  pending|prizes|check-secrets|check-scopes|showcases) body="{}" ;;
   *) sed -n '2,15p' "$0"; exit 1 ;;
 esac
 curl -s -X POST "$URL/admin/$cmd" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$body"

@@ -340,6 +340,18 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .dm .pinbtn:disabled { opacity: .45; cursor: not-allowed; }
 .rw.secret .pct { color: #D0469A; }
 
+/* Prize cards */
+.prizecard { width: 100%; max-width: 420px; border-radius: 16px; padding: 14px 16px; text-align: center; display: grid; gap: 8px; justify-items: center;
+  background: linear-gradient(135deg, #7A5410, #E7B53A 35%, #FFE89A 50%, #D19A22 65%, #6E4A0C); color: #2A1D00; box-shadow: 0 0 0 2px #F2B531, 0 12px 30px -12px #F2B531; animation: drop .6s cubic-bezier(.2,.9,.3,1.3) both; }
+.prizecard .pz-top { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .12em; }
+.prizecard .pz-val { font-family: var(--display); font-weight: 800; font-size: 28px; line-height: 1; }
+.prizecard .pz-note { margin: 0; font-size: 13px; max-width: 34ch; }
+.prizecard .code .mono { background: rgba(255,255,255,.6); color: #2A1D00; }
+.prizecard .code small { color: #3A2A00; }
+.prize-line { margin: 0; font-size: 13px; color: var(--muted); text-align: center; max-width: 60ch; }
+.prize-line b { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .prizecard { animation: none; } }
+
 /* Rewards */
 .today .rewards { grid-column: 1 / -1; }
 .rw { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
@@ -586,7 +598,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
     <div class="brand">
       <a id="home-link" class="home-link" href="https://wdcardshop.com/" target="_top" hidden>← Back to WD Card Shop</a>
       <h1>Pokédex <em>Pack</em> Draft</h1>
-      <p>Rip free packs every day, keep one card from each, and build a collection worth showing off. Complete sets and top the monthly board for WD Card Shop rewards.</p>
+      <p>Rip free packs every day and keep one card from each. Signed-in members can find WD Card Shop discount codes and store credit inside packs.</p>
     </div>
     <div class="meter" aria-live="polite">
       <div class="nums"><span>Pokédex</span><span><b id="m-caught">0</b> / 1,025</span></div>
@@ -639,6 +651,8 @@ const SHINY_ODDS = 1 / 100;
 const HIT = { leg: 1 / 20, rare: 1 / 4 }; // hit slot: Legendary 1/20, Rare 1/4, otherwise Uncommon
 const STARTERS = [1, 4, 7];
 const START_PACKS = 6, DAILY_PACKS = 3, DAILY_BANK_DAYS = 2, WEEK_GOAL = 5, WEEK_PACKS = 3, STREAK_GOAL = 7;
+// Feature switches: the game starts simple (rip packs, find store prizes). Flip these back on later; the code is all here.
+const FEATURES = { showcase: false, boards: false, grades: false, streak: false, weekly: false };
 const SITE = "https://wdcardshop.com/pages/pokedex-pack-drafts";
 const SHINY_CSS = "filter:hue-rotate(150deg) saturate(1.3)";
 
@@ -863,7 +877,7 @@ function visit() {
   if (!C.week.days.includes(t)) C.week.days.push(t);
   // Visit streak: consecutive days; every 7th day in a row earns a gold Champion Pack
   const st = C.streak || (C.streak = { last: null, count: 0 });
-  if (st.last !== t) {
+  if (FEATURES.streak && st.last !== t) {
     st.count = st.last === addDays(t, -1) ? st.count + 1 : 1;
     st.last = t;
     if (C.starter && st.count % STREAK_GOAL === 0) addPacks("champ", 1, `${st.count}-day visit streak`);
@@ -937,6 +951,8 @@ function openPack(fast) {
   C.bag.splice(C.bag.findIndex(p => p.k === kind), 1);
   C.bag.forEach(p => { if (p.k === kind) p.fresh = false; });
   C.pending = { kind, region: S.region, cards: S.cards }; save(); // a refresh resumes this pack instead of re-rolling it
+  S.prize = null;
+  if (prizeEligible()) rollPrize();
   S.phase = "tearing"; S.revealed = 0; S.selected = null; S.kept = null;
   const packEl = document.getElementById("pack");
   if (packEl) packEl.classList.add("tearing");
@@ -950,6 +966,32 @@ function openPack(fast) {
   }
   timers.push(setTimeout(() => { S.phase = "revealing"; render(); revealNext(); }, reduced ? 0 : S.premium ? 1100 : 520));
 }
+// ---------- Prize cards ----------
+// Signed-in members who joined rewards get a secret server roll per pack while they have prize chances left
+const prizeEligible = () => !!(SY.auth && S.rewards && S.rewards.eligible && !S.rewards.banned && S.rewards.chances > 0);
+async function rollPrize() {
+  S.rewards.chances--; // optimistic; the server's count comes back with the roll
+  const batch = S.batch;
+  try {
+    const { status, data } = await cloud("roll", {});
+    if (status !== 200) return;
+    if (S.rewards) S.rewards.chances = data.chances;
+    if (!data.prize) return;
+    if (batch) (batch.prizes = batch.prizes || []).push(data.prize); else S.prize = data.prize;
+    S.rewardsAt = 0; // refresh "Your prizes"
+    S.banner = { glow: "#F2B531", text: "Store prize!", sub: data.prize.label };
+    toast(`You found a WD Card Shop prize: ${data.prize.label}!`);
+    render();
+  } catch {}
+}
+function prizeCardHTML(pz) {
+  const how = pz.status !== "issued" ? `<p class="pz-note">We're verifying this prize. It will appear under <b>Your prizes</b> on the Today tab.</p>`
+    : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. It's applied automatically at checkout${pz.expires ? ` and expires ${new Date(pz.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}.</p>
+        <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>`
+    : codeHTML(pz);
+  return `<div class="prizecard"><div class="pz-top">WD CARD SHOP PRIZE</div><div class="pz-val">${pz.label}</div>${how}</div>`;
+}
+
 // Open all: rip a whole stack back to back, still keeping one card per pack
 function openAll() {
   const kind = selectedKind();
@@ -1036,7 +1078,9 @@ function keep() {
     const b = C.box[c.num];
     ups = addCopy(b);
     if (c.shiny) b.shiny = true;
-    msg = ups ? `Duplicate ${m.name}: upgraded to ${gradeName(b.grade)}! Every stat is now +${Math.round((GRADE_BOOST[b.grade] - 1) * 100)}%.`
+    if (!FEATURES.grades) ups = 0;
+    msg = !FEATURES.grades ? `Another ${m.name}: you've now pulled it ${C.dex[c.num].n} times.`
+      : ups ? `Duplicate ${m.name}: upgraded to ${gradeName(b.grade)}! It's now worth more collection points.`
       : `Duplicate ${m.name}: +1 copy (${nextGradeText(b)}).`;
   }
   S.keptMsg = `${msg} The other four go back.`;
@@ -1047,7 +1091,7 @@ function keep() {
   toast(ups ? `${m.name} upgraded to ${gradeName(C.box[c.num].grade)}!` : isNew ? `New Pokédex entry: ${m.name} (#${pad(m.num)})` : `${m.name} kept`);
   render();
 }
-function nextPack() { clearTimers(); S.phase = "sealed"; S.cards = []; S.banner = null; S.batch = null; render(); }
+function nextPack() { clearTimers(); S.phase = "sealed"; S.cards = []; S.banner = null; S.batch = null; S.prize = null; render(); }
 // The stack picked in the bag (falls back to the first stack when it runs out)
 function selectedKind() {
   const groups = bagGroups();
@@ -1112,7 +1156,7 @@ function renderMeter() {
   const caught = Object.keys(C.dex).length;
   document.getElementById("m-caught").textContent = caught.toLocaleString();
   document.getElementById("m-bar").style.width = (caught / 1025 * 100).toFixed(2) + "%";
-  document.getElementById("m-sub").innerHTML = `<span><b>${bagCount()}</b> packs in bag</span><span><b>${score().toLocaleString()}</b> collection points</span><span><b>${shinies()}</b> Shinies</span>`;
+  document.getElementById("m-sub").innerHTML = `<span><b>${bagCount()}</b> packs in bag</span><span><b>${shinies()}</b> Shinies</span>${S.rewards && S.rewards.eligible ? `<span><b>${S.rewards.chances || 0}</b> prize chances today</span>` : FEATURES.boards ? `<span><b>${score().toLocaleString()}</b> collection points</span>` : ""}`;
   const todo = (dailyAvailable() ? 1 : 0) + (weekReady() ? 1 : 0);
   const ctT = document.getElementById("ct-today");
   ctT.textContent = todo ? `●${todo}` : ""; ctT.className = "ct hot";
@@ -1131,6 +1175,13 @@ function renderToday() {
   }).join("");
   const st = C.streak || { count: 0 }, lit = st.count ? (st.count % STREAK_GOAL || STREAK_GOAL) : 0, earnedToday = st.count > 0 && st.count % STREAK_GOAL === 0;
   const dots = Array.from({ length: STREAK_GOAL }, (_, i) => `<span class="${i < lit ? "on" : ""}"><i></i></span>`).join("");
+  const email = C.subBonus ? "" : `<section class="panel tcard">
+      <div class="row spread"><h2>+${SUB_PACKS} bonus packs</h2><span class="bag">One time</span></div>
+      <p class="muted" style="margin:0;font-size:14px">Join the WD Card Shop email list for drop alerts and ${SUB_PACKS} extra packs${SY.auth ? `, plus ${SUB_PACKS} extra prize chances` : ""}.</p>
+      <div class="row">${!SY.shop ? `<a class="btn btn-plain btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">On wdcardshop.com</a>`
+        : !SY.auth ? (SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in first</a>` : "")
+        : SY.subscribed ? `<span class="muted">Arriving shortly</span>` : `<button class="btn btn-accent btn-sm" type="button" id="earn-sub">Subscribe for ${SUB_PACKS} packs</button>`}</div>
+    </section>`;
   return `<div class="today">
     <section class="panel tcard">
       <div class="row spread"><h2>Daily packs</h2><span class="bag">${plural(bagCount(), "pack", "packs")} in bag</span></div>
@@ -1139,20 +1190,21 @@ function renderToday() {
       : `<p class="muted" style="margin:0">Claimed today. ${DAILY_PACKS} more arrive tomorrow; missed days save up to ${DAILY_BANK_DAYS * DAILY_PACKS}.</p>
         <div class="row"><button class="btn btn-plain" type="button" data-go="packs" ${bagCount() ? "" : "disabled"}>Open packs</button></div>`}
     </section>
-    <section class="panel tcard">
+    ${email}
+    ${FEATURES.streak ? `<section class="panel tcard">
       <div class="row spread"><h2>Visit streak</h2><span class="muted mono" style="font-size:13px">${plural(st.count || 0, "day", "days")} in a row</span></div>
       <div class="week streak">${dots}</div>
       <p class="muted" style="margin:0;font-size:14px">Every ${STREAK_GOAL} days in a row earns a gold Champion Pack. ${earnedToday ? "You earned one today! Keep going for the next." : `${plural(STREAK_GOAL - lit, "more day", "more days")} to go.`}</p>
-    </section>
-    <section class="panel tcard">
+    </section>` : ""}
+    ${FEATURES.weekly ? `<section class="panel tcard">
       <div class="row spread"><h2>This week</h2><span class="muted mono" style="font-size:13px">${Math.min(C.week.days.length, 7)}/${WEEK_GOAL} days</span></div>
       <div class="week">${days}</div>
       ${C.week.claimed ? `<p class="muted" style="margin:0">Weekly bonus claimed. A new week starts Monday.</p>`
         : weekReady() ? `<div class="row"><button class="btn btn-accent" type="button" id="claim-week">Claim ${WEEK_PACKS} bonus packs</button></div>`
         : `<p class="muted" style="margin:0">Visit on any ${WEEK_GOAL} days this week for ${WEEK_PACKS} bonus packs. The days don't need to be in a row.</p>`}
-    </section>
-    ${renderBoard()}
+    </section>` : ""}
     ${renderRewards()}
+    ${FEATURES.boards ? renderBoard() : ""}
   </div>`;
 }
 // ---------- WD Card Shop rewards ----------
@@ -1165,16 +1217,16 @@ async function loadRewards(announce) {
   S.rewardsAt = Date.now(); S.rewardsLoading = false;
   if (announce && S.rewards && before !== S.rewards.prizes.map(p => p.ref + p.status).join()) {
     const got = S.rewards.prizes.find(p => p.status === "issued" && !(before || "").includes(p.ref + "issued"));
-    toast(got ? `You earned a WD Card Shop reward: ${got.pct}% off! Your code is on the Today tab.` : "Reward earned! See WD Card Shop rewards on the Today tab.");
+    toast(got ? `Your WD Card Shop prize is ready: ${got.label}! See Your prizes on the Today tab.` : "Reward earned! See WD Card Shop rewards on the Today tab.");
   }
-  if (S.tab === "today") render();
+  if (S.tab === "today" || S.tab === "packs") render();
 }
 function renderRewards() {
   const r = S.rewards;
   if (SY.auth && !S.rewardsLoading && (!r || Date.now() - (S.rewardsAt || 0) > 60000)) setTimeout(() => loadRewards(false), 0);
-  const small = `<p class="muted" style="margin:0;font-size:12px">Codes take up to $${r ? r.config.maxOff : 50} off, are single use, for your account only, need a $${r ? r.config.minSubtotal : 25}+ order and expire ${r ? r.config.days : 30} days after they're issued. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. WD Card Shop rewards are not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>`;
-  const head = `<div class="row spread"><h2>WD Card Shop rewards</h2><span class="muted" style="font-size:13px">Real store discounts for collecting · up to $50 off</span></div>`;
-  const pitch = `<p style="margin:0">Pin your best cards to your showcase for a chance at Showcase of the Month, and gain the most collection points in a month to finish top 3.</p>`;
+  const small = `<p class="muted" style="margin:0;font-size:12px">Discount codes take up to $${r ? r.config.maxOff : 50} off, are single use, for your account only, need a $${r ? r.config.minSubtotal : 25}+ order and expire ${r ? r.config.days : 30} days after they're issued. Store credit is added to your account and expires after ${r ? r.config.creditExpiresDays : 90} days. Store credit prizes are limited to $150 a month in total. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. WD Card Shop rewards are not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>`;
+  const head = `<div class="row spread"><h2>Prizes in packs</h2><span class="muted" style="font-size:13px">WD Card Shop discount codes and store credit</span></div>`;
+  const pitch = `<p style="margin:0">Members' packs can contain real WD Card Shop prizes: <b>1 in 25</b> packs has a 5% off code, <b>1 in 100</b> has $5 store credit, and <b>1 in 500</b> has $20 store credit.</p>`;
   if (!SY.shop) return `<section class="panel tcard rewards">${head}${pitch}
     <div class="row"><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Collect on wdcardshop.com to earn rewards</a></div>${small}</section>`;
   if (!SY.auth) return `<section class="panel tcard rewards">${head}${pitch}
@@ -1187,6 +1239,7 @@ function renderRewards() {
   // A secret reward only shows up once it's earned
   const secret = r.prizes.filter(p => p.kind === "shiny").map(p => `<div class="rw secret"><span class="pct">${p.pct}%</span><span><b>Secret reward unlocked!</b><small>${p.label}</small></span>${state(p)}</div>`).join("");
   const won = r.prizes.filter(p => p.kind === "monthly" || p.kind === "featured").map(p => `<div class="rw"><span class="pct">${p.pct}%</span><span><b>${p.label}</b></span>${state(p)}</div>`).join("");
+  const packWins = r.prizes.filter(p => p.kind === "pack").map(p => `<div class="rw"><span class="pct">${p.amount > 0 ? "$" + Math.round(p.amount) : p.pct + "%"}</span><span><b>${p.label}</b><small>Found ${new Date(p.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></span>${p.amount > 0 && p.status === "issued" ? `<span class="code"><span class="pill">In your store credit</span><a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a></span>` : state(p)}</div>`).join("");
   const join = r.eligible ? "" : `<form class="join" id="join-form">
       <b>Join WD Card Shop rewards</b>
       <label><input type="checkbox" id="j-18"> I'm 18 or older</label>
@@ -1194,9 +1247,11 @@ function renderRewards() {
       <label><input type="checkbox" id="j-rules"> I agree to the <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a> (one account per person)</label>
       <div class="row"><button class="btn btn-accent btn-sm" type="submit">Join rewards</button>${S.joinErr ? `<span class="err">${S.joinErr}</span>` : ""}</div></form>`;
   return `<section class="panel tcard rewards">${head}${join}
-    <div><div class="eyebrow" style="margin-bottom:6px">Every month</div>
-      <div class="rw"><span class="pct">${r.config.monthly.map(w => w.pct + "%").join(" / ")}</span><span><b>Top 3 collectors of the month</b><small>Most collection points gained that month. Visit on ${r.config.monthlyMinDays}+ days. Winners are reviewed before codes go out.</small></span><span><button class="btn btn-plain btn-sm" type="button" data-board-jump="month">See standings</button></span></div>
-      <div class="rw"><span class="pct">${r.config.featured}%</span><span><b>Showcase of the Month</b><small>WD Card Shop picks a favorite published showcase each month. Pin your best 6 cards to enter.</small></span><span><button class="btn btn-accent btn-sm" type="button" data-go="collection">Edit your showcase</button></span></div>${won}</div>
+    ${r.eligible ? `<div class="row spread"><span><b>${plural(r.chances || 0, "prize chance", "prize chances")}</b> left today · ${r.config.dailyChances} a day with your free packs${C.subBonus ? "" : `, +${r.config.subscriberChances} for joining the email list`}</span><button class="btn btn-accent btn-sm" type="button" data-go="packs">Open packs</button></div>` : pitch}
+    ${r.eligible || packWins ? `<div><div class="eyebrow" style="margin-bottom:6px">Your prizes</div>${packWins || `<p class="muted" style="margin:0;font-size:14px">No prizes yet. Keep ripping!</p>`}</div>` : ""}
+    ${r.config.monthlyEnabled ? `<div><div class="eyebrow" style="margin-bottom:6px">Every month</div>
+      <div class="rw"><span class="pct">${r.config.monthly.map(w => w.pct + "%").join(" / ")}</span><span><b>Top 3 collectors of the month</b><small>Most collection points gained that month.</small></span><span></span></div>
+      <div class="rw"><span class="pct">${r.config.featured}%</span><span><b>Showcase of the Month</b></span><span></span></div></div>` : ""}${won}
     ${secret}
     ${small}</section>`;
 }
@@ -1279,7 +1334,7 @@ function cardHTML(c, i) {
     S.phase === "kept" ? (S.kept === i ? "kept" : "gone") : ""].join(" ");
   const keptThis = S.phase === "kept" && S.kept === i;
   const had = C.dex[c.num] && !(keptThis && C.dex[c.num].n === 1);
-  const badge = !had ? `<span class="new">NEW</span>` : inBox(c.num) && !keptThis ? `<span class="dupe">${gradeName(C.box[c.num].grade)} · +1 copy</span>` : `<span class="dupe">Caught</span>`;
+  const badge = !had ? `<span class="new">NEW</span>` : inBox(c.num) && !keptThis ? `<span class="dupe">${FEATURES.grades ? `${gradeName(C.box[c.num].grade)} · +1 copy` : `Own ×${C.dex[c.num].n}`}</span>` : `<span class="dupe">Caught</span>`;
   return `<button class="${cls}" type="button" data-i="${i}" style="--rc:${rc(m.tier)}" ${pickable ? `aria-pressed="${S.selected === i}"` : `tabindex="-1"`}
     aria-label="${i < S.revealed ? `${c.shiny ? "Shiny " : ""}${m.name}, ${RARITY[m.tier]}` : "Face-down card"}">
     <span class="burst"></span><span class="sparks">${Array.from({ length: 12 }, (_, k) => `<i style="--a:${k * 30}deg"></i>`).join("")}</span>
@@ -1296,7 +1351,18 @@ function cardHTML(c, i) {
     </span>
   </button>`;
 }
+// What the pack screen says about prize cards, depending on sign-in and rewards membership
+function prizeLine() {
+  const r = S.rewards;
+  const odds = `1 in 25 packs: 5% off · 1 in 100: $5 store credit · 1 in 500: $20 store credit`;
+  if (!SY.shop) return `<p class="prize-line">Members on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a> can find store prizes in packs.</p>`;
+  if (!SY.auth) return `<p class="prize-line">${SY.loginUrl ? `<a href="${SY.loginUrl}" target="_top">Sign in</a>` : "Sign in"} and join rewards to find WD Card Shop prizes in packs. ${odds}.</p>`;
+  if (!r) return "";
+  if (!r.eligible) return `<p class="prize-line">Join WD Card Shop rewards on the Today tab and your packs can contain store prizes. ${odds}.</p>`;
+  return `<p class="prize-line"><b>${plural(r.chances || 0, "prize chance", "prize chances")} left today</b> (${DAILY_PACKS} a day). ${odds}.</p>`;
+}
 function renderPacks() {
+  if (SY.auth && !S.rewards && !S.rewardsLoading) setTimeout(() => loadRewards(false), 0);
   const kind = selectedKind(), groups = bagGroups();
   const busy = S.phase !== "sealed" && S.phase !== "kept" && S.phase !== "batchDone";
   const bag = `<section class="bagshelf" aria-label="Your pack bag">
@@ -1325,7 +1391,8 @@ function renderPacks() {
         <p class="pack-from">From <b>${from}</b></p>
         ${groups.find(g => g.kind === kind).n > 1 ? `<button class="btn btn-plain" type="button" id="open-all">Open all ×${groups.find(g => g.kind === kind).n} ${packLabel(kind)}</button>` : ""}
         ${wild}
-        <p class="note">Tap the pack to rip it. Keep one card. A card you already own upgrades its grade.</p>
+        <p class="note">Tap the pack to rip it and keep one card.</p>
+        ${prizeLine()}
         <div class="odds">${k.premium ? `<span>2 <b style="color:var(--r0)">Common</b></span><span>2 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> or better · <b style="color:var(--r3)">Legendary</b> 1 in 4</span>`
           : `<span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 4 · ${k.noLegend ? "no Legendaries" : `<b style="color:var(--r3)">Legendary</b> 1 in 20`}</span>`}<span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
     }
@@ -1334,7 +1401,8 @@ function renderPacks() {
     const legends = B.kept.filter(k => byNum(k.num).tier === 3).length, shinies = B.kept.filter(k => k.shiny).length;
     stage = `<div class="summary">
       <div><div class="eyebrow">Open all</div><h2 style="font-size:28px">Opened ${plural(B.done, "pack", "packs")}</h2></div>
-      <div class="gains"><span class="gain">${fresh} new Pokédex ${fresh === 1 ? "entry" : "entries"}</span><span class="gain">${plural(B.ups || 0, "card upgrade", "card upgrades")}</span>${legends ? `<span class="gain">${legends} Legendary</span>` : ""}${shinies ? `<span class="gain shiny-tag">${shinies} Shiny</span>` : ""}</div>
+      ${(B.prizes || []).map(prizeCardHTML).join("")}
+      <div class="gains"><span class="gain">${fresh} new Pokédex ${fresh === 1 ? "entry" : "entries"}</span>${FEATURES.grades ? `<span class="gain">${plural(B.ups || 0, "card upgrade", "card upgrades")}</span>` : ""}${legends ? `<span class="gain">${legends} Legendary</span>` : ""}${shinies ? `<span class="gain shiny-tag">${shinies} Shiny</span>` : ""}</div>
       <div class="dex">${B.kept.map(k => { const m = byNum(k.num); return `<button type="button" class="dm" data-detail="${k.num}" style="--rc:${rc(m.tier)}">
         ${k.isNew ? `<span class="newb">NEW</span>` : ""}<span class="pip" style="left:auto;right:5px" title="${RARITY[m.tier]}"></span>${k.shiny ? `<span class="sh">★</span>` : ""}
         ${img(k.num, k.shiny)}<span class="nm">${m.name}</span><span class="no">${RARITY[m.tier]}</span></button>`; }).join("")}</div>
@@ -1353,8 +1421,8 @@ function renderPacks() {
         ${inBox(kn) && !showcase().includes(kn) && showcase().length < SHOW_MAX ? `<button class="btn btn-plain" type="button" data-show="${kn}">Pin to showcase</button>` : ""}
         ${inBox(kn) ? `<button class="btn btn-plain" type="button" data-detail="${kn}">View ${byNum(kn).name}</button>` : ""}`;
     }
-    const note = S.phase === "picking" ? (S.batch ? "Auto-pick keeps new Pokédex entries first, then Shinies, then the rarest card." : "Pick one to keep. A duplicate of a card you own counts toward its next grade.") : S.phase === "kept" ? (S.batch ? "Kept! Next pack…" : S.keptMsg) : "Revealing…";
-    stage = `<div class="pull-slot" id="pull-slot">${bannerHTML()}</div><div class="cards">${S.cards.map(cardHTML).join("")}</div>
+    const note = S.phase === "picking" ? (S.batch ? "Auto-pick keeps new Pokédex entries first, then Shinies, then the rarest card." : "Pick one to keep.") : S.phase === "kept" ? (S.batch ? "Kept! Next pack…" : S.keptMsg) : "Revealing…";
+    stage = `<div class="pull-slot" id="pull-slot">${bannerHTML()}</div><div class="cards">${S.cards.map(cardHTML).join("")}</div>${S.prize && S.phase !== "revealing" ? prizeCardHTML(S.prize) : ""}
       <p class="note">${note}</p><div class="actions">${actions}</div>`;
   }
   const earn = S.phase === "sealed" || (S.phase === "kept" && !S.batch) || S.phase === "batchDone" ? `<div style="margin-top:16px">${renderEarn()}</div>` : "";
@@ -1371,11 +1439,11 @@ function renderEarn() {
   const rows = [
     { kind: "all", title: "Daily packs", why: `+${DAILY_PACKS} Wild packs every day. Missed days save up to ${DAILY_BANK_DAYS * DAILY_PACKS}.`,
       act: avail ? `<button class="btn btn-accent btn-sm" type="button" id="claim-daily">Claim ${avail}</button>` : done("Claimed today") },
-    { kind: "champ", title: "Visit streak", why: `A gold Champion Pack for every ${STREAK_GOAL} days in a row.`, act: wait(`${st.count || 0} days · ${toGo} to go`) },
-    { kind: "all", title: "Weekly check-in", why: `+${WEEK_PACKS} Wild packs for visiting on any ${WEEK_GOAL} days of the week.`,
+    FEATURES.streak && { kind: "champ", title: "Visit streak", why: `A gold Champion Pack for every ${STREAK_GOAL} days in a row.`, act: wait(`${st.count || 0} days · ${toGo} to go`) },
+    FEATURES.weekly && { kind: "all", title: "Weekly check-in", why: `+${WEEK_PACKS} Wild packs for visiting on any ${WEEK_GOAL} days of the week.`,
       act: C.week.claimed ? done("Claimed") : weekReady() ? `<button class="btn btn-accent btn-sm" type="button" id="claim-week">Claim ${WEEK_PACKS}</button>` : wait(`${Math.min(C.week.days.length, WEEK_GOAL)}/${WEEK_GOAL} days`) },
     { kind: "all", title: "WD Card Shop emails", why: `+${SUB_PACKS} Wild packs, one time, for joining the email list.`, act: sub },
-  ];
+  ].filter(Boolean);
   return `<section class="panel" aria-label="Ways to earn packs"><h2>Earn more packs <span>Come back daily to keep your bag full</span></h2>
     <div class="earn">${rows.map(r => `<div class="earn-row">${miniPack(r.kind)}<span><b>${r.title}</b><span class="why">${r.why}</span></span>${r.act}</div>`).join("")}</div></section>`;
 }
@@ -1401,7 +1469,10 @@ function renderCollection() {
     .filter(n => show === "all" || (show === "shiny" && C.box[n].shiny) || (show === "pinned" && sc.includes(n)) || (show === "graded" && C.box[n].grade > 0));
   box.sort(S.boxSort === "num" ? (a, b) => a - b : S.boxSort === "grade" ? (a, b) => (C.box[b].grade - C.box[a].grade) || power(b) - power(a) : (a, b) => power(b) - power(a) || a - b);
   const grid = box.length ? box.map(n => {
-    const b = C.box[n], m = byNum(n);
+    const b = C.box[n], m = byNum(n), got = C.dex[n] ? C.dex[n].n : 1;
+    if (!FEATURES.showcase || !FEATURES.grades) return `<button type="button" class="dm" data-detail="${n}" style="--rc:${rc(m.tier)}">
+      <span class="pip" title="${RARITY[m.tier]}"></span>${got > 1 ? `<span class="x">×${got}</span>` : ""}${b.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
+      ${img(n, b.shiny)}<span class="nm">${m.name}</span><span class="no">${RARITY[m.tier]}</span></button>`;
     const pinned = sc.includes(n);
     return `<div class="dm col ${pinned ? "onteam" : ""} gr${b.grade || 0}" style="--rc:${rc(m.tier)}">
       <button type="button" class="dmopen" data-detail="${n}" aria-label="${m.name} details">
@@ -1415,6 +1486,13 @@ function renderCollection() {
     <div class="galcards">${x.cards.map(c => showCard(c.num, c)).join("")}</div></div>`;
   const gallery = !g ? `<p class="muted">Loading showcases…</p>` : g.error ? `<p class="muted">The gallery is on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a>.</p>`
     : `${g.featured ? `<div class="featured"><div class="eyebrow">Showcase of the Month</div>${gRow(g.featured)}</div>` : ""}${g.showcases.length ? g.showcases.map(gRow).join("") : `<p class="muted">No showcases yet. Pin your best 6 and be the first!</p>`}`;
+  if (!FEATURES.showcase) return `<section class="panel"><h2>Your cards <span>${plural(Object.keys(C.box).length, "card", "cards")} · ${shinies()} Shiny</span></h2>
+      <div class="toolbar">
+        <input type="search" id="box-search" placeholder="Search your cards…" value="${S.boxSearch.replace(/"/g, "&quot;")}" aria-label="Search your cards">
+        <select id="box-show" aria-label="Show">${[["all", "All cards"], ["shiny", `★ Shiny (${Object.values(C.box).filter(b => b.shiny).length})`]].map(([v, l]) => `<option value="${v}" ${show === v ? "selected" : ""}>${l}</option>`).join("")}</select>
+        <select id="box-sort" aria-label="Sort"><option value="power" ${!S.boxSort || S.boxSort === "power" ? "selected" : ""}>Rarest first</option><option value="num" ${S.boxSort === "num" ? "selected" : ""}>Pokédex number</option></select>
+      </div>
+      <div class="dex">${grid}</div></section>`;
   return `<section class="panel" style="margin-bottom:20px"><h2>Your showcase <span>Pin your best 6 cards · signed-in showcases appear in the gallery</span></h2>
       <div class="showcase">${slots}</div><div class="row" style="margin-top:10px">${pub}</div></section>
     <section class="panel" style="margin-bottom:20px"><h2>Card grades <span>Duplicates upgrade your cards</span></h2>
@@ -1519,15 +1597,15 @@ function renderSheet() {
   el.innerHTML = `<div class="sheet-wrap" id="sheet-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="${m.name}">
     <div class="hd">${img(n, b.shiny)}<div><div class="eyebrow">#${pad(n)} · ${RARITY[m.tier]}${b.shiny ? ` · <span class="shiny-tag">★ Shiny</span>` : ""}</div><h2>${m.name}</h2><div class="types">${typeChips(m.types)}</div></div>
       <button class="close" type="button" id="sheet-close" aria-label="Close">✕</button></div>
-    <div><div class="row spread"><span>Card grade ${gradeChip(b.grade)}</span><span class="mono muted" style="font-size:12px">${nextGradeText(b)}</span></div>${gradeBar(b)}</div>
-    <div class="row mono muted" style="font-size:12px;gap:4px 12px">Worth ${pts * ((b.grade || 0) + 1) + (b.shiny ? 10 : 0)} points · ${RARITY[m.tier]} ${pts} × grade ${b.grade ? "+" + b.grade : "base"}${b.shiny ? " + Shiny 10" : ""}</div>
-    <div class="opts">
+    ${FEATURES.grades ? `<div><div class="row spread"><span>Card grade ${gradeChip(b.grade)}</span><span class="mono muted" style="font-size:12px">${nextGradeText(b)}</span></div>${gradeBar(b)}</div>` : ""}
+    <div class="row muted" style="font-size:13px;gap:4px 12px">${RARITY[m.tier]} · pulled ${plural(C.dex[n] ? C.dex[n].n : 1, "time", "times")} · found in ${home ? home.name : "Wild"} packs</div>
+    ${FEATURES.showcase || FEATURES.grades ? `<div class="opts">
       <div class="opt"><div><div class="what">${pinned ? "In your showcase" : "Showcase"}</div><div class="why">${pinned ? `Slot ${showcase().indexOf(n) + 1} of ${SHOW_MAX}` : `${showcase().length}/${SHOW_MAX} slots used`}</div></div>
         <button class="btn ${pinned ? "btn-line" : "btn-accent"} btn-sm" type="button" data-show="${n}" ${!pinned && showcase().length >= SHOW_MAX ? "disabled" : ""}>${pinned ? "Unpin" : "Pin to showcase"}</button></div>
       ${maxed ? `<div class="opt"><div><div class="what">Gold card</div><div class="why">This card is fully upgraded.</div></div></div>`
         : `<div class="hint"><span><b>Upgrade ${m.name}:</b> ${nextGradeText(b)}. Copies show up in <b>${home ? home.name : "Wild"}</b> packs, or Wild packs opened as ${home ? home.name : "any region"}.</span>
         <span class="row" style="gap:6px"><button class="btn btn-plain btn-sm" type="button" data-go-packs="1">Open packs (${bagCount()})</button></span></div>`}
-    </div>
+    </div>` : ""}
   </div></div>`;
 }
 

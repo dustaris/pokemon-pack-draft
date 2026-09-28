@@ -19,11 +19,24 @@ const SHOP = "1marss-2m";
 const STORE = "https://wdcardshop.com";
 
 // WD Card Shop rewards. Codes are single-use, locked to the winner's customer account, and expire.
+// Prize cards in packs (signed-in players who joined rewards). Checked rarest first against one secret roll per pack.
+const PACK_PRIZES = [
+  { key: "credit20", odds: 1 / 500, type: "credit", amount: 20, label: "$20 store credit" },
+  { key: "credit5", odds: 1 / 100, type: "credit", amount: 5, label: "$5 store credit" },
+  { key: "code5", odds: 1 / 25, type: "code", pct: 5, label: "5% off your order" },
+];
+const PACKS_CFG = {
+  dailyChances: 3, bankChances: 6, subscriberChances: 3,  // prize chances mirror the free packs: 3 a day (bank up to 6) + 3 once for subscribers
+  creditBudget: 150,                                      // max store credit awarded per calendar month (Pacific); after that, no credit prizes
+  creditExpiresDays: 90,
+  creditMinAccountDays: 7,                                // newer accounts' credit prizes wait for your review
+};
 const REWARDS = {
   monthly: [{ place: 1, pct: 20 }, { place: 2, pct: 15 }, { place: 3, pct: 10 }], // most collection points gained that month
   featured: 15,                                                                       // Showcase of the Month, picked by you
   sets: [],                                             // set-completion rewards retired 2026-09-28
-  shiny: [{ key: "s10", count: 10, pct: 15 }],          // secret reward: not shown in the game until earned
+  shiny: [],                                            // secret 10-Shiny reward: off while the game focuses on pack prizes
+  monthlyEnabled: false,                                // monthly collectors + Showcase of the Month: off for now (flip to true to resume)
   minSubtotal: 25, maxOff: 50, days: 30, // every code: $25+ order, never more than $50 off (enforced by the capped-reward function)
   monthlyMinDays: 10,        // days the game saved that month
   monthlyMinAccountDays: 7,  // account first seen at least this many days before the month ends
@@ -35,7 +48,7 @@ const MAX_BYTES = 256 * 1024;
 
 export default {
   // The 1st of each month just after midnight Pacific: queue last month's top 3 for review
-  async scheduled(event, env, ctx) { ctx.waitUntil(monthlyPrizes(env)); },
+  async scheduled(event, env, ctx) { if (REWARDS.monthlyEnabled) ctx.waitUntil(monthlyPrizes(env)); },
   async fetch(req, env) {
     const origin = req.headers.get("Origin") || "";
     const cors = {
@@ -49,7 +62,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const path = new URL(req.url).pathname;
     if (req.method === "POST" && path.startsWith("/admin/")) return admin(req, env, path);
-    if (req.method !== "POST" || !["/load", "/save", "/leaderboard", "/name", "/rewards", "/eligibility", "/showcase", "/gallery"].includes(path)) return json({ error: "not_found" }, 404);
+    if (req.method !== "POST" || !["/load", "/save", "/leaderboard", "/name", "/rewards", "/eligibility", "/showcase", "/gallery", "/roll"].includes(path)) return json({ error: "not_found" }, 404);
 
     const text = await req.text();
     if (text.length > MAX_BYTES) return json({ error: "too_large" }, 413);
@@ -62,6 +75,7 @@ export default {
     await env.DB.prepare("INSERT OR IGNORE INTO players (cid, first_seen) VALUES (?, ?)").bind(cid, now()).run();
     if (path === "/showcase") return saveShowcase(env, cid, body, json);
     if (path === "/rewards") return json(await rewardsFor(env, cid));
+    if (path === "/roll") return json(await rollPack(env, cid));
     if (path === "/eligibility") {
       if (body.over18 !== true || body.us !== true || body.rules !== true) return json({ error: "must_agree" }, 400);
       await env.DB.prepare("UPDATE players SET eligible_at = COALESCE(eligible_at, ?) WHERE cid = ?").bind(now(), cid).run();
@@ -191,7 +205,7 @@ async function audit(env, cid, rev, data) {
 
 // ---------- Rewards ----------
 async function rewardsFor(env, cid) {
-  const player = await env.DB.prepare("SELECT first_seen, eligible_at, banned, open_flags FROM players WHERE cid = ?").bind(cid).first();
+  const player = await env.DB.prepare("SELECT first_seen, eligible_at, banned, open_flags, chances, chances_day, sub_bonus FROM players WHERE cid = ?").bind(cid).first();
   const saved = await env.DB.prepare("SELECT data FROM saves WHERE cid = ?").bind(cid).first();
   const data = saved ? JSON.parse(saved.data) : {};
   const shinies = E.shinyCount(data);
@@ -209,40 +223,110 @@ async function rewardsFor(env, cid) {
     if (reasons.length) await setPrize(env, pz.id, "review", reasons.join("; "));
     else await issue(env, pz);
   }
-  const prizes = await env.DB.prepare("SELECT kind, ref, pct, label, status, code, expires FROM prizes WHERE cid = ? AND kind != 'test' ORDER BY id DESC").bind(cid).all();
+  const prizes = await env.DB.prepare("SELECT kind, ref, pct, amount, label, status, code, expires, created FROM prizes WHERE cid = ? AND kind != 'test' ORDER BY id DESC").bind(cid).all();
   return {
     config: { monthly: REWARDS.monthly, featured: REWARDS.featured, sets: REWARDS.sets.map(({ key, pct, label, lo, hi }) => ({ key, pct, label, lo, hi })), shiny: REWARDS.shiny,
-      minSubtotal: REWARDS.minSubtotal, maxOff: REWARDS.maxOff, days: REWARDS.days, monthlyMinDays: REWARDS.monthlyMinDays },
-    eligible: !!player.eligible_at, banned: !!player.banned, shinies,
+      minSubtotal: REWARDS.minSubtotal, maxOff: REWARDS.maxOff, days: REWARDS.days, monthlyMinDays: REWARDS.monthlyMinDays, monthlyEnabled: REWARDS.monthlyEnabled,
+      packPrizes: PACK_PRIZES.map(({ label, odds, type, amount, pct }) => ({ label, odds, type, amount, pct })), creditExpiresDays: PACKS_CFG.creditExpiresDays, dailyChances: PACKS_CFG.dailyChances, subscriberChances: PACKS_CFG.subscriberChances },
+    eligible: !!player.eligible_at, banned: !!player.banned, shinies, chances: await chancesFor(env, player),
     prizes: prizes.results.map(p => ({ ...p, code: p.status === "issued" ? p.code : null })),
   };
 }
 const setPrize = (env, id, status, note) => env.DB.prepare("UPDATE prizes SET status = ?, note = ? WHERE id = ?").bind(status, note || null, id).run();
 
 // Creates the Shopify discount: single use, this customer only, $X minimum, expires in N days
+// ---------- Shopify Admin API ----------
+const readJSON = async (step, r) => { const t = await r.text(); try { return JSON.parse(t); } catch { throw new Error(`${step} HTTP ${r.status}: ${t.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300)}`); } };
+async function shopifyToken(env) {
+  if (!env.SHOPIFY_CLIENT_ID || !env.SHOPIFY_CLIENT_SECRET) throw new Error("Shopify app not connected yet");
+  const tok = await readJSON("token", await fetch(`https://${SHOP}.myshopify.com/admin/oauth/access_token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "client_credentials", client_id: env.SHOPIFY_CLIENT_ID.trim(), client_secret: env.SHOPIFY_CLIENT_SECRET.trim() }) }));
+  if (!tok.access_token) throw new Error("token: " + JSON.stringify(tok).slice(0, 200));
+  return tok;
+}
+async function gql(env, query, variables) {
+  const tok = await shopifyToken(env);
+  const r = await fetch(`https://${SHOP}.myshopify.com/admin/api/2026-07/graphql.json`, { method: "POST",
+    headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": tok.access_token }, body: JSON.stringify({ query, variables }) }).then(r => readJSON("graphql", r));
+  if (r.errors && r.errors.length) throw new Error(JSON.stringify(r.errors).slice(0, 300));
+  return r.data;
+}
+// Discount code prize: pct% off, capped at maxOff, $minSubtotal minimum, this customer only, single use
 async function issue(env, pz) {
-  if (!env.SHOPIFY_CLIENT_ID || !env.SHOPIFY_CLIENT_SECRET) { await setPrize(env, pz.id, "review", "Shopify app not connected yet"); return false; }
   try {
-    const readJSON = async (step, r) => { const t = await r.text(); try { return JSON.parse(t); } catch { throw new Error(`${step} HTTP ${r.status}: ${t.replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300)}`); } };
-    const tok = await readJSON("token", await fetch(`https://${SHOP}.myshopify.com/admin/oauth/access_token`, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ grant_type: "client_credentials", client_id: env.SHOPIFY_CLIENT_ID.trim(), client_secret: env.SHOPIFY_CLIENT_SECRET.trim() }) }));
-    if (!tok.access_token) throw new Error("token: " + JSON.stringify(tok).slice(0, 200));
     const rand = [...crypto.getRandomValues(new Uint8Array(6))].map(b => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("");
     const code = `PDX-${pz.pct}-${rand}`, starts = now(), ends = new Date(Date.now() + REWARDS.days * 864e5).toISOString();
-    // A code backed by the app's capped-reward discount function: pct% off, capped at maxOff, $minSubtotal minimum
-    const q = `mutation($d: DiscountCodeAppInput!) { discountCodeAppCreate(codeAppDiscount: $d) { codeAppDiscount { discountId } userErrors { field message } } }`;
     const d = { title: `Pokédex Pack Draft reward: ${pz.label} (${pz.pct}% off, max $${REWARDS.maxOff})`, code, startsAt: starts, endsAt: ends,
       functionHandle: "capped-reward", discountClasses: ["ORDER"],
       context: { customers: { add: [`gid://shopify/Customer/${pz.cid}`] } },
       usageLimit: 1, appliesOncePerCustomer: true,
       metafields: [{ namespace: "$app", key: "config", type: "json", value: JSON.stringify({ pct: pz.pct, cap: REWARDS.maxOff, min: REWARDS.minSubtotal }) }] };
-    const r = await fetch(`https://${SHOP}.myshopify.com/admin/api/2026-07/graphql.json`, { method: "POST",
-      headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": tok.access_token }, body: JSON.stringify({ query: q, variables: { d } }) }).then(r => readJSON("graphql", r));
-    const errs = (r.errors || []).concat(r.data && r.data.discountCodeAppCreate ? r.data.discountCodeAppCreate.userErrors : []);
-    if (errs.length || !r.data) throw new Error(JSON.stringify(errs).slice(0, 300));
+    const r = await gql(env, `mutation($d: DiscountCodeAppInput!) { discountCodeAppCreate(codeAppDiscount: $d) { codeAppDiscount { discountId } userErrors { field message } } }`, { d });
+    if (r.discountCodeAppCreate.userErrors.length) throw new Error(JSON.stringify(r.discountCodeAppCreate.userErrors).slice(0, 300));
     await env.DB.prepare("UPDATE prizes SET status = 'issued', code = ?, issued = ?, expires = ?, note = NULL WHERE id = ?").bind(code, starts, ends, pz.id).run();
     return true;
   } catch (e) { await setPrize(env, pz.id, "review", "Code creation failed: " + String(e.message || e).slice(0, 300)); return false; }
+}
+// Store credit prize: added to the customer's store credit balance, used automatically at checkout
+async function issueCredit(env, pz) {
+  try {
+    const expires = new Date(Date.now() + PACKS_CFG.creditExpiresDays * 864e5).toISOString().slice(0, 10);
+    const r = await gql(env, `mutation($id: ID!, $c: StoreCreditAccountCreditInput!) { storeCreditAccountCredit(id: $id, creditInput: $c) { storeCreditAccountTransaction { amount { amount } } userErrors { field message } } }`,
+      { id: `gid://shopify/Customer/${pz.cid}`, c: { creditAmount: { amount: Number(pz.amount).toFixed(2), currencyCode: "USD" }, expiresAt: expires, notify: true } });
+    if (r.storeCreditAccountCredit.userErrors.length) throw new Error(JSON.stringify(r.storeCreditAccountCredit.userErrors).slice(0, 300));
+    await env.DB.prepare("UPDATE prizes SET status = 'issued', issued = ?, expires = ?, note = NULL WHERE id = ?").bind(now(), expires, pz.id).run();
+    return true;
+  } catch (e) { await setPrize(env, pz.id, "review", "Store credit failed: " + String(e.message || e).slice(0, 300)); return false; }
+}
+const issueAny = (env, pz) => pz.amount > 0 ? issueCredit(env, pz) : issue(env, pz);
+async function isSubscribed(env, cid) {
+  try {
+    const r = await gql(env, `query($id: ID!) { customer(id: $id) { emailMarketingConsent { marketingState } } }`, { id: `gid://shopify/Customer/${cid}` });
+    return !!(r.customer && r.customer.emailMarketingConsent && r.customer.emailMarketingConsent.marketingState === "SUBSCRIBED");
+  } catch { return false; }
+}
+
+// ---------- Prize cards in packs ----------
+// One roll per opened pack, while the player has prize chances. The server decides; the game only shows the result.
+async function rollPack(env, cid) {
+  const p = await env.DB.prepare("SELECT first_seen, eligible_at, banned, open_flags, chances, chances_day, sub_bonus FROM players WHERE cid = ?").bind(cid).first();
+  if (!p || !p.eligible_at || p.banned) return { eligible: false, banned: !!(p && p.banned) };
+  const day = E.challengeDay();
+  const days = p.chances_day ? Math.max(0, Math.round((Date.parse(day) - Date.parse(p.chances_day)) / 864e5)) : 1;
+  let chances = Math.min(PACKS_CFG.bankChances, (p.chances || 0) + PACKS_CFG.dailyChances * days), sub = p.sub_bonus;
+  if (!sub && await isSubscribed(env, cid)) { chances += PACKS_CFG.subscriberChances; sub = 1; }
+  let prize = null;
+  if (chances > 0) {
+    chances--;
+    const r = crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32;
+    let acc = 0, hit = null;
+    for (const pr of PACK_PRIZES) { acc += pr.odds; if (r < acc) { hit = pr; break; } }
+    if (hit && hit.type === "credit") { // monthly store-credit budget
+      const start = E.challengeMonth(day).start;
+      const used = await env.DB.prepare("SELECT COALESCE(SUM(amount), 0) AS s FROM prizes WHERE kind = 'pack' AND amount > 0 AND status != 'rejected' AND created >= ?").bind(start).first();
+      if (used.s + hit.amount > PACKS_CFG.creditBudget) hit = null;
+    }
+    if (hit) {
+      const ref = crypto.randomUUID();
+      await env.DB.prepare("INSERT INTO prizes (cid, kind, ref, pct, amount, label, status, created) VALUES (?, 'pack', ?, ?, ?, ?, 'pending', ?)")
+        .bind(cid, ref, hit.pct || 0, hit.amount || 0, hit.label, now()).run();
+      const pz = await env.DB.prepare("SELECT * FROM prizes WHERE cid = ? AND kind = 'pack' AND ref = ?").bind(cid, ref).first();
+      const hold = hit.type === "credit" && (p.open_flags || daysSince(p.first_seen) < PACKS_CFG.creditMinAccountDays);
+      if (hold) await setPrize(env, pz.id, "review", p.open_flags ? `${p.open_flags} anti-cheat flag(s)` : `account younger than ${PACKS_CFG.creditMinAccountDays} days`);
+      else await issueAny(env, pz);
+      const done = await env.DB.prepare("SELECT label, pct, amount, status, code, expires FROM prizes WHERE id = ?").bind(pz.id).first();
+      prize = { ...done, type: hit.type, code: done.status === "issued" ? done.code : null };
+    }
+  }
+  await env.DB.prepare("UPDATE players SET chances = ?, chances_day = ?, sub_bonus = ? WHERE cid = ?").bind(chances, day, sub, cid).run();
+  return { eligible: true, chances, prize };
+}
+// Chances left today, without rolling (for the game's display)
+async function chancesFor(env, p) {
+  if (!p || !p.eligible_at) return 0;
+  const day = E.challengeDay();
+  const days = p.chances_day ? Math.max(0, Math.round((Date.parse(day) - Date.parse(p.chances_day)) / 864e5)) : 1;
+  return Math.min(PACKS_CFG.bankChances, (p.chances || 0) + PACKS_CFG.dailyChances * days);
 }
 
 // Monthly top 3 by collection points gained, among eligible, unbanned players active on enough days; always reviewed by you
@@ -292,7 +376,7 @@ async function admin(req, env, path) {
   if (path === "/admin/approve") {
     const pz = await env.DB.prepare("SELECT * FROM prizes WHERE id = ? AND status IN ('review','needs_eligibility')").bind(body.id).first();
     if (!pz) return j({ error: "no such prize awaiting review" }, 404);
-    const ok = await issue(env, pz);
+    const ok = await issueAny(env, pz);
     return j(await env.DB.prepare("SELECT * FROM prizes WHERE id = ?").bind(body.id).first(), ok ? 200 : 502);
   }
   if (path === "/admin/reject") { await setPrize(env, body.id, "rejected", body.reason || "Rejected in review"); return j({ ok: true }); }
@@ -312,6 +396,7 @@ async function admin(req, env, path) {
     return j(await env.DB.prepare("SELECT * FROM prizes WHERE cid = ? AND kind = 'featured' AND ref = ?").bind(cid, month).first());
   }
   if (path === "/admin/showcases") return j((await env.DB.prepare("SELECT cid, name, score, caught, shinies, showcase, showcase_at FROM collection WHERE showcase IS NOT NULL ORDER BY score DESC LIMIT 50").all()).results);
+  if (path === "/admin/check-scopes") { try { const t = await shopifyToken(env); return j({ scope: t.scope }); } catch (e) { return j({ error: String(e.message || e) }, 502); } }
   if (path === "/admin/check-secrets") { // describes the stored Shopify credentials without revealing them
     const shape = v => v == null ? null : { length: v.length, trimmedLength: v.trim().length, startsWithShpss: v.trim().startsWith("shpss_"),
       hasWhitespace: /\s/.test(v), hasQuotes: /["'`]/.test(v), looksHex32: /^[0-9a-f]{32}$/.test(v.trim()) };
