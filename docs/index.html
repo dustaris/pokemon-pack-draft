@@ -280,6 +280,25 @@ details.pickbox summary { cursor: pointer; font-size: 13px; font-weight: 600; co
 .summary .dex { width: 100%; }
 .dm .newb { position: absolute; top: 4px; left: 4px; font-size: 9px; font-weight: 800; letter-spacing: .05em; background: var(--good); color: #fff; border-radius: 4px; padding: 0 4px; }
 
+/* Daily Challenge ladder */
+.ladder { display: grid; gap: 4px; }
+.rung { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13px; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); }
+.rung .stars, .stars-inline { font-size: 14px; letter-spacing: 1px; color: var(--r3); }
+.rung b { font-weight: 700; text-align: right; }
+.rung.got { background: color-mix(in srgb, var(--good) 14%, var(--surface)); }
+.rung.got b { color: var(--good); }
+@media (max-width: 420px) { .rung { grid-template-columns: 52px minmax(0, 1fr); } .rung b { grid-column: 2; text-align: left; } }
+.starmeter { display: grid; gap: 6px; font-size: 13px; }
+.starmeter .bar i { background: var(--r3); }
+.candy-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 640px) { .candy-grid { grid-template-columns: minmax(0, 1fr); } }
+.candy-grid h3 { font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.candy-grid ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--muted); display: grid; gap: 3px; }
+.candy-grid ul b { color: var(--ink); }
+.fc { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff 0 14%, transparent 15%), var(--candy); flex: none; }
+.hint { font-size: 13px; background: color-mix(in srgb, var(--candy) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--candy) 30%, var(--line)); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.hint b { color: var(--ink); }
+
 /* Earn more packs */
 .earn { display: grid; gap: 6px; }
 .earn-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; border-top: 1px solid var(--line); padding: 8px 0 2px; }
@@ -525,7 +544,18 @@ const RARITY = ["Common", "Uncommon", "Rare", "Legendary"];
 const SHINY_ODDS = 1 / 100;
 const HIT = { leg: 1 / 20, rare: 1 / 4 }; // hit slot: Legendary 1/20, Rare 1/4, otherwise Uncommon
 const STARTERS = [1, 4, 7];
-const START_PACKS = 6, STARTER_LVL = 8, DAILY_BANK = 3, WEEK_GOAL = 5, WEEK_PACKS = 3, CHAL_TRIES = 3, CHAL_WIN_PACKS = 2;
+const START_PACKS = 6, STARTER_LVL = 8, DAILY_BANK = 3, WEEK_GOAL = 5, WEEK_PACKS = 3, CHAL_TRIES = 3;
+// Daily Challenge star ladder: your best try each day earns up to 3 stars; each star pays once per day.
+// Stars also fill a meter that never resets: every STAR_CHEST stars earns a gold Champion Pack.
+const CHAL_GOLD = 75, STAR_CHEST = 10;
+const CHAL_TIERS = [
+  { stars: 1, need: "Knock out 3 of the boss's 6", reward: { packs: 1 } },
+  { stars: 2, need: "Win the battle", reward: { packs: 2 } },
+  { stars: 3, need: `Win with a score of ${CHAL_GOLD}+`, reward: { rare: 3 } },
+];
+const chalTier = (res, score) => res.win ? (score >= CHAL_GOLD ? 3 : 2) : res.kos >= 3 ? 1 : 0;
+const tierReward = r => [r.packs ? `+${plural(r.packs, "Wild pack", "Wild packs")}` : "", r.rare ? `+${r.rare} Rare Candy` : ""].filter(Boolean).join(" · ");
+const starsText = n => "★".repeat(n) + "☆".repeat(3 - n);
 const SITE = "https://dustaris.github.io/pokemon-pack-draft/";
 const SHINY_CSS = "filter:hue-rotate(150deg) saturate(1.3)";
 
@@ -1020,11 +1050,25 @@ function startChallenge() {
   const reward = { packs: [], rare: 0, score };
   if (C.chal.tries === 0) reward.rare = 1;
   C.chal.tries++;
-  if (res.win && !C.chal.won) { C.chal.won = true; reward.packs.push({ kind: "all", n: CHAL_WIN_PACKS }); addPacks("all", CHAL_WIN_PACKS, `Daily Challenge #${ch.n}`, false); }
+  // Pay every star tier newly reached today (a better later try upgrades the rewards)
+  const prev = C.chal.tier ?? (C.chal.won ? 2 : 0), tier = chalTier(res, score);
+  let wild = 0;
+  for (let t = prev + 1; t <= tier; t++) { const r = CHAL_TIERS[t - 1].reward; wild += r.packs || 0; reward.rare += r.rare || 0; }
+  if (tier > prev) {
+    C.chal.tier = tier; C.chal.won = tier >= 2;
+    C.stars = (C.stars || 0) + tier - prev;
+    reward.stars = tier - prev;
+  }
+  if (wild) { reward.packs.push({ kind: "all", n: wild }); addPacks("all", wild, `Daily Challenge #${ch.n}`, false); }
+  while ((C.stars || 0) >= ((C.starChests || 0) + 1) * STAR_CHEST) {
+    C.starChests = (C.starChests || 0) + 1;
+    reward.packs.push({ kind: "champ", n: 1 }); addPacks("champ", 1, `${STAR_CHEST} Challenge stars`, false);
+  }
+  reward.tier = tier;
   if (C.chal.best == null || score > C.chal.best) {
     C.chal.best = score;
     const grid = ch.team.map((_, i) => i < res.kos ? "🟩" : "⬛").join("");
-    C.chal.share = `Pokédex Pack Draft · Daily #${ch.n}\n${ch.rule.label} vs ${ch.boss.name}\n${res.win ? "Won" : "Lost"} · ${score}/100\n${grid}\n${SITE}`;
+    C.chal.share = `Pokédex Pack Draft · Daily #${ch.n}\n${ch.rule.label} vs ${ch.boss.name}\n${res.win ? "Won" : "Lost"} · ${score}/100 · ${starsText(Math.max(tier, C.chal.tier || 0))}\n${grid}\n${SITE}`;
   }
   C.rare += reward.rare;
   save();
@@ -1095,6 +1139,12 @@ function renderMeter() {
   document.getElementById("ct-team").textContent = `${C.team.length}/6`;
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", !S.battle && b.dataset.tab === S.tab));
 }
+// Regions whose packs contain any member of this Pokémon's evolution family
+function familyRegions(n) {
+  const root = family(n), out = [];
+  for (const m of DEX) if (family(m.num) === root) { const r = REGIONS.find(r => m.num >= r.lo && m.num <= r.hi); if (r && !out.includes(r)) out.push(r); }
+  return out;
+}
 // Level this Pokémon became obtainable at (its own evolution level), for the evolution progress bar
 const PREV_LVL = n => E.PREV[n] ? E.PREV[n].lvl : 1;
 const regionProgress = r => { let n = 0; for (let i = r.lo; i <= r.hi; i++) if (C.dex[i]) n++; return `${n}/${r.hi - r.lo + 1}`; };
@@ -1159,8 +1209,15 @@ function renderChallengeCard() {
       <span class="sprites">${ch.team.map(o => img(o.num)).join("")}</span></div>
     <div><div class="eyebrow" style="margin-bottom:6px">Your lineup · leads first</div><div class="lineup-mini">${lineup}</div></div>
     ${chooser}
+    <div><div class="eyebrow" style="margin-bottom:6px">Today's rewards · your best try counts</div>
+      <div class="ladder">${CHAL_TIERS.map(t => { const got = (C.chal.tier || 0) >= t.stars;
+        return `<div class="rung ${got ? "got" : ""}"><span class="stars">${starsText(t.stars)}</span><span>${t.need}</span><b>${got ? "✓ " : ""}${tierReward(t.reward)}</b></div>`; }).join("")}
+        <div class="rung ${C.chal.tries ? "got" : ""}"><span class="stars">▶</span><span>First try of the day</span><b>${C.chal.tries ? "✓ " : ""}+1 Rare Candy</b></div>
+      </div></div>
+    <div class="starmeter"><div class="row spread"><span><b>Challenge stars</b> <span class="muted">· every ${STAR_CHEST} earns a gold Champion Pack</span></span><span class="mono">${(C.stars || 0) % STAR_CHEST}/${STAR_CHEST}</span></div>
+      <div class="bar"><i style="width:${((C.stars || 0) % STAR_CHEST) / STAR_CHEST * 100}%"></i></div></div>
     <div class="row spread">
-      <span style="font-size:14px">${C.chal.best != null ? `Best today <span class="score">${C.chal.best}/100</span>${C.chal.won ? " · <b style=\"color:var(--good)\">Won</b>" : ""}` : `<span class="muted">Win: +${CHAL_WIN_PACKS} packs · First try: +1 Rare Candy</span>`}</span>
+      <span style="font-size:14px">${C.chal.best != null ? `Best today <span class="score">${C.chal.best}/100</span> · <span class="stars-inline">${starsText(C.chal.tier || 0)}</span>` : `<span class="muted">3 tries a day. Each better score pays the next rewards.</span>`}</span>
       <span class="row">${C.chal.share ? `<button class="btn btn-plain btn-sm" type="button" id="share">Copy result</button>` : ""}
         <button class="btn btn-accent" type="button" id="chal-go" ${left ? "" : "disabled"}>${left ? (C.chal.tries ? "Try again" : "Battle") : "Come back tomorrow"}</button></span>
     </div>
@@ -1274,8 +1331,8 @@ function renderEarn() {
   const rows = [
     { kind: "all", title: "Daily pack", why: `+1 Wild pack every day. Missed days save up to ${DAILY_BANK}.`,
       act: avail ? `<button class="btn btn-accent btn-sm" type="button" id="claim-daily">Claim ${avail}</button>` : done("Claimed today") },
-    { kind: "all", title: "Daily Challenge", why: `+${CHAL_WIN_PACKS} Wild packs for a win. A new challenge every day.`,
-      act: C.chal.won ? done("Won today") : left ? `<button class="btn btn-plain btn-sm" type="button" data-go="today">Play (${left} ${left === 1 ? "try" : "tries"})</button>` : wait("Back tomorrow") },
+    { kind: "all", title: "Daily Challenge", why: `Up to +3 Wild packs and +4 Rare Candy a day, plus stars toward a gold Champion Pack every ${STAR_CHEST}.`,
+      act: (C.chal.tier || 0) >= 3 ? done("3 stars today") : left ? `<button class="btn btn-plain btn-sm" type="button" data-go="today">Play (${left} ${left === 1 ? "try" : "tries"})</button>` : wait("Back tomorrow") },
     { kind: "all", title: "Weekly check-in", why: `+${WEEK_PACKS} Wild packs for playing on any ${WEEK_GOAL} days of the week.`,
       act: C.week.claimed ? done("Claimed") : weekReady() ? `<button class="btn btn-accent btn-sm" type="button" id="claim-week">Claim ${WEEK_PACKS}</button>` : wait(`${Math.min(C.week.days.length, WEEK_GOAL)}/${WEEK_GOAL} days`) },
     next && { kind: next.region.id, title: "Journey battles", why: `+${TRAINERS[0].reward.packs} region packs for each new Gym Leader or Elite Four member you beat.`,
@@ -1340,8 +1397,9 @@ function renderBattle() {
     if (r.unlocked) gains.push(`${r.unlocked} unlocked`);
     if (r.done) gains.push("Journey complete!");
     if (B.kind === "chal") {
-      gains.unshift(`Score ${r.score}/100`);
-      if (win && !r.packs.length) gains.push("Already won today");
+      gains.unshift(`Score ${r.score}/100 · ${starsText(r.tier)}`);
+      if (r.stars) gains.push(`+${plural(r.stars, "star", "stars")} · meter ${(C.stars || 0) % STAR_CHEST}/${STAR_CHEST}`);
+      else if (C.chal.tier) gains.push(`Best today stays ${starsText(C.chal.tier)}`);
     }
     const nextT = TRAINERS[C.beaten];
     result = `<section class="panel result">
@@ -1393,6 +1451,17 @@ function renderTeam() {
   return `<div class="team-grid">
     <section class="panel"><h2>Lineup <span>Fights in this order · HP carries over</span></h2><ol class="lineup">${rows}</ol></section>
     <aside class="panel stats"><h2>Team report</h2>${teamReport(team.map(byNum))}</aside></div>
+    <section class="panel" style="margin-bottom:20px"><h2>Get more candy <span>Level up and evolve faster</span></h2>
+      <div class="candy-grid">
+        <div><h3><span class="fc"></span> Family candy</h3>
+          <p class="muted" style="margin:0 0 6px;font-size:13px">The pink number on each Pokémon. Spend it to <b style="color:var(--ink)">Power up</b> (+1 level) or <b style="color:var(--ink)">Evolve</b> anyone in that evolution family.</p>
+          <ul><li>Keep a card you already own: <b>+3</b> for its family</li><li>Keep a new card: <b>+1</b></li><li>Every card you don't keep from a pack: <b>+1</b> for its family</li><li>Release a Pokémon: <b>+1</b></li><li>Want a certain family? Open that region's packs, or open Wild packs as that region</li></ul>
+          <div class="row" style="margin-top:8px"><button class="btn btn-accent btn-sm" type="button" data-go="packs">Open packs (${bagCount()})</button></div></div>
+        <div><h3><span class="rc" style="transform:scale(.8);margin:-4px -6px"></span> Rare Candy <span class="muted mono" style="font-size:13px">×${C.rare}</span></h3>
+          <p class="muted" style="margin:0 0 6px;font-size:13px">+1 level for <b style="color:var(--ink)">any</b> Pokémon.</p>
+          <ul><li>Daily Challenge: <b>+1</b> for your first try, <b>+3</b> for ★★★</li><li>Beat a Champion: <b>+3</b></li><li>Win a rematch on your Journey: <b>+1</b></li><li>Release: <b>+1</b> Common/Uncommon, <b>+2</b> Rare, <b>+4</b> Legendary</li></ul>
+          <div class="row" style="margin-top:8px"><button class="btn btn-plain btn-sm" type="button" data-go="today">Daily Challenge</button><button class="btn btn-plain btn-sm" type="button" data-go="journey">Rematch trainers</button><button class="btn btn-plain btn-sm" type="button" id="candy-info">Use Rare Candy</button></div></div>
+      </div></section>
     <section class="panel"><h2>Box <span>${plural(Object.keys(C.box).length, "Pokémon", "Pokémon")} · <span class="candy">${C.rare}</span> Rare Candy</span></h2>
       <div class="toolbar">
         <input type="search" id="box-search" placeholder="Search your box…" value="${S.boxSearch.replace(/"/g, "&quot;")}" aria-label="Search your box">
@@ -1552,6 +1621,10 @@ function renderSheet() {
         ${b.lvl < 100 ? `<div class="statdiff">${statDiff(n, b.lvl, b.lvl + 1)}</div>` : ""}</div>
         <button class="btn btn-plain btn-sm" type="button" id="rare" ${C.rare > 0 && b.lvl < 100 ? "" : "disabled"}>Use one</button></div>
       ${evo}
+      ${(() => { const need = Math.max(cost, ...evosOf(n).map(e => e.cost)); if (candy >= need) return "";
+        const regs = familyRegions(n);
+        return `<div class="hint"><span><b>Need more ${fam} candy?</b> ${fam}-family cards show up in <b>${regs.map(r => r.name).join(" / ")}</b> packs, or Wild packs opened as ${regs.length > 1 ? "one of those regions" : regs[0].name}. Keeping a duplicate gives +3; every card you pass on gives +1.</span>
+          <span class="row" style="gap:6px"><button class="btn btn-plain btn-sm" type="button" data-go-packs="1">Open packs (${bagCount()})</button></span></div>`; })()}
       <div class="opt"><div><div class="what">${onTeam ? "In your lineup" : "Not in your lineup"}</div><div class="why">${onTeam ? `Slot ${C.team.indexOf(n) + 1} of 6` : `${C.team.length}/6 slots used`}</div></div>
         <button class="btn ${onTeam ? "btn-line" : "btn-accent"} btn-sm" type="button" id="sheet-team" ${!onTeam && C.team.length >= 6 ? "disabled" : ""}>${onTeam ? "Remove" : "Add"}</button></div>
       <div class="opt danger"><div><div class="what">Release</div><div class="why">${canRelease ? `+${TRANSFER[m.tier]} Rare Candy and +1 candy. Stays registered in your Pokédex.` : onTeam ? "Remove it from your lineup first." : "You need at least one Pokémon."}</div></div>
@@ -1642,6 +1715,7 @@ document.getElementById("sheet").addEventListener("click", e => {
   if (t.closest("#conflict-later")) { S.showConflict = false; return renderSheet(); }
   if (t.id === "sheet-bg" || t.closest("#sheet-close")) { S.detail = null; return renderSheet(); }
   if (t.closest("#power")) return powerUp(n);
+  if (t.closest("[data-go-packs]")) { S.detail = null; S.tab = "packs"; if (S.phase === "kept" || S.phase === "batchDone") { S.phase = "sealed"; S.cards = []; S.batch = null; } return render(); }
   const rt = t.closest("[data-rare-to]");
   if (rt) { const b = C.box[n], need = +rt.dataset.rareTo - b.lvl; if (need > 0 && need <= C.rare) { C.rare -= need; b.lvl += need; b.xp = 0; save(); render(); } return; }
   if (t.closest("#rare")) return useRare(n);
