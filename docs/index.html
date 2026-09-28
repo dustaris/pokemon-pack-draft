@@ -593,6 +593,7 @@ button.dm:hover { border-color: var(--accent); }
 .choice b { font-family: var(--display); font-size: 17px; }
 .choice span { font-size: 13px; color: var(--muted); }
 footer { margin-top: 32px; font-size: 12px; color: var(--muted); max-width: 72ch; display: grid; gap: 8px; }
+[hidden] { display: none !important; }
 header .beta { margin: 8px 0 0; font-size: 13px; color: var(--muted); max-width: 62ch; }
 .beta-tag { display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; margin-right: 4px; vertical-align: 1px;
   color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
@@ -633,7 +634,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
   <main id="view"></main>
 
   <footer>
-    <span class="row" style="gap:6px"><button class="reset" id="reset" type="button">Reset save</button><button class="reset" id="test-prizes" type="button">Test prizes</button></span>
+    <span class="row" style="gap:6px" id="dev-tools" hidden><button class="reset" id="reset" type="button">Reset save</button><button class="reset" id="test-prizes" type="button">Test prizes</button></span>
     <span>Guest saves live in this browser only; sign in on wdcardshop.com to save to your account. <a href="https://dustaris.github.io/pokemon-pack-draft/rules.html" target="_blank" rel="noopener">Rewards Official Rules</a>. Unofficial fan game, not affiliated with, sponsored or endorsed by Nintendo, The Pokémon Company, Creatures Inc. or GAME FREAK inc. Pokémon and all related names and sprites are trademarks of Nintendo, Creatures Inc. and GAME FREAK inc. Sprites via PokéAPI; base stats and evolutions via Pokémon Showdown.</span>
   </footer>
 </div>
@@ -666,7 +667,7 @@ const HIT = { leg: 1 / 20, rare: 1 / 4 }; // hit slot: Legendary 1/20, Rare 1/4,
 const STARTERS = [1, 4, 7];
 const START_PACKS = 6, DAILY_PACKS = 3, DAILY_BANK_DAYS = 1, WEEK_GOAL = 5, WEEK_PACKS = 3, STREAK_GOAL = 7;
 // Feature switches: the game starts simple (rip packs, find store prizes). Flip these back on later; the code is all here.
-const FEATURES = { showcase: false, boards: false, grades: false, streak: false, weekly: false };
+const FEATURES = { showcase: false, boards: false, grades: false, streak: false, weekly: false, devTools: false }; // devTools: Reset save + Test prizes buttons
 const SITE = "https://wdcardshop.com/pages/pokedex-pack-drafts";
 const SHINY_CSS = "filter:hue-rotate(150deg) saturate(1.3)";
 
@@ -1006,7 +1007,7 @@ function showPrize(pz, batch, seq) {
   render();
 }
 // Testing only (remove with the Reset button before launch): the next packs show sample prizes; nothing is issued
-try { S.testWon = JSON.parse(localStorage.getItem("pd-test-won") || "[]"); } catch { S.testWon = []; }
+try { S.testWon = FEATURES.devTools ? JSON.parse(localStorage.getItem("pd-test-won") || "[]") : []; if (!FEATURES.devTools) localStorage.removeItem("pd-test-won"); } catch { S.testWon = []; }
 function testPrizes() {
   const d = n => new Date(Date.now() + n * 864e5).toISOString();
   return [
@@ -1744,6 +1745,7 @@ window.addEventListener("message", e => {
 });
 if (window.parent !== window) window.parent.postMessage({ type: "pd-hello" }, "*");
 
+document.getElementById("dev-tools").hidden = !FEATURES.devTools;
 document.getElementById("test-prizes").addEventListener("click", () => {
   S.testPrizes = testPrizes(); S.tab = "packs"; render();
   toast("Your next 4 packs show test prizes: 5% code, $5 credit, $20 credit, then one being verified. Nothing real is issued.");
