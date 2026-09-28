@@ -1096,7 +1096,7 @@ function testPrizes() {
 }
 function prizeHow(pz) {
   return pz.status !== "issued" ? `<p class="pz-note">We're verifying this prize. It will appear under <b>Your prizes</b> on the Today tab.</p>`
-    : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. To use it, sign in at checkout and choose Apply store credit${pz.expires ? `. Expires ${new Date(pz.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}.</p>
+    : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. To use it, sign in at checkout and choose Apply store credit${pz.expires ? `. Expires ${shortDate(pz.expires)}` : ""}.</p>
         <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>`
     : codeHTML(pz);
 }
@@ -1382,7 +1382,7 @@ function renderRewards() {
   // A secret reward only shows up once it's earned
   const secret = r.prizes.filter(p => p.kind === "shiny").map(p => `<div class="rw secret"><span class="pct">${p.pct}%</span><span><b>Secret reward unlocked!</b><small>${p.label}</small></span>${state(p)}</div>`).join("");
   const won = r.prizes.filter(p => p.kind === "monthly" || p.kind === "featured").map(p => `<div class="rw"><span class="pct">${p.pct}%</span><span><b>${p.label}</b></span>${state(p)}</div>`).join("");
-  const packWins = (devOn() ? S.testWon || [] : []).map(p => ({ ...p, kind: "pack", created: p.found })).concat(r.prizes.filter(p => p.kind === "pack")).map(p => `<div class="rw"><span class="pct">${p.amount > 0 ? "$" + Math.round(p.amount) : p.pct + "%"}</span><span><b>${p.test ? "TEST · " : ""}${p.label}</b><small>${p.example ? p.example + ". " : ""}Found ${new Date(p.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></span>${p.amount > 0 && p.status === "issued" ? `<span class="code"><span class="pill">In your store credit</span><a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a></span>` : state(p)}</div>`).join("");
+  const packWins = (devOn() ? S.testWon || [] : []).map(p => ({ ...p, kind: "pack", created: p.found })).concat(r.prizes.filter(p => p.kind === "pack")).map(p => `<div class="rw"><span class="pct">${p.amount > 0 ? "$" + Math.round(p.amount) : p.pct + "%"}</span><span><b>${p.test ? "TEST · " : ""}${p.label}</b><small>${p.example ? p.example + ". " : ""}Found ${new Date(p.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></span>${p.amount > 0 && p.status === "issued" ? `<span class="code"><span class="pill">In your store credit</span><a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>${p.expires ? `<small class="muted">Expires ${shortDate(p.expires)}</small>` : ""}</span>` : state(p)}</div>`).join("");
   const join = r.eligible ? "" : `<form class="join" id="join-form">
       <b>Join WD Card Shop rewards</b>
       <label><input type="checkbox" id="j-18"> I'm 18 or older</label>
@@ -1398,6 +1398,8 @@ function renderRewards() {
     ${secret}
     ${small}</section>`;
 }
+// Store credit expiry is a plain date (YYYY-MM-DD); read it at midday so it doesn't slip a day in US time zones
+const shortDate = d => new Date(d.length === 10 ? d + "T12:00:00" : d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 function codeHTML(p) {
   const exp = p.expires ? new Date(p.expires).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
   return `<span class="code"><span class="mono">${escapeHTML(p.code)}</span><button class="btn btn-plain btn-sm" type="button" data-copy="${escapeHTML(p.code)}">Copy</button>
