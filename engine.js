@@ -231,9 +231,14 @@ function challengeWeek(day) {
   const iso = ms => new Date(ms).toISOString().slice(0, 10);
   return { start: iso(t - dow * 864e5), end: iso(t + (6 - dow) * 864e5), dayOfWeek: dow + 1 };
 }
+// Monthly leaderboard window: the calendar month of the Pacific challenge day
+function challengeMonth(day) {
+  const [y, m, d] = day.split("-").map(Number), last = new Date(Date.UTC(y, m, 0)).getUTCDate(), mm = String(m).padStart(2, "0");
+  return { start: `${y}-${mm}-01`, end: `${y}-${mm}-${String(last).padStart(2, "0")}`, key: `${y}-${mm}`, dayOfMonth: d, days: last };
+}
 // Ranked tries are seeded, so the Worker's scored battle and the game's replay are identical
 const challengeSeed = (day, cid, tryNo) => hashStr(`${day}|${cid}|${tryNo}`);
 
-G.ENGINE = { challengeDay, challengeWeek, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, powerCost, xpNeed, TRANSFER,
+G.ENGINE = { challengeDay, challengeWeek, challengeMonth, CHAL_GOLD, challengeTier, challengeSide, challengeSeed, TYPE_COLORS, TYPES, eff, mult, MOVES, DEX, byNum, family, evosOf, PREV, obtainLvl, powerCost, xpNeed, TRANSFER,
   REGIONS, TRAINERS, trainerTeam, battle, winChance, makeBattler, mulberry32, hashStr, dailyChallenge, dayNumber, challengeScore };
 })(typeof window !== "undefined" ? window : globalThis);

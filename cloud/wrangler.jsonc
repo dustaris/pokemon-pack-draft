@@ -4,8 +4,8 @@
   "main": "src/index.js",
   "compatibility_date": "2026-09-20",
   "observability": { "enabled": true },
-  // Mondays 08:30 UTC = just after midnight Pacific: queue last week's top 3 for review
-  "triggers": { "crons": ["30 8 * * 1"] },
+  // 08:30 UTC on the 1st = just after midnight Pacific: queue last month's top 3 for review
+  "triggers": { "crons": ["30 8 1 * *"] },
   "d1_databases": [
     { "binding": "DB", "database_name": "pokedex-saves", "database_id": "031ec2f7-fcf4-4e1c-ace6-2809570ad3cc", "migrations_dir": "migrations" }
   ]

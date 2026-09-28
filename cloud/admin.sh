@@ -7,7 +7,7 @@
 #   ./admin.sh clear-flags <customerId> "note"   mark a player's flags as reviewed (lets milestones auto-issue again)
 #   ./admin.sh ban <customerId> "why"  remove from leaderboards and reject unissued prizes
 #   ./admin.sh prizes                  the 50 most recent prizes
-#   ./admin.sh run-weekly [YYYY-MM-DD] queue a week's top 3 now (normally automatic every Monday)
+#   ./admin.sh run-monthly [YYYY-MM-DD] queue that month's top 3 now (normally automatic on the 1st)
 #   ./admin.sh test-code <customerId>  issue a 5% test code to check the Shopify app connection
 set -e
 cd "$(dirname "$0")"
@@ -17,7 +17,7 @@ cmd="$1"; shift || true
 case "$cmd" in
   approve|reject) body="{\"id\": $1, \"reason\": \"${2:-}\"}" ;;
   player|clear-flags|ban|test-code) body="{\"cid\": \"$1\", \"note\": \"${2:-}\", \"reason\": \"${2:-}\"}" ;;
-  run-weekly) if [ -n "$1" ]; then body="{\"day\": \"$1\"}"; else body="{}"; fi ;;
+  run-monthly) if [ -n "$1" ]; then body="{\"day\": \"$1\"}"; else body="{}"; fi ;;
   pending|prizes) body="{}" ;;
   *) sed -n '2,12p' "$0"; exit 1 ;;
 esac

@@ -21,15 +21,11 @@ const STORE = "https://wdcardshop.com";
 
 // WD Card Shop rewards. Codes are single-use, locked to the winner's customer account, and expire.
 const REWARDS = {
-  weekly: [{ place: 1, pct: 20 }, { place: 2, pct: 15 }, { place: 3, pct: 10 }],
-  milestones: [
-    { key: "champ1", champs: 1, pct: 10, label: "Beat your first Champion" },
-    { key: "champ3", champs: 3, pct: 15, label: "Beat 3 Champions" },
-    { key: "champ9", champs: 9, pct: 20, label: "Beat all 9 Champions" },
-  ],
+  monthly: [{ place: 1, pct: 20 }, { place: 2, pct: 15 }, { place: 3, pct: 10 }],
+  milestones: [{ key: "champ9", champs: 9, pct: 10, label: "Beat all 9 Champions" }],
   minSubtotal: 25, days: 30,
-  weeklyMinDays: 3,        // ranked days played that week
-  weeklyMinAccountDays: 3, // account first seen at least this many days before the week ends
+  monthlyMinDays: 10,        // ranked days played that month
+  monthlyMinAccountDays: 7,  // account first seen at least this many days before the month ends
   milestoneMinAccountDays: 2,
 };
 const now = () => new Date().toISOString();
@@ -37,8 +33,8 @@ const daysSince = iso => (Date.now() - Date.parse(iso)) / 864e5;
 const MAX_BYTES = 256 * 1024;
 
 export default {
-  // Every Monday just after midnight Pacific: queue last week's top 3 for review
-  async scheduled(event, env, ctx) { ctx.waitUntil(weeklyPrizes(env)); },
+  // The 1st of each month just after midnight Pacific: queue last month's top 3 for review
+  async scheduled(event, env, ctx) { ctx.waitUntil(monthlyPrizes(env)); },
   async fetch(req, env) {
     const origin = req.headers.get("Origin") || "";
     const cors = {
@@ -135,12 +131,12 @@ async function leaderboard(env, cid, json) {
     }
   }
   return json({ day, players: total.n, top: top.results.map((r, i) => ({ rank: i + 1, name: r.name, best: r.best, stars: r.stars, me: r.cid === cid })), me,
-    week: await weekBoard(env, cid, day) });
+    week: await weekBoard(env, cid, day), month: await periodBoard(env, cid, E.challengeMonth(day)) });
 }
 
-// Weekly board: each player's best daily score, added up Monday–Sunday (Pacific). Ties go to more stars.
-async function weekBoard(env, cid, day) {
-  const wk = E.challengeWeek(day);
+// Period boards: each player's best daily score, added up over the week or month (Pacific). Ties: more stars, then earlier.
+async function weekBoard(env, cid, day) { return periodBoard(env, cid, E.challengeWeek(day)); }
+async function periodBoard(env, cid, wk) {
   const W = `WITH w AS (SELECT cid, SUM(best) AS total, SUM(stars) AS stars, COUNT(*) AS days, MAX(at) AS last_at,
       (SELECT name FROM scores s2 WHERE s2.cid = s.cid AND s2.day BETWEEN ?1 AND ?2 ORDER BY s2.day DESC LIMIT 1) AS name
     FROM scores s WHERE day BETWEEN ?1 AND ?2 GROUP BY cid)`;
@@ -154,7 +150,7 @@ async function weekBoard(env, cid, day) {
       me = { rank: ahead.n + 1, name: mine.name, total: mine.total, stars: mine.stars, days: mine.days };
     }
   }
-  return { start: wk.start, end: wk.end, dayOfWeek: wk.dayOfWeek, players: count.n,
+  return { start: wk.start, end: wk.end, dayOfWeek: wk.dayOfWeek, dayOfMonth: wk.dayOfMonth, days: wk.days, players: count.n,
     top: top.results.map((r, i) => ({ rank: i + 1, name: r.name, total: r.total, stars: r.stars, days: r.days, me: r.cid === cid })), me };
 }
 
@@ -235,7 +231,7 @@ async function rewardsFor(env, cid) {
   }
   const prizes = await env.DB.prepare("SELECT kind, ref, pct, label, status, code, expires FROM prizes WHERE cid = ? ORDER BY id DESC").bind(cid).all();
   return {
-    config: { weekly: REWARDS.weekly, milestones: REWARDS.milestones, minSubtotal: REWARDS.minSubtotal, days: REWARDS.days, weeklyMinDays: REWARDS.weeklyMinDays },
+    config: { monthly: REWARDS.monthly, milestones: REWARDS.milestones, minSubtotal: REWARDS.minSubtotal, days: REWARDS.days, monthlyMinDays: REWARDS.monthlyMinDays },
     eligible: !!player.eligible_at, banned: !!player.banned, champs,
     prizes: prizes.results.map(p => ({ ...p, code: p.status === "issued" ? p.code : null })),
   };
@@ -266,22 +262,23 @@ async function issue(env, pz) {
   } catch (e) { await setPrize(env, pz.id, "review", "Code creation failed: " + String(e.message || e).slice(0, 300)); return false; }
 }
 
-// Weekly top 3 among eligible, unbanned players who played enough days; always held for your review
-async function weeklyPrizes(env, weekDay) {
-  const wk = E.challengeWeek(weekDay || E.challengeDay(new Date(Date.now() - 864e5)));
-  const cutoff = new Date(Date.parse(wk.end + "T23:59:59Z") - REWARDS.weeklyMinAccountDays * 864e5).toISOString();
+// Monthly top 3 among eligible, unbanned players who played enough days; always held for your review
+async function monthlyPrizes(env, monthDay) {
+  const mo = E.challengeMonth(monthDay || E.challengeDay(new Date(Date.now() - 864e5)));
+  const cutoff = new Date(Date.parse(mo.end + "T23:59:59Z") - REWARDS.monthlyMinAccountDays * 864e5).toISOString();
   const top = await env.DB.prepare(`SELECT s.cid, SUM(s.best) AS total, SUM(s.stars) AS stars, COUNT(*) AS days
       FROM scores s JOIN players p ON p.cid = s.cid
       WHERE s.day BETWEEN ? AND ? AND p.eligible_at IS NOT NULL AND p.banned = 0 AND p.first_seen <= ?
-      GROUP BY s.cid HAVING COUNT(*) >= ? ORDER BY total DESC, stars DESC, MAX(s.at) ASC LIMIT 3`).bind(wk.start, wk.end, cutoff, REWARDS.weeklyMinDays).all();
+      GROUP BY s.cid HAVING COUNT(*) >= ? ORDER BY total DESC, stars DESC, MAX(s.at) ASC LIMIT 3`).bind(mo.start, mo.end, cutoff, REWARDS.monthlyMinDays).all();
+  const monthName = new Date(mo.start + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
   const out = [];
   for (const [i, r] of top.results.entries()) {
-    const w = REWARDS.weekly[i];
-    await env.DB.prepare("INSERT OR IGNORE INTO prizes (cid, kind, ref, pct, label, status, note, created) VALUES (?, 'weekly', ?, ?, ?, 'review', ?, ?)")
-      .bind(r.cid, wk.start, w.pct, `#${w.place} for the week of ${wk.start}`, `${r.total} pts, ${r.days} days, ${r.stars} stars`, now()).run();
+    const w = REWARDS.monthly[i];
+    await env.DB.prepare("INSERT OR IGNORE INTO prizes (cid, kind, ref, pct, label, status, note, created) VALUES (?, 'monthly', ?, ?, ?, 'review', ?, ?)")
+      .bind(r.cid, mo.key, w.pct, `#${w.place} for ${monthName}`, `${r.total} pts, ${r.days} days, ${r.stars} stars`, now()).run();
     out.push({ place: w.place, cid: r.cid, total: r.total, days: r.days });
   }
-  return { week: wk, winners: out };
+  return { month: mo, winners: out };
 }
 
 // ---------- Admin (Bearer ADMIN_TOKEN; used by cloud/admin.sh) ----------
@@ -318,7 +315,7 @@ async function admin(req, env, path) {
     await env.DB.prepare("UPDATE prizes SET status = 'rejected', note = 'Account banned' WHERE cid = ? AND status != 'issued'").bind(String(body.cid)).run();
     return j({ ok: true });
   }
-  if (path === "/admin/run-weekly") return j(await weeklyPrizes(env, body.day));
+  if (path === "/admin/run-monthly") return j(await monthlyPrizes(env, body.day));
   if (path === "/admin/test-code") { // checks the Shopify connection by issuing a 5% test code to a customer you choose
     const cid = String(body.cid);
     await env.DB.prepare("INSERT OR IGNORE INTO prizes (cid, kind, ref, pct, label, status, created) VALUES (?, 'test', ?, 5, 'Setup test', 'review', ?)").bind(cid, now(), now()).run();
