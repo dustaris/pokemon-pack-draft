@@ -727,7 +727,7 @@ const isWild = id => id === "all" || id === "starter"; // opened as any unlocked
 const KIND_ORDER = ["champ", ...REGIONS.map(r => r.id), "all", "starter"];
 const RARITY = ["Common", "Uncommon", "Rare", "Legendary"];
 const SHINY_ODDS = 1 / 100;
-const HIT = { leg: 1 / 30, rare: 1 / 10 }; // hit slot: Legendary 1/30, Rare 1/10, otherwise Uncommon
+const HIT = { leg: 1 / 30, rare: 1 / 7 }; // hit slot: Legendary 1/30, Rare 1/7, otherwise Uncommon
 const STARTERS = [1, 4, 7];
 const START_PACKS = 6, DAILY_PACKS = 3, DAILY_BANK_DAYS = 1, WEEK_GOAL = 5, WEEK_PACKS = 3, STREAK_GOAL = 7;
 // Feature switches: the game starts simple (rip packs, find store prizes). Flip these back on later; the code is all here.
@@ -1549,7 +1549,7 @@ function renderPacks() {
         <p class="note">Tap the pack to rip it and keep one card.</p>
         ${prizeLine()}
         <div class="odds">${k.premium ? `<span>2 <b style="color:var(--r0)">Common</b></span><span>2 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> or better · <b style="color:var(--r3)">Legendary</b> 1 in 4</span>`
-          : `<span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 10 · ${k.noLegend ? "no Legendaries" : `<b style="color:var(--r3)">Legendary</b> 1 in 30`}</span>`}<span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
+          : `<span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 7 · ${k.noLegend ? "no Legendaries" : `<b style="color:var(--r3)">Legendary</b> 1 in 30`}</span>`}<span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
     }
   } else if (S.phase === "batchDone") {
     const B = S.batch, fresh = B.kept.filter(k => k.isNew).length;
