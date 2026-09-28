@@ -25,6 +25,8 @@ const PACK_PRIZES = [
   { key: "credit5", odds: 1 / 100, type: "credit", amount: 5, label: "$5 store credit" },
   { key: "code5", odds: 1 / 25, type: "code", pct: 5, label: "5% off your order" },
 ];
+// Shop staff accounts (Shopify customer ids) that see the testing tools (Reset save, Test prizes)
+const STAFF_CIDS = ["8534366486766"];
 const PACKS_CFG = {
   dailyChances: 3, subscriberChances: 3,  // prize chances mirror the free packs: 3 a day (unused ones don't carry over) + 3 once for subscribers
   creditBudget: 150,                                      // max store credit awarded per calendar month (Pacific); after that, no credit prizes
@@ -62,7 +64,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const path = new URL(req.url).pathname;
     if (req.method === "POST" && path.startsWith("/admin/")) return admin(req, env, path);
-    if (req.method !== "POST" || !["/load", "/save", "/leaderboard", "/name", "/rewards", "/eligibility", "/showcase", "/gallery", "/roll", "/redeem"].includes(path)) return json({ error: "not_found" }, 404);
+    if (req.method !== "POST" || !["/load", "/save", "/leaderboard", "/name", "/rewards", "/eligibility", "/showcase", "/gallery", "/roll", "/redeem", "/reset"].includes(path)) return json({ error: "not_found" }, 404);
 
     const text = await req.text();
     if (text.length > MAX_BYTES) return json({ error: "too_large" }, 413);
@@ -77,6 +79,11 @@ export default {
     if (path === "/rewards") return json(await rewardsFor(env, cid));
     if (path === "/roll") return json(await rollPack(env, cid));
     if (path === "/redeem") return redeem(env, cid, body, json);
+    if (path === "/reset") { // staff only: wipe the game save; rewards membership, prizes, chances and codes stay
+      if (!STAFF_CIDS.includes(cid)) return json({ error: "forbidden" }, 403);
+      await env.DB.batch(["saves", "audit", "collection", "month_start", "active_days"].map(t => env.DB.prepare(`DELETE FROM ${t} WHERE cid = ?`).bind(cid)));
+      return json({ ok: true });
+    }
     if (path === "/eligibility") {
       if (body.over18 !== true || body.us !== true || body.rules !== true) return json({ error: "must_agree" }, 400);
       await env.DB.prepare("UPDATE players SET eligible_at = COALESCE(eligible_at, ?) WHERE cid = ?").bind(now(), cid).run();
@@ -254,7 +261,7 @@ async function rewardsFor(env, cid) {
     config: { monthly: REWARDS.monthly, featured: REWARDS.featured, sets: REWARDS.sets.map(({ key, pct, label, lo, hi }) => ({ key, pct, label, lo, hi })), shiny: REWARDS.shiny,
       minSubtotal: REWARDS.minSubtotal, maxOff: REWARDS.maxOff, days: REWARDS.days, monthlyMinDays: REWARDS.monthlyMinDays, monthlyEnabled: REWARDS.monthlyEnabled,
       packPrizes: PACK_PRIZES.map(({ label, odds, type, amount, pct }) => ({ label, odds, type, amount, pct })), creditExpiresDays: PACKS_CFG.creditExpiresDays, dailyChances: PACKS_CFG.dailyChances, subscriberChances: PACKS_CFG.subscriberChances },
-    eligible: !!player.eligible_at, banned: !!player.banned, shinies, chances: await chancesFor(env, player),
+    eligible: !!player.eligible_at, banned: !!player.banned, shinies, chances: await chancesFor(env, player), staff: STAFF_CIDS.includes(cid),
     prizes: prizes.results.map(p => ({ ...p, code: p.status === "issued" ? p.code : null })),
   };
 }
@@ -445,6 +452,10 @@ async function admin(req, env, path) {
     await env.DB.prepare("INSERT INTO codes (code, packs, max_uses, expires, note, created) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (code) DO UPDATE SET packs = excluded.packs, max_uses = excluded.max_uses, expires = excluded.expires")
       .bind(code, packs, maxUses, expires, body.note || null, now()).run();
     return j(await env.DB.prepare("SELECT * FROM codes WHERE code = ?").bind(code).first());
+  }
+  if (path === "/admin/whois") { // the Shopify customer behind a customer id (for reviewing prizes)
+    try { const r = await gql(env, `query($id: ID!) { customer(id: $id) { email: defaultEmailAddress { emailAddress } firstName lastName createdAt } }`, { id: `gid://shopify/Customer/${body.cid}` }); return j(r.customer); }
+    catch (e) { return j({ error: String(e.message || e) }, 502); }
   }
   if (path === "/admin/codes") return j((await env.DB.prepare("SELECT * FROM codes ORDER BY created DESC").all()).results);
   if (path === "/admin/test-credit") { // checks store credit by adding $1 to a customer you choose

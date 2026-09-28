@@ -688,10 +688,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609281121"></script>
-<script src="sprites.js?v=202609281121"></script>
-<script src="evo.js?v=202609281121"></script>
-<script src="engine.js?v=202609281121"></script>
+<script src="dex.js?v=202609281129"></script>
+<script src="sprites.js?v=202609281129"></script>
+<script src="evo.js?v=202609281129"></script>
+<script src="engine.js?v=202609281129"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -1054,7 +1054,9 @@ function showPrize(pz, batch, seq) {
   render();
 }
 // Testing only (remove with the Reset button before launch): the next packs show sample prizes; nothing is issued
-try { S.testWon = FEATURES.devTools ? JSON.parse(localStorage.getItem("pd-test-won") || "[]") : []; if (!FEATURES.devTools) localStorage.removeItem("pd-test-won"); } catch { S.testWon = []; }
+// Testing tools show for everyone when FEATURES.devTools is on, otherwise only for shop staff accounts (decided by the server)
+const devOn = () => FEATURES.devTools || !!(S.rewards && S.rewards.staff);
+try { S.testWon = JSON.parse(localStorage.getItem("pd-test-won") || "[]"); } catch { S.testWon = []; }
 function testPrizes() {
   const d = n => new Date(Date.now() + n * 864e5).toISOString();
   return [
@@ -1349,7 +1351,7 @@ function renderRewards() {
   // A secret reward only shows up once it's earned
   const secret = r.prizes.filter(p => p.kind === "shiny").map(p => `<div class="rw secret"><span class="pct">${p.pct}%</span><span><b>Secret reward unlocked!</b><small>${p.label}</small></span>${state(p)}</div>`).join("");
   const won = r.prizes.filter(p => p.kind === "monthly" || p.kind === "featured").map(p => `<div class="rw"><span class="pct">${p.pct}%</span><span><b>${p.label}</b></span>${state(p)}</div>`).join("");
-  const packWins = (S.testWon || []).map(p => ({ ...p, kind: "pack", created: p.found })).concat(r.prizes.filter(p => p.kind === "pack")).map(p => `<div class="rw"><span class="pct">${p.amount > 0 ? "$" + Math.round(p.amount) : p.pct + "%"}</span><span><b>${p.test ? "TEST · " : ""}${p.label}</b><small>${p.example ? p.example + ". " : ""}Found ${new Date(p.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></span>${p.amount > 0 && p.status === "issued" ? `<span class="code"><span class="pill">In your store credit</span><a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a></span>` : state(p)}</div>`).join("");
+  const packWins = (devOn() ? S.testWon || [] : []).map(p => ({ ...p, kind: "pack", created: p.found })).concat(r.prizes.filter(p => p.kind === "pack")).map(p => `<div class="rw"><span class="pct">${p.amount > 0 ? "$" + Math.round(p.amount) : p.pct + "%"}</span><span><b>${p.test ? "TEST · " : ""}${p.label}</b><small>${p.example ? p.example + ". " : ""}Found ${new Date(p.created).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</small></span>${p.amount > 0 && p.status === "issued" ? `<span class="code"><span class="pill">In your store credit</span><a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a></span>` : state(p)}</div>`).join("");
   const join = r.eligible ? "" : `<form class="join" id="join-form">
       <b>Join WD Card Shop rewards</b>
       <label><input type="checkbox" id="j-18"> I'm 18 or older</label>
@@ -1721,6 +1723,8 @@ function renderSheet() {
 
 function render() {
   renderMeter();
+  document.getElementById("dev-tools").hidden = !devOn();
+  if (SY.auth && !S.rewards && !S.rewardsLoading) setTimeout(() => loadRewards(false), 0); // tells us if this is a staff account
   const view = document.getElementById("view");
   document.getElementById("tabs").hidden = !C.starter;
   if (!C.starter) view.innerHTML = renderStarter();
@@ -1846,13 +1850,12 @@ window.addEventListener("message", e => {
 });
 if (window.parent !== window) window.parent.postMessage({ type: "pd-hello" }, "*");
 
-document.getElementById("dev-tools").hidden = !FEATURES.devTools;
 document.getElementById("test-prizes").addEventListener("click", () => {
   S.testPrizes = testPrizes(); S.tab = "packs"; render();
   toast("Your next 4 packs show test prizes: 5% code, $5 credit, $20 credit, then one being verified. Nothing real is issued.");
 });
 let resetArmed = false, resetTimer;
-document.getElementById("reset").addEventListener("click", e => {
+document.getElementById("reset").addEventListener("click", async e => {
   const b = e.currentTarget;
   if (!resetArmed) {
     resetArmed = true; b.classList.add("armed"); b.textContent = "Tap again to erase your whole save";
@@ -1860,8 +1863,14 @@ document.getElementById("reset").addEventListener("click", e => {
     return;
   }
   clearTimeout(resetTimer); resetArmed = false; b.classList.remove("armed"); b.textContent = "Reset save";
+  if (SY.auth) {
+    b.disabled = true;
+    try { const { status } = await cloud("reset", {}); if (status !== 200) throw 0; } catch { b.disabled = false; return toast("Couldn't reset your account save. Try again."); }
+    b.disabled = false;
+    SY.meta = { cid: SY.cid, rev: 0, dirty: false }; saveMeta(); SY.state = "synced";
+  }
   clearTimers();
-  C = blank(); visit();
+  C = blank(); store.set(C); visit();
   S.testWon = []; S.testPrizes = []; try { localStorage.removeItem("pd-test-won"); } catch {}
   S.showConflict = true;
   Object.assign(S, { tab: "today", phase: "sealed", cards: [], battle: null, detail: null });

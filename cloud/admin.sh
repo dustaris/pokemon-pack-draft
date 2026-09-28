@@ -12,6 +12,7 @@
 #   ./admin.sh feature <customerId> [YYYY-MM-DD]  make their showcase this month's pick (queues a 15% prize for approval)
 #   ./admin.sh test-code <customerId>  issue a 5% test code to check the Shopify app connection
 #   ./admin.sh create-code CODE <packs> [maxUses] [daysValid]   pack code, once per account (0 = unlimited / never expires)
+#   ./admin.sh whois <customerId>       email/name of the Shopify customer behind an id
 #   ./admin.sh codes                    list pack codes and how often each was used
 #   ./admin.sh test-credit <customerId>  add $1 store credit to check the store credit permission
 #   ./admin.sh check-secrets           describe the stored Shopify credentials (length/format only, never the values)
@@ -22,12 +23,12 @@ TOKEN="$(cat admin-token.txt)"
 cmd="$1"; shift || true
 case "$cmd" in
   approve|reject) body="{\"id\": $1, \"reason\": \"${2:-}\"}" ;;
-  player|clear-flags|ban|test-code|test-credit) body="{\"cid\": \"$1\", \"note\": \"${2:-}\", \"reason\": \"${2:-}\"}" ;;
+  player|clear-flags|ban|test-code|test-credit|whois) body="{\"cid\": \"$1\", \"note\": \"${2:-}\", \"reason\": \"${2:-}\"}" ;;
   feature) if [ -n "$2" ]; then body="{\"cid\": \"$1\", \"day\": \"$2\"}"; else body="{\"cid\": \"$1\"}"; fi ;;
   run-monthly) if [ -n "$1" ]; then body="{\"day\": \"$1\"}"; else body="{}"; fi ;;
   create-code) body="{\"code\": \"$1\", \"packs\": ${2:-3}, \"maxUses\": ${3:-0}, \"days\": ${4:-0}}" ;;
   pending|prizes|check-secrets|check-scopes|showcases|codes) body="{}" ;;
-  *) sed -n '2,19p' "$0"; exit 1 ;;
+  *) sed -n '2,20p' "$0"; exit 1 ;;
 esac
 curl -s -X POST "$URL/admin/$cmd" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$body"
 echo
