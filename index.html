@@ -469,9 +469,12 @@ const PACKS = [{ id: "all", name: "All Regions", lo: 1, hi: 1025, color: "#1F55D
 // Pack items in the bag: Wild packs open as any unlocked region; region packs come from that region's trainers;
 // Champion Packs (from Champions) guarantee a Rare-or-better hit.
 const CHAMP_PACK = { id: "champ", name: "Champion", lo: 1, hi: 1025, color: "#C9971F", mascot: 249, premium: true };
-const packKind = id => id === "champ" ? CHAMP_PACK : PACKS.find(p => p.id === id);
+// Starter packs open like Wild packs but can't hit a Legendary, so restarting a save never pays off
+const STARTER_PACK = { id: "starter", name: "Starter", lo: 1, hi: 1025, color: "#D9861C", mascot: 25, noLegend: true };
+const packKind = id => id === "champ" ? CHAMP_PACK : id === "starter" ? STARTER_PACK : PACKS.find(p => p.id === id);
 const packLabel = id => id === "all" ? "Wild" : packKind(id).name;
-const KIND_ORDER = ["champ", ...REGIONS.map(r => r.id), "all"];
+const isWild = id => id === "all" || id === "starter"; // opened as any unlocked region
+const KIND_ORDER = ["champ", ...REGIONS.map(r => r.id), "all", "starter"];
 const RARITY = ["Common", "Uncommon", "Rare", "Legendary"];
 const SHINY_ODDS = 1 / 100;
 const HIT = { leg: 1 / 20, rare: 1 / 4 }; // hit slot: Legendary 1/20, Rare 1/4, otherwise Uncommon
@@ -504,7 +507,7 @@ const store = {
   set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} },
 };
 function blank() {
-  return { v: 2, dex: {}, box: {}, candy: {}, rare: 0, packs: 0, bag: Array.from({ length: START_PACKS }, () => ({ k: "all", src: "Starter packs", fresh: true })), team: [], beaten: 0,
+  return { v: 2, dex: {}, box: {}, candy: {}, rare: 0, packs: 0, bag: Array.from({ length: START_PACKS }, () => ({ k: "starter", src: "Starter packs", fresh: true })), team: [], beaten: 0,
            lastDaily: addDays(today(), -1), chal: { date: null, tries: 0, best: null, won: false, share: null },
            week: { key: null, days: [], claimed: false }, starter: null, pending: null };
 }
@@ -525,6 +528,7 @@ function migrate(old) { // v1 had only owned counts and a team
 function normalize(raw) {
   if (!Array.isArray(raw.bag)) raw.bag = Array.from({ length: Math.max(0, raw.bank || 0) }, () => ({ k: "all", src: "Saved packs", fresh: false }));
   delete raw.bank;
+  raw.bag.forEach(p => { if (p.k === "all" && p.src === "Starter packs") p.k = "starter"; });
   if (raw.pending && !raw.pending.kind) raw.pending.kind = "all";
   return Object.assign(blank(), raw);
 }
@@ -724,10 +728,10 @@ function pickFrom(pool, tier, taken) {
   }
   return null;
 }
-function makePack(region, premium) {
+function makePack(region, premium, noLegend) {
   const pool = DEX.slice(region.lo - 1, region.hi);
   const roll = Math.random();
-  const hitTier = premium ? (roll < .25 ? 3 : 2) : roll < HIT.leg ? 3 : roll < HIT.leg + HIT.rare ? 2 : 1;
+  const hitTier = premium ? (roll < .25 ? 3 : 2) : noLegend ? (roll < HIT.rare ? 2 : 1) : roll < HIT.leg ? 3 : roll < HIT.leg + HIT.rare ? 2 : 1;
   const tiers = (premium ? [0, 0, 1, 1, hitTier] : [0, 0, 0, 1, hitTier]).map((t, i) => i < 3 && Math.random() < .1 ? Math.max(t, 1) : t);
   const taken = new Set();
   return tiers.map(t => {
@@ -739,8 +743,8 @@ function makePack(region, premium) {
 function openPack() {
   const kind = selectedKind();
   if (S.phase !== "sealed" || !kind) return;
-  const pool = kind === "all" ? PACKS.find(r => r.id === S.region) : packKind(kind);
-  S.cards = makePack(pool, kind === "champ");
+  const pool = isWild(kind) ? PACKS.find(r => r.id === S.region) : packKind(kind);
+  S.cards = makePack(pool, kind === "champ", kind === "starter");
   C.bag.splice(C.bag.findIndex(p => p.k === kind), 1);
   C.bag.forEach(p => { if (p.k === kind) p.fresh = false; });
   C.pending = { kind, region: S.region, cards: S.cards }; save(); // a refresh resumes this pack instead of re-rolling it
@@ -1105,7 +1109,7 @@ function renderPacks() {
   const bag = `<section class="bagshelf" aria-label="Your pack bag">
     <div class="hd"><h2>Your bag</h2><span>${groups.length ? `${plural(bagCount(), "pack", "packs")} · tap a stack to pick your next rip` : "Empty"}</span></div>
     ${groups.length ? `<div class="bagrow" role="group" aria-label="Pack stacks">${groups.map(g => `<button class="stackb" type="button" data-bag="${g.kind}" aria-pressed="${g.kind === kind}" ${busy ? "disabled" : ""} aria-label="${gainText(g).slice(1)}">
-        ${miniPack(g.kind, g.n, g.fresh > 0)}<span class="cap">${packLabel(g.kind)}<small>${g.kind === "all" ? "Any unlocked region" : g.kind === "champ" ? "Rare or better hit" : "Region pack"}</small></span></button>`).join("")}</div>`
+        ${miniPack(g.kind, g.n, g.fresh > 0)}<span class="cap">${packLabel(g.kind)}<small>${g.kind === "all" ? "Any unlocked region" : g.kind === "starter" ? "No Legendaries" : g.kind === "champ" ? "Rare or better hit" : "Region pack"}</small></span></button>`).join("")}</div>`
       : `<p class="bag-empty">Out of packs. Earn more by beating trainers on your Journey, winning the Daily Challenge, and claiming your daily pack.</p>`}
   </section>`;
   let stage;
@@ -1114,22 +1118,22 @@ function renderPacks() {
       stage = `<p class="note">Your bag is empty.</p>
         <div class="actions"><button class="btn btn-accent" type="button" data-go="journey">Go battle</button><button class="btn btn-plain" type="button" data-go="today">Today</button></div>`;
     } else {
-      const k = packKind(kind), pool = kind === "all" ? PACKS.find(r => r.id === S.region) : k;
+      const k = packKind(kind), pool = isWild(kind) ? PACKS.find(r => r.id === S.region) : k;
       const from = C.bag.find(p => p.k === kind).src;
-      const wild = kind === "all" ? `<div class="wild-pick"><span class="eyebrow">Open this Wild pack as</span>
+      const wild = isWild(kind) ? `<div class="wild-pick"><span class="eyebrow">Open this ${packLabel(kind)} pack as</span>
         <div class="shelf" role="group" aria-label="Region for this Wild pack">${unlockedRegions().map(r => `<button type="button" data-region="${r.id}" style="--c:${r.color}" aria-pressed="${r.id === S.region}"><i></i>${r.name}<span class="mono" style="font-size:11px;opacity:.7">${regionProgress(r)}</span></button>`).join("")}</div></div>` : "";
       stage = `
         <button class="pack ${k.premium ? "premium" : ""}" id="pack" type="button" style="--c:${pool.color}" aria-label="Rip a ${packLabel(kind)} pack">
           <span class="foil"></span><span class="ball"></span>
           <span class="top">5 POKÉMON · KEEP 1</span>
           ${img(k.premium ? k.mascot : pool.mascot)}
-          <span class="lbl"><small>${k.premium ? "Champion Pack" : kind === "all" ? "Wild Pack" : "Pack Draft"}</small><b>${k.premium ? "Champion" : pool.name}</b><span>${pool.gen ? `Gen ${pool.gen} · #${pad(pool.lo)}–${pad(pool.hi)}` : "#0001–1025"}</span></span>
+          <span class="lbl"><small>${k.premium ? "Champion Pack" : isWild(kind) ? `${packLabel(kind)} Pack` : "Pack Draft"}</small><b>${k.premium ? "Champion" : pool.name}</b><span>${pool.gen ? `Gen ${pool.gen} · #${pad(pool.lo)}–${pad(pool.hi)}` : "#0001–1025"}</span></span>
         </button>
         <p class="pack-from">From <b>${from}</b></p>
         ${wild}
         <p class="note">Tap the pack to rip it. Keep one card. The other four become candy for their evolution families.</p>
         <div class="odds">${k.premium ? `<span>2 <b style="color:var(--r0)">Common</b></span><span>2 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> or better · <b style="color:var(--r3)">Legendary</b> 1 in 4</span>`
-          : `<span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 4 · <b style="color:var(--r3)">Legendary</b> 1 in 20</span>`}<span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
+          : `<span>3 <b style="color:var(--r0)">Common</b></span><span>1 <b style="color:var(--r1)">Uncommon</b></span><span>Hit slot: <b style="color:var(--r2)">Rare</b> 1 in 4 · ${k.noLegend ? "no Legendaries" : `<b style="color:var(--r3)">Legendary</b> 1 in 20`}</span>`}<span>Any card: <b class="shiny-tag">Shiny</b> 1 in 100</span></div>`;
     }
   } else {
     const picked = S.selected != null ? byNum(S.cards[S.selected].num) : null;
