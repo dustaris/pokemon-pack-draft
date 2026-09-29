@@ -4,6 +4,8 @@
   "main": "src/index.js",
   "compatibility_date": "2026-09-20",
   "observability": { "enabled": true },
+  // the owner dashboard page is bundled as text
+  "rules": [{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true }],
   // 08:30 UTC on the 1st = just after midnight Pacific: queue last month's top 3 for review
   "triggers": { "crons": ["30 8 1 * *"] },
   "d1_databases": [

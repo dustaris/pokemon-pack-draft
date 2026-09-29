@@ -1957,6 +1957,17 @@ function boot() {
   renderAcct();
 }
 boot();
+// Anonymous play count for the shop's stats: once per browser per Pacific day, only on the live site.
+// Sends guest/member and how many packs were opened since the last ping; nothing that identifies the player.
+setTimeout(() => {
+  if (location.hostname !== "dustaris.github.io") return;
+  let last = {}; try { last = JSON.parse(localStorage.getItem("pd-ping") || "{}"); } catch {}
+  const day = today();
+  if (last.day === day) return;
+  const packs = last.day ? Math.max(0, (C.packs || 0) - (last.packs || 0)) : 0;
+  fetch(`${CLOUD}/ping`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: SY.auth ? "member" : "guest", packs }), keepalive: true })
+    .then(r => { if (r.ok) try { localStorage.setItem("pd-ping", JSON.stringify({ day, packs: C.packs || 0 })); } catch {} }).catch(() => {});
+}, 6000);
 // A day can roll over while the page is open
 setInterval(() => { if (!C.week.days.includes(today())) { visit(); render(); } }, 60000);
 })();

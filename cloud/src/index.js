@@ -2,6 +2,7 @@
 // The wdcardshop.com game page (templates/page.pokedex.liquid) signs "<customerId>.<unixTime>" with PD_SECRET via
 // Liquid's hmac_sha256 and hands that token to the game iframe. This Worker checks the token and keeps one save per
 // Shopify customer in D1, guarded by a revision number so one device can't silently overwrite another's newer save.
+import DASHBOARD from "./dashboard.html";
 import "./shim.js";
 import "../../dex.js";
 import "../../evo.js";
@@ -63,7 +64,16 @@ export default {
     const json = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const path = new URL(req.url).pathname;
+    if (req.method === "GET" && path === "/dashboard") return new Response(DASHBOARD, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",
+      "X-Frame-Options": "DENY", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex",
+      "Content-Security-Policy": "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self'; img-src 'self' data:" } });
     if (req.method === "POST" && path.startsWith("/admin/")) return admin(req, env, path);
+    if (req.method === "POST" && path === "/ping") { // anonymous daily play count: one per browser per day, nothing identifying is stored
+      let b = {}; try { b = await req.json(); } catch {}
+      const kind = b.kind === "member" ? "member" : "guest", packs = Math.max(0, Math.min(300, Math.floor(Number(b.packs) || 0)));
+      await env.DB.prepare("INSERT INTO visits (day, kind, browsers, packs) VALUES (?, ?, 1, ?) ON CONFLICT (day, kind) DO UPDATE SET browsers = browsers + 1, packs = packs + excluded.packs").bind(E.challengeDay(), kind, packs).run();
+      return json({ ok: true });
+    }
     if (req.method !== "POST" || !["/load", "/save", "/leaderboard", "/name", "/rewards", "/eligibility", "/showcase", "/gallery", "/roll", "/redeem", "/reset", "/claim"].includes(path)) return json({ error: "not_found" }, 404);
 
     const text = await req.text();
@@ -234,7 +244,20 @@ async function stats(env) {
   const monthStart = E.challengeMonth(day).start;
   const prizes = (await env.DB.prepare("SELECT label, status, COUNT(*) n, COALESCE(SUM(amount), 0) amt FROM prizes WHERE kind = 'pack' GROUP BY label, status ORDER BY label").all()).results;
   const creditMonth = (await env.DB.prepare("SELECT COALESCE(SUM(amount), 0) s FROM prizes WHERE kind = 'pack' AND amount > 0 AND status != 'rejected' AND created >= ?").bind(monthStart).first()).s;
-  const codes = (await env.DB.prepare("SELECT code, uses, max_uses, packs, chances FROM codes WHERE uses > 0 ORDER BY uses DESC").all()).results;
+  const codes = (await env.DB.prepare("SELECT code, uses, max_uses, packs, chances, expires FROM codes ORDER BY uses DESC, created DESC").all()).results;
+  // last 14 Pacific days of anonymous play counts
+  const days = Array.from({ length: 14 }, (_, i) => { const d = new Date(Date.parse(day + "T12:00:00Z") - (13 - i) * 864e5); return d.toISOString().slice(0, 10); });
+  const v = (await env.DB.prepare("SELECT day, kind, browsers, packs FROM visits WHERE day >= ?").bind(days[0]).all()).results;
+  const vt = (await env.DB.prepare("SELECT kind, SUM(browsers) b, SUM(packs) p FROM visits GROUP BY kind").all()).results;
+  const vk = (d, k, f) => { const r = v.find(x => x.day === d && x.kind === k); return r ? r[f] : 0; };
+  const daily = days.map(d => ({ day: d, guests: vk(d, "guest", "browsers"), members: vk(d, "member", "browsers"), guestPacks: vk(d, "guest", "packs"), memberPacks: vk(d, "member", "packs") }));
+  const tot = k => vt.find(x => x.kind === k) || { b: 0, p: 0 };
+  // names for the top players (one Shopify call)
+  const topRows = rows.slice(0, 25);
+  try {
+    const r = await gql(env, `query($ids: [ID!]!) { nodes(ids: $ids) { ... on Customer { id firstName lastName defaultEmailAddress { emailAddress } } } }`, { ids: topRows.map(x => `gid://shopify/Customer/${x.cid}`) });
+    for (const n of r.nodes || []) { if (!n) continue; const row = topRows.find(x => n.id.endsWith("/" + x.cid)); if (row) { row.customer = [n.firstName, n.lastName].filter(Boolean).join(" "); row.email = n.defaultEmailAddress && n.defaultEmailAddress.emailAddress; } }
+  } catch {}
   return {
     players: { signedIn: saves.length, joinedRewards: await count("SELECT COUNT(*) n FROM players WHERE eligible_at IS NOT NULL"),
       activeToday: saves.filter(r => r.updated >= ago(1)).length, active7d: saves.filter(r => r.updated >= ago(7)).length, new7d: await count("SELECT COUNT(*) n FROM players WHERE first_seen >= ?", ago(7)),
@@ -242,8 +265,9 @@ async function stats(env) {
     pulls: { packsOpened: packs, pokedexEntries: cards, legendaries: legends, shinies, mostPulled: top },
     prizes: { byType: prizes.map(p => `${p.label}: ${p.n} ${p.status}${p.amt ? ` ($${p.amt})` : ""}`), creditThisMonth: `$${creditMonth} of $${PACKS_CFG.creditBudget}`,
       pendingReview: await count("SELECT COUNT(*) n FROM prizes WHERE status = 'review'") },
-    codes: codes.map(c => `${c.code}: ${c.uses}${c.max_uses ? "/" + c.max_uses : ""} uses (${c.packs} packs${c.chances ? `, ${c.chances} chances` : ""})`),
-    topPlayers: rows.slice(0, 15),
+    codes, daily, visitsAllTime: { guestBrowserDays: tot("guest").b, memberBrowserDays: tot("member").b, guestPacks: tot("guest").p },
+    prizeRows: prizes, creditUsed: creditMonth, creditBudget: PACKS_CFG.creditBudget,
+    topPlayers: topRows, generated: new Date().toISOString(),
   };
 }
 

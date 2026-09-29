@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Pack Hunt Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root {
+  --bg: #ECEEF3; --surface: #FFFFFF; --surface-2: #E2E5EC; --ink: #15171E; --muted: #5E6475; --line: #D3D7E0;
+  --accent: #1F55D0; --guest: #9AA7C7; --gold: #C98D12; --gold-soft: #F6E6B8; --good: #23905A; --bad: #C73446;
+  --display: "Bricolage Grotesque", "Arial Black", system-ui, sans-serif; --body: "Figtree", system-ui, -apple-system, sans-serif; --mono: "JetBrains Mono", ui-monospace, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111319; --surface: #1A1D26; --surface-2: #232733; --ink: #ECEDF2; --muted: #9AA0B2; --line: #2F3442;
+    --accent: #5C8BFF; --guest: #56617E; --gold: #F2B531; --gold-soft: #3A2E12; --good: #45C07F; --bad: #FF6173; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); padding: 0 16px; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 24px 64px; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 10px 16px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 4vw, 36px); line-height: 1; margin: 0; }
+h1 em { font-style: normal; color: var(--accent); }
+.sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+button, input { font: inherit; }
+.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 7px 14px; font-weight: 600; font-size: 13px; cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; min-width: 0; }
+.panel h2 { font-family: var(--display); font-weight: 800; font-size: 19px; margin: 0 0 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.panel h2 small { font-family: var(--body); font-weight: 500; font-size: 12px; color: var(--muted); }
+.kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+@media (max-width: 1060px) { .kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .kpis { grid-template-columns: repeat(2, 1fr); } .kpi .v { font-size: 24px; } }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 2px; }
+.kpi .l { font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.kpi .v { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi .h { font-size: 12px; color: var(--muted); }
+.kpi.gold { background: linear-gradient(135deg, #7A5410, #E7B53A 30%, #FFE89A 50%, #D19A22 70%, #6E4A0C); border: 0; color: #2A1D00; }
+.kpi.gold .l, .kpi.gold .h { color: #3A2A00; }
+.bar { height: 6px; border-radius: 99px; background: rgba(42,29,0,.2); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: #2A1D00; border-radius: inherit; }
+.grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+svg text { fill: var(--muted); font-family: var(--mono); font-size: 10px; }
+.chart { width: 100%; height: auto; display: block; }
+.list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.list li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 7px; font-size: 14px; }
+.list li:last-child { border-bottom: 0; }
+.list b { font-variant-numeric: tabular-nums; }
+.mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.mini div { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+.mini b { display: block; font-family: var(--display); font-size: 22px; font-variant-numeric: tabular-nums; }
+.mini span { font-size: 12px; color: var(--muted); }
+.tablewrap { overflow-x: auto; margin: 0 -4px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+.pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--surface-2); color: var(--muted); }
+.pill.ok { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
+.pill.warn { background: color-mix(in srgb, var(--gold) 20%, transparent); color: var(--gold); }
+.pill.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
+.pill.staff { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.who b { display: block; }
+.who small { color: var(--muted); font-size: 12px; }
+.note { color: var(--muted); font-size: 12.5px; margin: 10px 0 0; }
+.login { max-width: 440px; margin: 10vh auto 0; display: grid; gap: 12px; }
+.login input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font-family: var(--mono); }
+.err { color: var(--bad); font-size: 13px; margin: 0; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="panel login" id="login" hidden>
+    <h1>Pack <em>Hunt</em> Dashboard</h1>
+    <p class="sub" style="margin:0">Paste your admin key to see stats. It's in <code>PokemonPackDraft/cloud/admin-token.txt</code> on your Mac. It stays saved in this browser only.</p>
+    <form id="login-form" class="row">
+      <input id="key" type="password" autocomplete="current-password" placeholder="Admin key" aria-label="Admin key">
+      <button class="btn primary" type="submit">Open dashboard</button>
+    </form>
+    <p class="err" id="login-err" hidden></p>
+  </section>
+
+  <div id="app" hidden>
+    <header>
+      <div><h1>WD <em>Pack</em> Hunt</h1><div class="sub" id="updated">Loading…</div></div>
+      <div class="row"><button class="btn" id="refresh" type="button">Refresh</button><button class="btn" id="signout" type="button">Sign out</button></div>
+    </header>
+    <div class="kpis" id="kpis" style="margin-top:18px"></div>
+    <div class="grid2" style="margin-top:18px">
+      <section class="panel"><h2>Daily players <small>last 14 days · one count per browser per day</small></h2>
+        <div class="legend"><span><i style="background:var(--accent)"></i>Signed in</span><span><i style="background:var(--guest)"></i>Guests</span></div>
+        <div id="chart"></div>
+        <p class="note" id="chart-note"></p>
+      </section>
+      <section class="panel"><h2>Pulls <small>signed-in players</small></h2>
+        <div class="mini" id="pulls"></div>
+        <div class="sub" style="margin:0 0 8px">Most pulled</div>
+        <ul class="list" id="top-pulls"></ul>
+      </section>
+    </div>
+    <div class="grid2" style="margin-top:18px">
+      <section class="panel"><h2>Golden Tickets <small>all time</small></h2><ul class="list" id="prizes"></ul></section>
+      <section class="panel"><h2>Pack codes</h2><div class="tablewrap"><table id="codes"></table></div></section>
+    </div>
+    <section class="panel" style="margin-top:18px"><h2>Players <small>signed in · sorted by packs opened</small></h2>
+      <div class="tablewrap"><table id="players"></table></div>
+      <p class="note">Guests aren't listed: their saves stay in their own browser. Flags come from the anti-cheat checks; flagged accounts' store credit waits for review.</p>
+    </section>
+  </div>
+</div>
+<script>
+(function () {
+  var KEY = "pd-admin-key";
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var num = function (n) { return Number(n || 0).toLocaleString(); };
+  var getKey = function () { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } };
+  var setKey = function (v) { try { v ? localStorage.setItem(KEY, v) : localStorage.removeItem(KEY); } catch (e) {} };
+  var sessionKey = getKey();
+
+  function showLogin(msg) {
+    $("app").hidden = true; $("login").hidden = false;
+    $("login-err").hidden = !msg; $("login-err").textContent = msg || "";
+  }
+  async function load() {
+    if (!sessionKey) return showLogin();
+    $("updated").textContent = "Loading…";
+    var r;
+    try { r = await fetch("/admin/stats", { method: "POST", headers: { "Authorization": "Bearer " + sessionKey, "Content-Type": "application/json" }, body: "{}" }); }
+    catch (e) { $("updated").textContent = "Couldn't reach the server. Try Refresh."; return; }
+    if (r.status === 401) { setKey(""); sessionKey = ""; return showLogin("That key didn't work."); }
+    var d = await r.json();
+    $("login").hidden = true; $("app").hidden = false;
+    render(d);
+  }
+  function kpi(label, value, hint, cls, extra) {
+    return '<div class="kpi ' + (cls || "") + '"><span class="l">' + label + '</span><span class="v">' + value + '</span>' + (hint ? '<span class="h">' + hint + '</span>' : "") + (extra || "") + '</div>';
+  }
+  function render(d) {
+    var p = d.players, today = d.daily[d.daily.length - 1] || { guests: 0, members: 0 };
+    var week = d.daily.slice(-7).reduce(function (a, x) { return a + x.guests + x.members; }, 0);
+    var creditPct = Math.min(100, Math.round((d.creditUsed / d.creditBudget) * 100));
+    $("updated").textContent = "Updated " + new Date(d.generated).toLocaleString();
+    $("kpis").innerHTML =
+      kpi("Playing today", num(today.guests + today.members), num(today.members) + " signed in · " + num(today.guests) + " guests") +
+      kpi("Last 7 days", num(week), "daily plays, summed") +
+      kpi("Signed-in players", num(p.signedIn), num(p.new7d) + " new this week · " + num(p.active7d) + " active") +
+      kpi("Joined rewards", num(p.joinedRewards), "can find Golden Tickets") +
+      kpi("Packs opened", num(d.pulls.packsOpened + (d.visitsAllTime.guestPacks || 0)), num(d.pulls.packsOpened) + " signed in · " + num(d.visitsAllTime.guestPacks) + " guests") +
+      kpi("Store credit this month", "$" + num(d.creditUsed), "of $" + num(d.creditBudget) + " budget · " + num(d.prizes.pendingReview) + " waiting for review", "gold",
+        '<div class="bar"><i style="width:' + creditPct + '%"></i></div>');
+    chart(d.daily);
+    $("pulls").innerHTML = '<div><b>' + num(d.pulls.pokedexEntries) + '</b><span>Pokédex entries</span></div><div><b>' + num(d.pulls.legendaries) + '</b><span>Legendaries</span></div><div><b>' + num(d.pulls.shinies) + '</b><span>Shinies</span></div>';
+    $("top-pulls").innerHTML = d.pulls.mostPulled.length ? d.pulls.mostPulled.map(function (s) { var m = s.match(/^(.*) ×(\d+)$/); return '<li><span>' + esc(m ? m[1] : s) + '</span><b>×' + (m ? m[2] : "") + '</b></li>'; }).join("") : '<li><span class="sub">No pulls yet</span></li>';
+    $("prizes").innerHTML = d.prizeRows.length ? d.prizeRows.map(function (r) {
+      var cls = r.status === "issued" ? "ok" : r.status === "review" ? "warn" : r.status === "rejected" ? "bad" : "";
+      return '<li><span>' + esc(r.label) + ' <span class="pill ' + cls + '">' + esc(r.status === "review" ? "waiting for review" : r.status) + '</span></span><b>' + num(r.n) + (r.amt ? ' · $' + num(r.amt) : "") + '</b></li>';
+    }).join("") : '<li><span class="sub">No Golden Tickets found yet</span></li>';
+    $("codes").innerHTML = '<tr><th>Code</th><th class="n">Used</th><th class="n">Packs</th><th class="n">Chances</th><th>Expires</th></tr>' + (d.codes.length ? d.codes.map(function (c) {
+      var expired = c.expires && new Date(c.expires) < new Date();
+      return '<tr><td><b>' + esc(c.code) + '</b></td><td class="n">' + num(c.uses) + (c.max_uses ? " / " + num(c.max_uses) : "") + '</td><td class="n">' + num(c.packs) + '</td><td class="n">' + num(c.chances) + '</td><td>' + (c.expires ? (expired ? '<span class="pill bad">expired</span>' : new Date(c.expires).toLocaleDateString()) : '<span class="sub">never</span>') + '</td></tr>';
+    }).join("") : '<tr><td colspan="5" class="sub">No codes yet</td></tr>');
+    $("players").innerHTML = '<tr><th>Player</th><th class="n">Packs opened</th><th class="n">In bag</th><th class="n">Pokédex</th><th class="n">Legendary</th><th class="n">Shiny</th><th>Rewards</th><th class="n">Chances</th><th>Flags</th><th>Joined</th><th>Last played</th></tr>' +
+      (d.topPlayers.length ? d.topPlayers.map(function (r) {
+        var who = r.customer || r.email ? '<b>' + esc(r.customer || r.email) + '</b><small>' + esc(r.customer ? (r.email || "") : "") + '</small>' : '<b>Customer ' + esc(r.cid) + '</b>';
+        return '<tr><td class="who">' + who + (r.staff ? ' <span class="pill staff">staff</span>' : "") + '</td><td class="n">' + num(r.packs) + '</td><td class="n">' + num(r.bag) + '</td><td class="n">' + num(r.pokedex) + '</td><td class="n">' + num(r.legendaries) + '</td><td class="n">' + num(r.shinies) + '</td>' +
+          '<td>' + (r.banned ? '<span class="pill bad">banned</span>' : r.rewards ? '<span class="pill ok">joined</span>' : '<span class="pill">no</span>') + '</td><td class="n">' + num(r.chances) + '</td>' +
+          '<td>' + (r.flags ? '<span class="pill warn">' + num(r.flags) + '</span>' : '<span class="sub">0</span>') + '</td><td>' + esc(r.joined) + '</td><td>' + esc(when(r.lastSave)) + '</td></tr>';
+      }).join("") : '<tr><td colspan="11" class="sub">No signed-in players yet</td></tr>');
+  }
+  function when(s) {
+    if (!s) return "";
+    var t = new Date(s.replace(" ", "T") + ":00Z"), mins = Math.round((Date.now() - t) / 60000);
+    if (mins < 60) return mins + " min ago";
+    if (mins < 60 * 24) return Math.round(mins / 60) + " h ago";
+    return t.toLocaleDateString();
+  }
+  function chart(days) {
+    var W = 640, H = 220, L = 30, R = 8, T = 10, B = 26, n = days.length;
+    var max = Math.max(4, Math.max.apply(null, days.map(function (x) { return x.guests + x.members; })));
+    var step = max <= 5 ? 1 : max <= 10 ? 2 : max <= 25 ? 5 : max <= 50 ? 10 : Math.ceil(max / 5 / 10) * 10;
+    var top = Math.ceil(max / step) * step, y = function (v) { return T + (H - T - B) * (1 - v / top); };
+    var bw = (W - L - R) / n, svg = "";
+    for (var g = 0; g <= top; g += step) svg += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(g) + '" y2="' + y(g) + '" stroke="var(--line)"/><text x="' + (L - 6) + '" y="' + (y(g) + 3) + '" text-anchor="end">' + g + '</text>';
+    days.forEach(function (d, i) {
+      var x = L + i * bw + bw * 0.18, w = bw * 0.64, m = d.members, gs = d.guests;
+      if (m) svg += '<rect x="' + x + '" y="' + y(m) + '" width="' + w + '" height="' + (y(0) - y(m)) + '" rx="3" fill="var(--accent)"><title>' + d.day + ': ' + m + ' signed in</title></rect>';
+      if (gs) svg += '<rect x="' + x + '" y="' + y(m + gs) + '" width="' + w + '" height="' + (y(m) - y(m + gs)) + '" rx="3" fill="var(--guest)"><title>' + d.day + ': ' + gs + ' guests</title></rect>';
+      if (i % 2 === (n - 1) % 2) svg += '<text x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle">' + d.day.slice(5).replace("-", "/") + '</text>';
+    });
+    $("chart").innerHTML = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Daily players, last 14 days">' + svg + '</svg>';
+    var packs = days.reduce(function (a, x) { return a + x.guestPacks + x.memberPacks; }, 0);
+    $("chart-note").textContent = "Packs opened in these 14 days: " + num(packs) + ". Counting started Sept 29, 2026; a browser's packs are counted on its next visit.";
+  }
+  $("login-form").addEventListener("submit", function (e) { e.preventDefault(); sessionKey = $("key").value.trim(); if (!sessionKey) return; setKey(sessionKey); $("key").value = ""; load(); });
+  $("refresh").addEventListener("click", load);
+  $("signout").addEventListener("click", function () { setKey(""); sessionKey = ""; showLogin(); });
+  load();
+})();
+</script>
+</body>
+</html>
