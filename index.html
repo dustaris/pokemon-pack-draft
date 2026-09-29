@@ -71,6 +71,18 @@ header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: 
 .tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 .tabs .ct { font-family: var(--mono); font-size: 12px; margin-left: 4px; opacity: .8; }
 .tabs .ct.hot { color: var(--accent); opacity: 1; }
+/* Phones: a tighter header so the game starts on the first screen, and all four tabs fit without sideways scrolling */
+@media (max-width: 520px) {
+  header.top { gap: 10px; margin-bottom: 12px; }
+  .brand h1 { font-size: 30px; }
+  .brand p { font-size: 14px; margin-top: 6px; }
+  header .beta { font-size: 12px; margin-top: 6px; }
+  .meter { min-width: 0; flex: 1 1 100%; }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; overflow: visible; margin-bottom: 14px; }
+  .tabs button { padding: 8px 4px; font-size: 13px; text-align: center; white-space: nowrap; }
+  .tabs .ct { font-size: 11px; margin-left: 2px; }
+  .tcard.daily .bag { display: none; }
+}
 
 .btn { border: 0; border-radius: 999px; padding: 10px 18px; font-weight: 700; font-size: 14px; }
 .btn-sm { padding: 6px 12px; font-size: 13px; }

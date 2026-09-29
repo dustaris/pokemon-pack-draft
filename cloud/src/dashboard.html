@@ -75,6 +75,21 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
 .login { max-width: 440px; margin: 10vh auto 0; display: grid; gap: 12px; }
 .login input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font-family: var(--mono); }
 .err { color: var(--bad); font-size: 13px; margin: 0; }
+/* Phones: tables become stacked cards so nothing needs sideways scrolling */
+@media (max-width: 640px) {
+  body { padding: 0 12px; }
+  .wrap { padding-block: 16px 48px; gap: 14px; }
+  .panel { padding: 14px 14px; }
+  .mini b { font-size: 19px; }
+  table.cards, table.cards tbody, table.cards tr, table.cards td { display: block; width: 100%; }
+  table.cards tr:first-child { display: none; }
+  table.cards tr { border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; margin-bottom: 10px; }
+  table.cards td { border: 0; padding: 3px 0; white-space: normal; display: flex; justify-content: space-between; gap: 12px; text-align: right; }
+  table.cards td::before { content: attr(data-l); font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); text-align: left; }
+  table.cards td.who { display: block; text-align: left; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  table.cards td.who::before, table.cards td[colspan]::before { content: none; }
+  .tablewrap { overflow: visible; margin: 0; }
+}
 [hidden] { display: none !important; }
 </style>
 </head>
@@ -110,10 +125,10 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
     </div>
     <div class="grid2" style="margin-top:18px">
       <section class="panel"><h2>Golden Tickets <small>all time</small></h2><ul class="list" id="prizes"></ul></section>
-      <section class="panel"><h2>Pack codes</h2><div class="tablewrap"><table id="codes"></table></div></section>
+      <section class="panel"><h2>Pack codes</h2><div class="tablewrap"><table id="codes" class="cards"></table></div></section>
     </div>
     <section class="panel" style="margin-top:18px"><h2>Players <small>signed in · sorted by packs opened</small></h2>
-      <div class="tablewrap"><table id="players"></table></div>
+      <div class="tablewrap"><table id="players" class="cards"></table></div>
       <p class="note">Guests aren't listed: their saves stay in their own browser. Flags come from the anti-cheat checks; flagged accounts' store credit waits for review.</p>
     </section>
   </div>
@@ -141,7 +156,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
     if (r.status === 401) { setKey(""); sessionKey = ""; return showLogin("That key didn't work."); }
     var d = await r.json();
     $("login").hidden = true; $("app").hidden = false;
-    render(d);
+    lastData = d; render(d);
   }
   function kpi(label, value, hint, cls, extra) {
     return '<div class="kpi ' + (cls || "") + '"><span class="l">' + label + '</span><span class="v">' + value + '</span>' + (hint ? '<span class="h">' + hint + '</span>' : "") + (extra || "") + '</div>';
@@ -168,14 +183,14 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
     }).join("") : '<li><span class="sub">No Golden Tickets found yet</span></li>';
     $("codes").innerHTML = '<tr><th>Code</th><th class="n">Used</th><th class="n">Packs</th><th class="n">Chances</th><th>Expires</th></tr>' + (d.codes.length ? d.codes.map(function (c) {
       var expired = c.expires && new Date(c.expires) < new Date();
-      return '<tr><td><b>' + esc(c.code) + '</b></td><td class="n">' + num(c.uses) + (c.max_uses ? " / " + num(c.max_uses) : "") + '</td><td class="n">' + num(c.packs) + '</td><td class="n">' + num(c.chances) + '</td><td>' + (c.expires ? (expired ? '<span class="pill bad">expired</span>' : new Date(c.expires).toLocaleDateString()) : '<span class="sub">never</span>') + '</td></tr>';
+      return '<tr><td class="who"><b>' + esc(c.code) + '</b></td><td class="n" data-l="Used">' + num(c.uses) + (c.max_uses ? " / " + num(c.max_uses) : "") + '</td><td class="n" data-l="Packs">' + num(c.packs) + '</td><td class="n" data-l="Chances">' + num(c.chances) + '</td><td data-l="Expires">' + (c.expires ? (expired ? '<span class="pill bad">expired</span>' : new Date(c.expires).toLocaleDateString()) : '<span class="sub">never</span>') + '</td></tr>';
     }).join("") : '<tr><td colspan="5" class="sub">No codes yet</td></tr>');
     $("players").innerHTML = '<tr><th>Player</th><th class="n">Packs opened</th><th class="n">In bag</th><th class="n">Pokédex</th><th class="n">Legendary</th><th class="n">Shiny</th><th>Rewards</th><th class="n">Chances</th><th>Flags</th><th>Joined</th><th>Last played</th></tr>' +
       (d.topPlayers.length ? d.topPlayers.map(function (r) {
         var who = r.customer || r.email ? '<b>' + esc(r.customer || r.email) + '</b><small>' + esc(r.customer ? (r.email || "") : "") + '</small>' : '<b>Customer ' + esc(r.cid) + '</b>';
-        return '<tr><td class="who">' + who + (r.staff ? ' <span class="pill staff">staff</span>' : "") + '</td><td class="n">' + num(r.packs) + '</td><td class="n">' + num(r.bag) + '</td><td class="n">' + num(r.pokedex) + '</td><td class="n">' + num(r.legendaries) + '</td><td class="n">' + num(r.shinies) + '</td>' +
-          '<td>' + (r.banned ? '<span class="pill bad">banned</span>' : r.rewards ? '<span class="pill ok">joined</span>' : '<span class="pill">no</span>') + '</td><td class="n">' + num(r.chances) + '</td>' +
-          '<td>' + (r.flags ? '<span class="pill warn">' + num(r.flags) + '</span>' : '<span class="sub">0</span>') + '</td><td>' + esc(r.joined) + '</td><td>' + esc(when(r.lastSave)) + '</td></tr>';
+        return '<tr><td class="who">' + who + (r.staff ? ' <span class="pill staff">staff</span>' : "") + '</td><td class="n" data-l="Packs opened">' + num(r.packs) + '</td><td class="n" data-l="In bag">' + num(r.bag) + '</td><td class="n" data-l="Pokédex">' + num(r.pokedex) + '</td><td class="n" data-l="Legendary">' + num(r.legendaries) + '</td><td class="n" data-l="Shiny">' + num(r.shinies) + '</td>' +
+          '<td data-l="Rewards">' + (r.banned ? '<span class="pill bad">banned</span>' : r.rewards ? '<span class="pill ok">joined</span>' : '<span class="pill">no</span>') + '</td><td class="n" data-l="Chances">' + num(r.chances) + '</td>' +
+          '<td data-l="Flags">' + (r.flags ? '<span class="pill warn">' + num(r.flags) + '</span>' : '<span class="sub">0</span>') + '</td><td data-l="Joined">' + esc(r.joined) + '</td><td data-l="Last played">' + esc(when(r.lastSave)) + '</td></tr>';
       }).join("") : '<tr><td colspan="11" class="sub">No signed-in players yet</td></tr>');
   }
   function when(s) {
@@ -186,7 +201,8 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
     return t.toLocaleDateString();
   }
   function chart(days) {
-    var W = 640, H = 220, L = 30, R = 8, T = 10, B = 26, n = days.length;
+    // draw at the box's real width so labels stay readable on phones
+    var W = Math.max(300, Math.min(640, Math.round($("chart").clientWidth || 640))), H = W < 480 ? 200 : 220, L = 30, R = 8, T = 10, B = 26, n = days.length, every = W < 480 ? 3 : 2;
     var max = Math.max(4, Math.max.apply(null, days.map(function (x) { return x.guests + x.members; })));
     var step = max <= 5 ? 1 : max <= 10 ? 2 : max <= 25 ? 5 : max <= 50 ? 10 : Math.ceil(max / 5 / 10) * 10;
     var top = Math.ceil(max / step) * step, y = function (v) { return T + (H - T - B) * (1 - v / top); };
@@ -196,7 +212,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
       var x = L + i * bw + bw * 0.18, w = bw * 0.64, m = d.members, gs = d.guests;
       if (m) svg += '<rect x="' + x + '" y="' + y(m) + '" width="' + w + '" height="' + (y(0) - y(m)) + '" rx="3" fill="var(--accent)"><title>' + d.day + ': ' + m + ' signed in</title></rect>';
       if (gs) svg += '<rect x="' + x + '" y="' + y(m + gs) + '" width="' + w + '" height="' + (y(m) - y(m + gs)) + '" rx="3" fill="var(--guest)"><title>' + d.day + ': ' + gs + ' guests</title></rect>';
-      if (i % 2 === (n - 1) % 2) svg += '<text x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle">' + d.day.slice(5).replace("-", "/") + '</text>';
+      if ((n - 1 - i) % every === 0) svg += '<text x="' + (x + w / 2) + '" y="' + (H - 8) + '" text-anchor="middle">' + d.day.slice(5).replace("-", "/") + '</text>';
     });
     $("chart").innerHTML = '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Daily players, last 14 days">' + svg + '</svg>';
     var packs = days.reduce(function (a, x) { return a + x.guestPacks + x.memberPacks; }, 0);
@@ -204,6 +220,7 @@ td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
   }
   $("login-form").addEventListener("submit", function (e) { e.preventDefault(); sessionKey = $("key").value.trim(); if (!sessionKey) return; setKey(sessionKey); $("key").value = ""; load(); });
   $("refresh").addEventListener("click", load);
+  var lastData = null, rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { if (lastData) chart(lastData.daily); }, 200); });
   $("signout").addEventListener("click", function () { setKey(""); sessionKey = ""; showLogin(); });
   load();
 })();
