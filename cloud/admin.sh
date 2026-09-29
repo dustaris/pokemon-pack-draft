@@ -13,6 +13,7 @@
 #   ./admin.sh test-code <customerId>  issue a 5% test code to check the Shopify app connection
 #   ./admin.sh create-code CODE <packs> [maxUses] [daysValid] [chances]   pack code, once per account (0 = unlimited / never expires); chances = Golden Ticket chances included
 #   ./admin.sh whois <customerId>       email/name of the Shopify customer behind an id
+#   ./admin.sh stats                    players, packs opened, pulls, prizes and codes at a glance
 #   ./admin.sh codes                    list pack codes and how often each was used
 #   ./admin.sh test-credit <customerId>  add $1 store credit to check the store credit permission
 #   ./admin.sh check-secrets           describe the stored Shopify credentials (length/format only, never the values)
@@ -27,8 +28,8 @@ case "$cmd" in
   feature) if [ -n "$2" ]; then body="{\"cid\": \"$1\", \"day\": \"$2\"}"; else body="{\"cid\": \"$1\"}"; fi ;;
   run-monthly) if [ -n "$1" ]; then body="{\"day\": \"$1\"}"; else body="{}"; fi ;;
   create-code) body="{\"code\": \"$1\", \"packs\": ${2:-3}, \"maxUses\": ${3:-0}, \"days\": ${4:-0}, \"chances\": ${5:-0}}" ;;
-  pending|prizes|check-secrets|check-scopes|showcases|codes) body="{}" ;;
-  *) sed -n '2,20p' "$0"; exit 1 ;;
+  pending|prizes|check-secrets|check-scopes|showcases|codes|stats) body="{}" ;;
+  *) sed -n '2,21p' "$0"; exit 1 ;;
 esac
 curl -s -X POST "$URL/admin/$cmd" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$body"
 echo

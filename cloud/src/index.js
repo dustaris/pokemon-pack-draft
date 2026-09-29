@@ -83,7 +83,7 @@ export default {
     if (path === "/reset") { // staff only: wipe the game save and the Golden Ticket chances that came with its packs; membership, prizes and used codes stay
       if (!STAFF_CIDS.includes(cid)) return json({ error: "forbidden" }, 403);
       await env.DB.batch([...["saves", "audit", "collection", "month_start", "active_days"].map(t => env.DB.prepare(`DELETE FROM ${t} WHERE cid = ?`).bind(cid)),
-        env.DB.prepare("UPDATE players SET bonus_chances = 0, chances_day = NULL WHERE cid = ?").bind(cid)]);
+        env.DB.prepare("UPDATE players SET bonus_chances = 0, chances_day = NULL, open_flags = 0 WHERE cid = ?").bind(cid)]);
       return json({ ok: true });
     }
     if (path === "/eligibility") {
@@ -211,6 +211,40 @@ async function redeem(env, cid, body, json) {
     env.DB.prepare("UPDATE players SET bonus_packs = bonus_packs + ?, bonus_chances = bonus_chances + ? WHERE cid = ?").bind(c.packs, c.chances || 0, cid),
   ]);
   return json({ code, packs: c.packs, chances: c.chances || 0 });
+}
+
+// ---------- Owner stats: who is playing and what they pull (signed-in players only; guests live in their own browser) ----------
+async function stats(env) {
+  const t = Date.now(), ago = d => new Date(t - d * 864e5).toISOString(), day = E.challengeDay();
+  const saves = (await env.DB.prepare("SELECT s.cid, s.updated, s.data, p.first_seen, p.eligible_at, p.bonus_chances, p.open_flags, p.banned, c.name FROM saves s LEFT JOIN players p ON p.cid = s.cid LEFT JOIN collection c ON c.cid = s.cid").all()).results;
+  const pulls = {}, rows = [];
+  let packs = 0, cards = 0, shinies = 0, legends = 0;
+  for (const r of saves) {
+    let d; try { d = JSON.parse(r.data); } catch { continue; }
+    const dex = Object.entries(d.dex || {});
+    const leg = dex.filter(([n]) => E.byNum(+n) && E.byNum(+n).tier === 3).length, sh = dex.filter(([, v]) => v && v.shiny).length;
+    for (const [n, v] of dex) pulls[n] = (pulls[n] || 0) + ((v && v.n) || 1);
+    packs += d.packs || 0; cards += dex.length; shinies += sh; legends += leg;
+    rows.push({ cid: r.cid, name: r.name || null, staff: STAFF_CIDS.includes(r.cid), packs: d.packs || 0, bag: (d.bag || []).length, pokedex: dex.length, legendaries: leg, shinies: sh,
+      rewards: !!r.eligible_at, chances: r.bonus_chances || 0, flags: r.open_flags || 0, banned: !!r.banned, joined: (r.first_seen || "").slice(0, 10), lastSave: (r.updated || "").slice(0, 16).replace("T", " ") });
+  }
+  rows.sort((a, b) => b.packs - a.packs);
+  const top = Object.entries(pulls).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, k]) => `${E.byNum(+n).name} ×${k}`);
+  const count = async (q, ...b) => (await env.DB.prepare(q).bind(...b).first()).n;
+  const monthStart = E.challengeMonth(day).start;
+  const prizes = (await env.DB.prepare("SELECT label, status, COUNT(*) n, COALESCE(SUM(amount), 0) amt FROM prizes WHERE kind = 'pack' GROUP BY label, status ORDER BY label").all()).results;
+  const creditMonth = (await env.DB.prepare("SELECT COALESCE(SUM(amount), 0) s FROM prizes WHERE kind = 'pack' AND amount > 0 AND status != 'rejected' AND created >= ?").bind(monthStart).first()).s;
+  const codes = (await env.DB.prepare("SELECT code, uses, max_uses, packs, chances FROM codes WHERE uses > 0 ORDER BY uses DESC").all()).results;
+  return {
+    players: { signedIn: saves.length, joinedRewards: await count("SELECT COUNT(*) n FROM players WHERE eligible_at IS NOT NULL"),
+      activeToday: saves.filter(r => r.updated >= ago(1)).length, active7d: saves.filter(r => r.updated >= ago(7)).length, new7d: await count("SELECT COUNT(*) n FROM players WHERE first_seen >= ?", ago(7)),
+      flagged: rows.filter(r => r.flags).length, note: "Guests who never sign in are not counted: their saves stay in their browser." },
+    pulls: { packsOpened: packs, pokedexEntries: cards, legendaries: legends, shinies, mostPulled: top },
+    prizes: { byType: prizes.map(p => `${p.label}: ${p.n} ${p.status}${p.amt ? ` ($${p.amt})` : ""}`), creditThisMonth: `$${creditMonth} of $${PACKS_CFG.creditBudget}`,
+      pendingReview: await count("SELECT COUNT(*) n FROM prizes WHERE status = 'review'") },
+    codes: codes.map(c => `${c.code}: ${c.uses}${c.max_uses ? "/" + c.max_uses : ""} uses (${c.packs} packs${c.chances ? `, ${c.chances} chances` : ""})`),
+    topPlayers: rows.slice(0, 15),
+  };
 }
 
 // ---------- Anti-cheat: plausibility checks on every accepted save ----------
@@ -465,6 +499,7 @@ async function admin(req, env, path) {
     try { const r = await gql(env, `query($id: ID!) { customer(id: $id) { email: defaultEmailAddress { emailAddress } firstName lastName createdAt } }`, { id: `gid://shopify/Customer/${body.cid}` }); return j(r.customer); }
     catch (e) { return j({ error: String(e.message || e) }, 502); }
   }
+  if (path === "/admin/stats") return j(await stats(env));
   if (path === "/admin/codes") return j((await env.DB.prepare("SELECT * FROM codes ORDER BY created DESC").all()).results);
   if (path === "/admin/test-credit") { // checks store credit by adding $1 to a customer you choose
     const cid = String(body.cid), t = now();
