@@ -223,6 +223,33 @@ async function redeem(env, cid, body, json) {
   return json({ code, packs: c.packs, chances: c.chances || 0 });
 }
 
+// ---------- Test cleanup: this app's discount codes + store credit it issued to one customer ----------
+async function testCleanup(env, cid, apply, debit) {
+  const out = { codes: [], credit: null, applied: apply };
+  let after = null;
+  do {
+    const r = await gql(env, `query($after: String) { codeDiscountNodes(first: 100, after: $after, query: "type:app") { pageInfo { hasNextPage endCursor }
+      nodes { id codeDiscount { ... on DiscountCodeApp { title status codes(first: 1) { nodes { code } } } } } } }`, { after });
+    for (const n of r.codeDiscountNodes.nodes) {
+      const d = n.codeDiscount || {}, code = d.codes && d.codes.nodes[0] && d.codes.nodes[0].code;
+      if (/^Pokédex Pack Draft reward|^Setup test/.test(d.title || "") || /^PDX-/.test(code || "")) out.codes.push({ id: n.id, code, title: d.title, status: d.status });
+    }
+    after = r.codeDiscountNodes.pageInfo.hasNextPage ? r.codeDiscountNodes.pageInfo.endCursor : null;
+  } while (after);
+  if (apply) for (const d of out.codes) {
+    const r = await gql(env, `mutation($id: ID!) { discountCodeDelete(id: $id) { deletedCodeDiscountId userErrors { message } } }`, { id: d.id });
+    d.deleted = !!r.discountCodeDelete.deletedCodeDiscountId;
+  }
+  // Store credit: the app can add or remove credit but not read balances, so the amount to remove is passed in after checking the customer in Shopify admin
+  debit = Number(debit) || 0;
+  if (apply && debit > 0) {
+    const r = await gql(env, `mutation($id: ID!, $d: StoreCreditAccountDebitInput!) { storeCreditAccountDebit(id: $id, debitInput: $d) { storeCreditAccountTransaction { amount { amount } balanceAfterTransaction { amount } } userErrors { message } } }`,
+      { id: `gid://shopify/Customer/${cid}`, d: { debitAmount: { amount: debit.toFixed(2), currencyCode: "USD" } } });
+    out.credit = r.storeCreditAccountDebit.userErrors.length ? { error: r.storeCreditAccountDebit.userErrors } : { removed: debit, balanceAfter: r.storeCreditAccountDebit.storeCreditAccountTransaction.balanceAfterTransaction.amount };
+  }
+  return out;
+}
+
 // ---------- Owner stats: who is playing and what they pull (signed-in players only; guests live in their own browser) ----------
 async function stats(env) {
   const t = Date.now(), ago = d => new Date(t - d * 864e5).toISOString(), day = E.challengeDay();
@@ -524,6 +551,9 @@ async function admin(req, env, path) {
     catch (e) { return j({ error: String(e.message || e) }, 502); }
   }
   if (path === "/admin/stats") return j(await stats(env));
+  if (path === "/admin/test-cleanup") { // lists (and with apply:true removes) this app's discount codes and a customer's store credit from it
+    try { return j(await testCleanup(env, String(body.cid), !!body.apply, body.debit)); } catch (e) { return j({ error: String(e.message || e) }, 502); }
+  }
   if (path === "/admin/codes") return j((await env.DB.prepare("SELECT * FROM codes ORDER BY created DESC").all()).results);
   if (path === "/admin/test-credit") { // checks store credit by adding $1 to a customer you choose
     const cid = String(body.cid), t = now();
