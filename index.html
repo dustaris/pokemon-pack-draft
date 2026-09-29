@@ -793,7 +793,8 @@ const START_PACKS = 6, DAILY_PACKS = 3, DAILY_BANK_DAYS = 1, WEEK_GOAL = 5, WEEK
 // Feature switches: the game starts simple (rip packs, find store prizes). Flip these back on later; the code is all here.
 const FEATURES = { showcase: false, boards: false, grades: false, streak: false, weekly: false, devTools: false,
   simple: true }; // simple: just Packs + Collection, big images, little text; Golden Tickets live behind the header button
-const HOME_TAB = FEATURES.simple ? "packs" : "today"; // devTools: Reset save + Test prizes buttons
+const HOME_TAB = FEATURES.simple ? "packs" : "today";
+const PRIZES_WHERE = FEATURES.simple ? "behind the Golden Tickets button" : "on the Today tab"; // devTools: Reset save + Test prizes buttons
 const SITE = "https://wdcardshop.com/pages/pokedex-pack-drafts";
 const SHINY_CSS = "filter:hue-rotate(150deg) saturate(1.3)";
 
@@ -1167,7 +1168,7 @@ function testPrizes() {
   ];
 }
 function prizeHow(pz) {
-  return pz.status !== "issued" ? `<p class="pz-note">We're verifying this prize. It will appear under <b>Your prizes</b> on the Today tab.</p>`
+  return pz.status !== "issued" ? `<p class="pz-note">We're verifying this prize. It will appear under <b>Your prizes</b> ${PRIZES_WHERE}.</p>`
     : pz.type === "credit" ? `<p class="pz-note">Added to your WD Card Shop store credit. To use it, sign in at checkout and choose Apply store credit${pz.expires ? `. Expires ${shortDate(pz.expires)}` : ""}.</p>
         <a class="btn btn-accent btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>`
     : codeHTML(pz);
@@ -1175,7 +1176,7 @@ function prizeHow(pz) {
 function prizeCardHTML(pz) {
   const how = prizeHow(pz);
   return `<div class="prizecard"><div class="pz-top">${pz.test ? "TEST · GOLDEN TICKET · NOT REAL" : "GOLDEN TICKET · WD CARD SHOP"}</div><div class="pz-val">${pz.label}</div>${how}
-    <p class="pz-note pz-saved">${pz.test ? "Test prizes are listed under Your prizes on the Today tab (this browser only)." : "Saved to your account under Your prizes on the Today tab."}</p></div>`;
+    <p class="pz-note pz-saved">${pz.test ? `Test prizes are listed under Your prizes ${PRIZES_WHERE} (this browser only).` : `Saved to your account under Your prizes ${PRIZES_WHERE}.`}</p></div>`;
 }
 
 // Open all: rip a whole stack back to back, still keeping one card per pack
@@ -1446,7 +1447,7 @@ async function loadRewards(announce) {
   S.rewardsAt = Date.now(); S.rewardsLoading = false;
   if (announce && S.rewards && before !== S.rewards.prizes.map(p => p.ref + p.status).join()) {
     const got = S.rewards.prizes.find(p => p.status === "issued" && !(before || "").includes(p.ref + "issued"));
-    toast(got ? `Your WD Card Shop prize is ready: ${got.label}! See Your prizes on the Today tab.` : "Reward earned! See WD Card Shop rewards on the Today tab.");
+    toast(got ? `Your WD Card Shop prize is ready: ${got.label}! See Your prizes ${PRIZES_WHERE}.` : `Reward earned! See WD Card Shop rewards ${PRIZES_WHERE}.`);
   }
   if (S.tab === "today" || S.tab === "packs") render();
 }
@@ -1588,7 +1589,7 @@ function prizeLine() {
   if (!SY.shop) return `<p class="prize-line">Members on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a> can find store prizes in packs.</p>`;
   if (!SY.auth) return `<p class="prize-line">${SY.loginUrl ? `<a href="${SY.loginUrl}" target="_top">Sign in</a>` : "Sign in"} and join rewards to find WD Card Shop prizes in packs. ${odds}.</p>`;
   if (!r) return "";
-  if (!r.eligible) return `<p class="prize-line">Join WD Card Shop rewards on the Today tab and your packs can contain store prizes. ${odds}.</p>`;
+  if (!r.eligible) return `<p class="prize-line">Join WD Card Shop rewards ${PRIZES_WHERE} and your packs can contain store prizes. ${odds}.</p>`;
   return `<p class="prize-line"><span class="tk-mini">Golden Ticket</span> <b>${ticketCount()}</b>. ${odds}.</p>`;
 }
 // Simple mode: today's free packs as one big banner at the top of the Packs tab
@@ -1813,7 +1814,7 @@ function renderSheet() {
       <div class="tk-head">${pz.test ? "Test · not real" : "You found a"}<b>Golden Ticket!</b></div>
       <div class="ticket tk-big"><div class="tk-amt"><small>${pz.amount > 0 ? "store credit" : "discount"}</small>${amt}</div>
         <div class="tk-body"><div class="tk-top">WD Card Shop</div><h3>${pz.label}</h3>${prizeHow(pz)}</div></div>
-      <p class="tk-saved">Saved to your account under <b>Your prizes</b> on the Today tab.</p>
+      <p class="tk-saved">Saved to your account under <b>Your prizes</b> ${PRIZES_WHERE}.</p>
       <button class="btn btn-accent" type="button" id="ticket-ok">Keep ripping</button>
     </div></div>`;
     return;
