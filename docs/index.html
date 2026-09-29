@@ -436,6 +436,28 @@ body.simple .card .rar { position: absolute; top: 8px; left: 8px; right: 8px; }
   body.simple .cards { --g: 6px; }
 }
 
+/* Golden Tickets page (simple mode) */
+.rewards-page { display: grid; gap: 16px; }
+.tk-title { font-size: 24px; }
+.tk-chances { font-size: 14px; color: var(--muted); } .tk-chances b { color: var(--ink); font-family: var(--mono); }
+.tickets { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.ticket.won { box-shadow: 0 10px 30px -14px rgba(201,141,18,.9); animation: tkpop .5s cubic-bezier(.2,.9,.3,1.25) both; }
+.ticket.won .tk-amt { font-size: 44px; }
+.ticket.won h3 { font-size: 20px; }
+.ticket.won small { font-size: 12px; color: #3A2A00; }
+.ticket.won .tk-note { margin: 0; font-size: 13px; }
+.ticket.won .row { gap: 8px; }
+.tk-code .mono { background: rgba(255,255,255,.55); color: #2A1D00; padding: 5px 10px; border-radius: 8px; font-weight: 700; letter-spacing: .04em; font-size: 14px; }
+.tk-pill { display: inline-block; justify-self: start; background: rgba(42,29,0,.14); color: #2A1D00; border-radius: 999px; padding: 4px 12px; font-weight: 700; font-size: 12px; }
+.ticket.dim { filter: grayscale(.85); opacity: .6; }
+.ticket.dim::after { display: none; }
+.ticket-empty { display: grid; gap: 8px; justify-items: center; text-align: center; padding: 26px 20px; border-radius: 16px; border: 2px dashed color-mix(in srgb, #E0A930 70%, transparent); color: var(--muted); }
+.ticket-empty b { font-family: var(--display); font-size: 20px; color: var(--ink); }
+.tk-action { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
+.rewards-page .join { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.fine { margin: 6px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+@media (max-width: 520px) { .tickets { grid-template-columns: 1fr; } .ticket.won .row { justify-content: center; } }
+
 /* Collection quick filters */
 .rchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .rchips button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
@@ -782,10 +804,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609282008"></script>
-<script src="sprites.js?v=202609282008"></script>
-<script src="evo.js?v=202609282008"></script>
-<script src="engine.js?v=202609282008"></script>
+<script src="dex.js?v=202609282020"></script>
+<script src="sprites.js?v=202609282020"></script>
+<script src="evo.js?v=202609282020"></script>
+<script src="engine.js?v=202609282020"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -1408,11 +1430,48 @@ function goldenTicketHTML() {
 }
 // Simple mode: everything about Golden Tickets on one page, opened from the gold button in the header
 function renderRewardsPage() {
+  const r = S.rewards;
+  if (SY.auth && !S.rewardsLoading && (!r || Date.now() - (S.rewardsAt || 0) > 60000)) setTimeout(() => loadRewards(false), 0);
+  const cfg = r ? r.config : { maxOff: 50, minSubtotal: 25, days: 30, creditExpiresDays: 90, dailyChances: 3, subscriberChances: 3 };
+  const tickets = (devOn() ? S.testWon || [] : []).map(p => ({ ...p, created: p.found }))
+    .concat(r ? r.prizes.filter(p => p.kind === "pack") : []);
+  // what the player may need to do: sign in, join, or nothing
+  const action = !SY.shop ? `<div class="tk-action"><span>Golden Tickets are found by signed-in members on wdcardshop.com.</span><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com</a></div>`
+    : !SY.auth ? `<div class="tk-action"><span>Sign in to hunt for Golden Tickets.</span>${SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in</a>` : ""}</div>`
+    : !r ? `<p class="muted" style="margin:0">Loading your Golden Tickets…</p>`
+    : r.banned ? `<p style="margin:0">This account isn't eligible for Golden Tickets. Questions? Email support@wdcardshop.com.</p>`
+    : !r.eligible ? `<form class="join" id="join-form">
+        <b>Join to start finding Golden Tickets</b>
+        <label><input type="checkbox" id="j-18"> I'm 18 or older</label>
+        <label><input type="checkbox" id="j-us"> I live in the United States</label>
+        <label><input type="checkbox" id="j-rules"> I agree to the <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a></label>
+        <div class="row"><button class="btn btn-accent btn-sm" type="submit">Join</button>${S.joinErr ? `<span class="err">${S.joinErr}</span>` : ""}</div></form>` : "";
+  const list = tickets.length ? `<div class="tickets">${tickets.map(p => wonTicketHTML(p, cfg)).join("")}</div>`
+    : `<div class="ticket-empty"><b>No Golden Tickets yet</b><span>Up to $20 in store credit is hidden in packs.</span><button class="btn btn-accent btn-sm" type="button" data-go="packs">Rip packs</button></div>`;
   return `<div class="today rewards-page">
-    ${goldenTicketHTML()}
-    ${renderRewards()}
+    <div class="row spread"><h2 class="tk-title">Your Golden Tickets</h2>${r && r.eligible ? `<span class="tk-chances"><b>${r.chances || 0}</b> ${r.chances === 1 ? "chance" : "chances"} left</span>` : ""}</div>
+    ${list}
+    ${action}
     ${codeBoxHTML()}
+    <p class="fine">Golden Tickets are hidden in packs for signed-in members who join: $20 store credit (1 in 500 packs), $5 store credit (1 in 100) or 5% off (1 in 25). You get ${cfg.dailyChances} chances with each day's free packs, ${cfg.subscriberChances} for subscribing to WD Card Shop emails, and more from pack codes. Discount codes take up to $${cfg.maxOff} off a $${cfg.minSubtotal}+ order, work once, only on your account, and expire after ${cfg.days} days. Store credit expires after ${cfg.creditExpiresDays} days; choose Apply store credit at checkout to use it. Store credit prizes are limited to $150 a month in total. 18+ US residents. No purchase necessary. <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a>. Not sponsored or endorsed by Nintendo, The Pokémon Company, Creatures or GAME FREAK.</p>
   </div>`;
+}
+// A won prize, shown as a shimmering Golden Ticket
+function wonTicketHTML(p, cfg) {
+  const amt = p.amount > 0 ? `$${Math.round(p.amount)}` : `${p.pct}%`;
+  const expired = p.expires && new Date(p.expires.length === 10 ? p.expires + "T23:59:59" : p.expires) < new Date();
+  const detail = p.status === "review" ? `<span class="tk-pill">Being verified · usually within a few days</span>`
+    : p.status === "rejected" ? `<span class="tk-pill">Not approved</span>`
+    : p.status !== "issued" ? `<span class="tk-pill">On its way</span>`
+    : expired ? `<span class="tk-pill">Expired ${shortDate(p.expires)}</span>`
+    : p.amount > 0 ? `<p class="tk-note">In your store credit. Choose <b>Apply store credit</b> at checkout.</p>
+        <div class="row"><a class="btn btn-dark btn-sm" href="https://wdcardshop.com/collections/all" target="_top">Shop now</a>${p.expires ? `<small>Expires ${shortDate(p.expires)}</small>` : ""}</div>`
+    : `<div class="row tk-code"><span class="mono">${escapeHTML(p.code || "")}</span><button class="btn btn-dark btn-sm" type="button" data-copy="${escapeHTML(p.code || "")}">Copy</button><a class="btn btn-dark btn-sm" href="https://wdcardshop.com/discount/${encodeURIComponent(p.code || "")}?redirect=/collections/all" target="_top">Shop now</a></div>
+        <small>${p.expires ? `Expires ${shortDate(p.expires)} · ` : ""}$${cfg.minSubtotal}+ order · up to $${cfg.maxOff} off</small>`;
+  return `<article class="ticket won ${expired || p.status === "rejected" ? "dim" : ""}">
+    <div class="tk-amt"><small>${p.amount > 0 ? "store credit" : "discount"}</small>${amt}</div>
+    <div class="tk-body"><div class="tk-top">${p.test ? "Test · " : ""}Golden Ticket${p.created ? ` · found ${shortDate(p.created)}` : ""}</div><h3>${p.label}</h3>${detail}</div>
+  </article>`;
 }
 function renderToday() {
   const avail = dailyAvailable();
