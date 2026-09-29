@@ -90,10 +90,11 @@ export default {
     if (path === "/roll") return json(await rollPack(env, cid));
     if (path === "/redeem") return redeem(env, cid, body, json);
     if (path === "/claim") return json(await claimChances(env, cid));
-    if (path === "/reset") { // staff only: wipe the game save and the Golden Ticket chances that came with its packs; membership, prizes and used codes stay
+    if (path === "/reset") { // staff only: wipe the game save, its Golden Ticket chances and redeemed codes; membership and prizes stay
       if (!STAFF_CIDS.includes(cid)) return json({ error: "forbidden" }, 403);
       await env.DB.batch([...["saves", "audit", "collection", "month_start", "active_days"].map(t => env.DB.prepare(`DELETE FROM ${t} WHERE cid = ?`).bind(cid)),
-        env.DB.prepare("UPDATE players SET bonus_chances = 0, chances_day = NULL, open_flags = 0 WHERE cid = ?").bind(cid)]);
+        env.DB.prepare("UPDATE players SET bonus_chances = 0, chances_day = NULL, open_flags = 0, bonus_packs = 0 WHERE cid = ?").bind(cid),
+        env.DB.prepare("DELETE FROM redemptions WHERE cid = ?").bind(cid), env.DB.prepare("DELETE FROM redeem_fails WHERE cid = ?").bind(cid)]); // staff can redeem test codes again
       return json({ ok: true });
     }
     if (path === "/eligibility") {
