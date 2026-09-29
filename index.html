@@ -1573,7 +1573,7 @@ function renderPacks() {
     else {
       const kn = S.cards[S.kept].num, left = bagCount();
       actions = `<button class="btn btn-accent" id="next" type="button" ${left ? "" : "disabled"}>${left ? `Back to your bag (${left} left)` : "Bag empty"}</button>
-        ${inBox(kn) && !showcase().includes(kn) && showcase().length < SHOW_MAX ? `<button class="btn btn-plain" type="button" data-show="${kn}">Pin to showcase</button>` : ""}
+        ${FEATURES.showcase && inBox(kn) && !showcase().includes(kn) && showcase().length < SHOW_MAX ? `<button class="btn btn-plain" type="button" data-show="${kn}">Pin to showcase</button>` : ""}
         ${inBox(kn) ? `<button class="btn btn-plain" type="button" data-detail="${kn}">View ${byNum(kn).name}</button>` : ""}`;
     }
     const note = S.phase === "picking" ? (S.batch ? "Auto-pick keeps new Pokédex entries first, then Shinies, then the rarest card." : "Pick one to keep.") : S.phase === "kept" ? (S.batch ? "Kept! Next pack…" : S.keptMsg) : "Revealing…";
@@ -1688,7 +1688,7 @@ function renderDex() {
     if (!d) return `<div class="dm missing" style="--rc:${rc(m.tier)}"><img class="px" src="${sprite(m.num)}" alt="" loading="lazy"><span class="nm">???</span><span class="no">#${pad(m.num)}</span></div>`;
     const inner = `<span class="pip" title="${RARITY[m.tier]}"></span>${b ? `<span class="x">${gradeName(b.grade)}</span>` : ""}${d.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
       <img class="px" src="${sprite(m.num)}" alt="" loading="lazy" style="${d.shiny ? SHINY_CSS : ""}"><span class="nm">${m.name}</span><span class="no">#${pad(m.num)}</span>`;
-    return b ? `<button type="button" class="dm ${showcase().includes(m.num) ? "onteam" : ""}" data-detail="${m.num}" style="--rc:${rc(m.tier)}">${inner}</button>`
+    return b ? `<button type="button" class="dm ${FEATURES.showcase && showcase().includes(m.num) ? "onteam" : ""}" data-detail="${m.num}" style="--rc:${rc(m.tier)}">${inner}</button>`
       : `<div class="dm gone" style="--rc:${rc(m.tier)}" title="Registered, but not in your box (released)">${inner}</div>`;
   }).join("") : `<p class="empty-note">${S.dexFilter === "shiny" ? "No Shinies in this region yet." : S.dexFilter === "owned" || q ? "No caught Pokémon match. Open some packs." : "Nothing missing here. Region complete."}</p>`;
   const sets = REGIONS.map(R => { let have = 0; for (let n = R.lo; n <= R.hi; n++) if (C.dex[n]) have++; const tot = R.hi - R.lo + 1;
@@ -1713,7 +1713,7 @@ function renderDex() {
 function renderStarter() {
   return `<section class="stage"><div class="stage-inner">
     <div style="text-align:center"><div class="eyebrow">Welcome, Trainer</div><h2 style="font-size:30px">Choose your partner</h2>
-      <p class="note" style="margin-top:6px">You also get ${START_PACKS} starter packs. Keep one card from each pack, pin your favorites to your showcase, and come back every day for more.</p></div>
+      <p class="note" style="margin-top:6px">You also get ${START_PACKS} starter packs. Keep one card from each pack, fill your Pokédex, and come back every day for more.</p></div>
     <div class="starters">${STARTERS.map(n => { const m = byNum(n); return `<button class="starter" type="button" data-starter="${n}">${img(n)}<b>${m.name}</b><span class="types">${typeChips(m.types)}</span></button>`; }).join("")}</div>
   </div></section>`;
 }
