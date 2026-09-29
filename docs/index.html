@@ -387,12 +387,18 @@ body.simple footer .legal { font-size: 11px; line-height: 1.45; opacity: .85; }
 body.simple .full-only { display: none !important; }
 body:not(.simple) .simple-only { display: none !important; }
 .title-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
-.tk-btn { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; padding: 6px 12px 6px 8px; font-weight: 700; font-size: 13px; color: #2A1D00; cursor: pointer;
-  background: linear-gradient(135deg, #B8841C, #F2C94C 35%, #FFE89A 50%, #E0A930 70%, #A87414); box-shadow: 0 4px 14px -6px rgba(201,141,18,.8); }
-.tk-btn[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }
 .tk-ico { width: 20px; height: 13px; border-radius: 3px; background: #2A1D00; -webkit-mask: radial-gradient(circle 3px at 0 50%, #0000 95%, #000) left / 51% 100% no-repeat, radial-gradient(circle 3px at 100% 50%, #0000 95%, #000) right / 51% 100% no-repeat; mask: radial-gradient(circle 3px at 0 50%, #0000 95%, #000) left / 51% 100% no-repeat, radial-gradient(circle 3px at 100% 50%, #0000 95%, #000) right / 51% 100% no-repeat; }
 .rewards-page .back { justify-self: start; }
-body.simple .tabs { display: grid; grid-template-columns: 1fr 1fr; width: 100%; max-width: 420px; }
+body.simple .tabs { display: grid; grid-template-columns: 1fr 1fr 1.3fr; width: 100%; max-width: 560px; }
+body.simple .tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+.tab-gold { color: #8A5F08 !important; }
+.tab-gold .tk-ico { background: currentColor; }
+.tab-gold[aria-selected="true"] { background: linear-gradient(135deg, #B8841C, #F2C94C 35%, #FFE89A 50%, #E0A930 70%, #A87414) !important; color: #2A1D00 !important; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tab-gold:not([aria-selected="true"]) { color: #F2C94C !important; } }
+:root[data-theme="dark"] .tab-gold:not([aria-selected="true"]) { color: #F2C94C !important; }
+.dexline { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+.dexline b { color: var(--ink); font-family: var(--mono); }
+@media (max-width: 420px) { .tab-gold .long { display: none; } }
 body.simple .tabs button { font-size: 15px; padding: 10px 8px; text-align: center; }
 .claimbar { display: grid; grid-template-columns: auto 1fr; gap: 16px 20px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 16px 20px; margin-bottom: 16px; }
 .claimbar h2 { font-size: 24px; margin: 0 0 10px; }
@@ -744,11 +750,12 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
   <header class="top">
     <div class="brand">
       <a id="home-link" class="home-link" href="https://wdcardshop.com/" target="_top" hidden>← Back to WD Card Shop</a>
-      <div class="title-row"><h1>WD <em>Pack</em> Hunt</h1><span class="beta-tag simple-only">Beta</span><button class="tk-btn simple-only" id="tk-btn" type="button" data-tab="rewards" aria-label="Golden Tickets"><span class="tk-ico" aria-hidden="true"></span><span id="tk-n">Golden Tickets</span></button></div>
+      <div class="title-row"><h1>WD <em>Pack</em> Hunt</h1><span class="beta-tag simple-only">Beta</span></div>
+      <p class="dexline simple-only"><b id="m-line">0</b> / 1,025 Pokémon caught</p>
       <p class="full-only">Rip free packs every day and keep one card from each. Signed-in members can find WD Card Shop discount codes and store credit inside packs.</p>
       <p class="beta full-only"><span class="beta-tag">Beta</span> More is on the way. Everything you pull now stays in your Pokédex and collection and carries over to upcoming features like collection showcases and challenges.</p>
     </div>
-    <div class="meter" aria-live="polite">
+    <div class="meter full-only" aria-live="polite">
       <div class="nums"><span>Pokédex</span><span><b id="m-caught">0</b> / 1,025</span></div>
       <div class="bar"><i id="m-bar" style="width:0%"></i></div>
       <div class="sub" id="m-sub"></div>
@@ -761,6 +768,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
     <button id="tab-today" class="full-only" role="tab" type="button" data-tab="today">Today <span class="ct" id="ct-today"></span></button>
     <button id="tab-packs" role="tab" type="button" data-tab="packs">Packs <span class="ct" id="ct-packs"></span></button>
     <button id="tab-collection" role="tab" type="button" data-tab="collection">Collection <span class="ct" id="ct-collection"></span></button>
+    <button id="tab-rewards" class="simple-only tab-gold" role="tab" type="button" data-tab="rewards"><span class="tk-ico" aria-hidden="true"></span><span class="long">Golden&nbsp;</span>Tickets <span class="ct" id="ct-rewards"></span></button>
     <button id="tab-dex" class="full-only" role="tab" type="button" data-tab="dex">Pokédex</button>
   </nav>
 
@@ -774,10 +782,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609281958"></script>
-<script src="sprites.js?v=202609281958"></script>
-<script src="evo.js?v=202609281958"></script>
-<script src="engine.js?v=202609281958"></script>
+<script src="dex.js?v=202609282008"></script>
+<script src="sprites.js?v=202609282008"></script>
+<script src="evo.js?v=202609282008"></script>
+<script src="engine.js?v=202609282008"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -803,7 +811,7 @@ const START_PACKS = 6, DAILY_PACKS = 3, DAILY_BANK_DAYS = 1, WEEK_GOAL = 5, WEEK
 const FEATURES = { showcase: false, boards: false, grades: false, streak: false, weekly: false, devTools: false,
   simple: true }; // simple: just Packs + Collection, big images, little text; Golden Tickets live behind the header button
 const HOME_TAB = FEATURES.simple ? "packs" : "today";
-const PRIZES_WHERE = FEATURES.simple ? "behind the Golden Tickets button" : "on the Today tab"; // devTools: Reset save + Test prizes buttons
+const PRIZES_WHERE = FEATURES.simple ? "on the Golden Tickets tab" : "on the Today tab"; // devTools: Reset save + Test prizes buttons
 const SITE = "https://wdcardshop.com/pages/pokedex-pack-drafts";
 const SHINY_CSS = "filter:hue-rotate(150deg) saturate(1.3)";
 
@@ -1354,9 +1362,8 @@ function renderMeter() {
   document.getElementById("m-bar").style.width = (caught / 1025 * 100).toFixed(2) + "%";
   document.getElementById("m-sub").innerHTML = FEATURES.simple ? `<span><b>${bagCount()}</b> packs</span><span><b>${shinies()}</b> Shinies</span>`
     : `<span><b>${bagCount()}</b> packs in bag</span><span><b>${shinies()}</b> Shinies</span>${S.rewards && S.rewards.eligible ? `<span><b>${S.rewards.chances || 0}</b> with a Golden Ticket chance</span>` : FEATURES.boards ? `<span><b>${score().toLocaleString()}</b> collection points</span>` : ""}`;
-  const tk = document.getElementById("tk-n");
-  if (tk) tk.textContent = S.rewards && S.rewards.eligible ? `${S.rewards.chances || 0} Golden Ticket ${S.rewards.chances === 1 ? "chance" : "chances"}` : "Golden Tickets";
-  document.getElementById("tk-btn").setAttribute("aria-pressed", S.tab === "rewards");
+  document.getElementById("m-line").textContent = caught.toLocaleString();
+  document.getElementById("ct-rewards").textContent = S.rewards && S.rewards.eligible ? S.rewards.chances || 0 : "";
   const todo = (dailyAvailable() ? 1 : 0) + (weekReady() ? 1 : 0);
   const ctT = document.getElementById("ct-today");
   ctT.textContent = todo ? `●${todo}` : ""; ctT.className = "ct hot";
@@ -1402,7 +1409,6 @@ function goldenTicketHTML() {
 // Simple mode: everything about Golden Tickets on one page, opened from the gold button in the header
 function renderRewardsPage() {
   return `<div class="today rewards-page">
-    <button class="btn btn-plain btn-sm back" type="button" data-go="${HOME_TAB}">← Back to packs</button>
     ${goldenTicketHTML()}
     ${renderRewards()}
     ${codeBoxHTML()}
@@ -1893,7 +1899,6 @@ function render() {
 }
 
 // ---------- Events ----------
-document.getElementById("tk-btn").addEventListener("click", () => { if (S.battle) return; S.tab = S.tab === "rewards" ? HOME_TAB : "rewards"; render(); scrollTo({ top: 0, behavior: "smooth" }); });
 document.getElementById("tabs").addEventListener("click", e => {
   const b = e.target.closest("button[data-tab]");
   if (!b || S.battle) return;
