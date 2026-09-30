@@ -316,7 +316,9 @@ async function audit(env, cid, rev, data) {
   const flags = [];
   if (m.dex > 2 + m.packs * 1.8) flags.push("dex");                                                // more entries than packs + evolutions explain
   if (prev && m.dex - prev.dex_n > (m.packs - prev.packs) + 6) flags.push("dexjump");               // many entries appeared at once
-  if (m.packs + m.bag > 15 + days * 8 + m.beaten * 5 + bonus) flags.push("packs");                          // more packs than the calendar allows
+  // badge tiers earn 2 packs each in the game (36 tiers max)
+  const badgePacks = 2 * Math.min(36, Object.keys(data.badges || {}).filter(k => /^[a-z]+:[0-2]$/.test(k)).length);
+  if (m.packs + m.bag > 15 + days * 8 + m.beaten * 5 + bonus + badgePacks) flags.push("packs");                          // more packs than the calendar allows
   if (m.legends > 3 + m.packs * 0.15) flags.push("legend");                                          // far luckier than the pull rates
   if (m.copies > m.packs + 30 + days * 5) flags.push("grade");                                         // more upgrades than packs + Rare Candy explain
   await env.DB.prepare("INSERT INTO audit (cid, at, rev, dex_n, packs, bag_n, beaten, rare, legends, max_lvl, flags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
