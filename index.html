@@ -1785,6 +1785,9 @@ function renderPacks() {
     const picked = S.selected != null ? byNum(S.cards[S.selected].num) : null;
     let actions;
     if (S.phase === "revealing") actions = `<button class="btn btn-plain" id="reveal-all" type="button">Reveal all</button>`;
+    else if (S.phase === "picking" && S.batch && FEATURES.simple) actions = `<button class="btn btn-accent" id="keep" type="button" ${picked ? "" : "disabled"}>${picked ? `Keep ${picked.name}` : "Choose one to keep"}</button>
+        <div class="batchbar"><span>Pack <span class="mono">${S.batch.done + 1}</span> of <span class="mono">${S.batch.total}</span></span>
+        <button class="btn btn-plain btn-sm" type="button" id="auto-rest">Auto-pick the rest</button><button class="btn btn-line btn-sm" type="button" id="stop-batch">Stop after this pack</button></div>`;
     else if (S.phase === "picking" && S.batch) actions = `<div class="batchbar"><span>Pack <span class="mono">${S.batch.done + 1}</span> of <span class="mono">${S.batch.total}</span> · tap a card to keep it</span>
         <button class="btn btn-plain btn-sm" type="button" id="auto-rest">Auto-pick the rest</button><button class="btn btn-line btn-sm" type="button" id="stop-batch">Stop after this pack</button></div>`;
     else if (S.phase === "picking") actions = `<button class="btn btn-accent" id="keep" type="button" ${picked ? "" : "disabled"}>${picked ? `Keep ${picked.name}` : "Choose one to keep"}</button>`;
@@ -1794,8 +1797,8 @@ function renderPacks() {
         ${FEATURES.showcase && inBox(kn) && !showcase().includes(kn) && showcase().length < SHOW_MAX ? `<button class="btn btn-plain" type="button" data-show="${kn}">Pin to showcase</button>` : ""}
         ${inBox(kn) ? `<button class="btn btn-plain" type="button" data-detail="${kn}">View ${byNum(kn).name}</button>` : ""}`;
     }
-    const note = S.phase === "picking" ? (S.batch ? (FEATURES.simple ? "Tap a card to keep it." : "Auto-pick keeps new Pokédex entries first, then Shinies, then the rarest card.") : "Tap a card to keep it.") : S.phase === "kept" ? (S.batch ? "Kept! Next pack…" : S.keptMsg) : "Revealing…";
-    stage = `<div class="pull-slot" id="pull-slot">${bannerHTML()}</div>${FEATURES.simple && S.phase === "picking" && !S.batch ? previewHTML() : ""}<div class="cards">${S.cards.map(cardHTML).join("")}</div>${S.prize && S.phase !== "revealing" ? prizeCardHTML(S.prize) : ""}
+    const note = S.phase === "picking" ? (S.batch ? (FEATURES.simple ? "Tap a card, then Keep." : "Auto-pick keeps new Pokédex entries first, then Shinies, then the rarest card.") : (FEATURES.simple ? "Tap a card, then Keep." : "Tap a card to keep it.")) : S.phase === "kept" ? (S.batch ? "Kept! Next pack…" : S.keptMsg) : "Revealing…";
+    stage = `<div class="pull-slot" id="pull-slot">${bannerHTML()}</div>${FEATURES.simple && S.phase === "picking" ? previewHTML() : ""}<div class="cards">${S.cards.map(cardHTML).join("")}</div>${S.prize && S.phase !== "revealing" ? prizeCardHTML(S.prize) : ""}
       <p class="note">${note}</p><div class="actions">${actions}</div>`;
   }
   const earn = !FEATURES.simple && (S.phase === "sealed" || (S.phase === "kept" && !S.batch) || S.phase === "batchDone") ? `<div style="margin-top:16px">${renderEarn()}</div>` : "";
@@ -2049,7 +2052,7 @@ document.getElementById("view").addEventListener("click", e => {
   if (on("#reveal-all")) return revealAll();
   if (on("#keep")) return keep();
   if (on("#next")) return nextPack();
-  if ((el = on(".card.pickable"))) { S.selected = +el.dataset.i; return S.batch ? keep() : render(); }
+  if ((el = on(".card.pickable"))) { S.selected = +el.dataset.i; return S.batch && !FEATURES.simple ? keep() : render(); } // simple mode: Open all also taps to preview, then Keep
   if (on("#open-all")) return openAll();
   if (on("#auto-rest")) { S.batch.auto = true; S.selected = bestPick(); return keep(); }
   if (on("#stop-batch")) { S.batch.total = S.batch.done + 1; return render(); }
