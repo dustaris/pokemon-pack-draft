@@ -494,6 +494,20 @@ body.simple .card .rar { position: absolute; top: 8px; left: 8px; right: 8px; }
   body.simple .packbag.multi .pack .top, body.simple .packbag.multi .pack .lbl span { display: none; }
 }
 
+/* Pokédex (simple) */
+.dexregs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 2px 8px; margin: 0 -2px 6px; scrollbar-width: none; }
+.dexreg { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 5px 12px 5px 6px; font-size: 13px; }
+.dexreg .mono { font-size: 11px; color: var(--muted); }
+.dexreg .medal.sm { margin: 0; }
+.dexreg[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.dexreg[aria-pressed="true"] .mono { color: inherit; opacity: .75; }
+.dexf { margin-bottom: 12px; }
+body.simple .dm.missing img { filter: brightness(0); opacity: .28; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) body.simple .dm.missing img { filter: brightness(0) invert(1); opacity: .2; } }
+:root[data-theme="dark"] body.simple .dm.missing img { filter: brightness(0) invert(1); opacity: .2; }
+body.simple .dm.missing .nm { color: var(--muted); }
+body.simple .dm.missing .no { display: block; font-size: 11px; color: var(--muted); }
+
 /* How to play */
 .help-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 800; font-size: 15px; line-height: 1; cursor: pointer; }
 .sheet.tut { display: grid; gap: 12px; text-align: center; justify-items: center; max-width: 420px; }
@@ -912,10 +926,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609292124"></script>
-<script src="sprites.js?v=202609292124"></script>
-<script src="evo.js?v=202609292124"></script>
-<script src="engine.js?v=202609292124"></script>
+<script src="dex.js?v=202609292131"></script>
+<script src="sprites.js?v=202609292131"></script>
+<script src="evo.js?v=202609292131"></script>
+<script src="engine.js?v=202609292131"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -2001,7 +2015,7 @@ function renderBadges() {
           : `<span class="got">Gold complete!</span>`}
     </button>`;
   }).join("")}</div>
-  <p class="note" style="margin-top:12px">Every tier (Bronze, Silver, Gold) earns ${BADGE_PACKS} bonus packs. Tap a badge to see those cards.</p>`;
+  <p class="note" style="margin-top:12px">Every tier (Bronze, Silver, Gold) earns ${BADGE_PACKS} bonus packs. Tap a region to see what you're missing in the Pokédex.</p>`;
 }
 function renderCollection() {
   const sc = showcase();
@@ -2038,8 +2052,9 @@ function renderCollection() {
     <div class="galcards">${x.cards.map(c => showCard(c.num, c)).join("")}</div></div>`;
   const gallery = !g ? `<p class="muted">Loading showcases…</p>` : g.error ? `<p class="muted">The gallery is on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a>.</p>`
     : `${g.featured ? `<div class="featured"><div class="eyebrow">Showcase of the Month</div>${gRow(g.featured)}</div>` : ""}${g.showcases.length ? g.showcases.map(gRow).join("") : `<p class="muted">No showcases yet. Pin your best 6 and be the first!</p>`}`;
-  const seg = FEATURES.simple ? `<div class="seg" role="group" aria-label="Collection view"><button type="button" data-colview="cards" aria-pressed="${S.colView !== "badges"}">Cards</button><button type="button" data-colview="badges" aria-pressed="${S.colView === "badges"}">Badges <span class="mono">${badgeCount()}/${BADGE_MAX}</span></button></div>` : "";
+  const seg = FEATURES.simple ? `<div class="seg" role="group" aria-label="Collection view"><button type="button" data-colview="cards" aria-pressed="${!S.colView || S.colView === "cards"}">Cards</button><button type="button" data-colview="badges" aria-pressed="${S.colView === "badges"}">Badges <span class="mono">${badgeCount()}/${BADGE_MAX}</span></button><button type="button" data-colview="dex" aria-pressed="${S.colView === "dex"}">Pokédex</button></div>` : "";
   if (FEATURES.simple && S.colView === "badges") return `<section class="panel">${seg}${renderBadges()}</section>`;
+  if (FEATURES.simple && S.colView === "dex") return `<section class="panel">${seg}${renderDexSimple()}</section>`;
   if (!FEATURES.showcase) return `<section class="panel">${seg}<h2>Your cards <span>${plural(Object.keys(C.box).length, "card", "cards")} · ${shinies()} Shiny</span></h2>
       <div class="toolbar">
         <input type="search" id="box-search" placeholder="Search your cards…" value="${S.boxSearch.replace(/"/g, "&quot;")}" aria-label="Search your cards">
@@ -2095,6 +2110,31 @@ function renderDex() {
       <input type="search" id="dex-search" placeholder="Search caught…" value="${S.dexSearch.replace(/"/g, "&quot;")}" aria-label="Search caught Pokémon">
       <span class="count">Evolving and releasing keep entries registered</span>
     </div>
+    <div class="dex">${grid}</div>`;
+}
+
+// Simple mode Pokédex: pick a region, see what you've caught and what's still missing
+function renderDexSimple() {
+  if (!S.dexRegion || S.dexRegion === "all") S.dexRegion = "kanto";
+  const r = REGIONS.find(x => x.id === S.dexRegion) || REGIONS[0], f = S.dexFilter || "all";
+  let list = DEX.slice(r.lo - 1, r.hi);
+  if (f === "owned") list = list.filter(m => C.dex[m.num]);
+  if (f === "missing") list = list.filter(m => !C.dex[m.num]);
+  if (f === "shiny") list = list.filter(m => C.dex[m.num] && C.dex[m.num].shiny);
+  const have = n => { let k = 0; for (let i = n.lo; i <= n.hi; i++) if (C.dex[i]) k++; return k; };
+  const regions = REGIONS.map(R => { const b = badgeById(R.id), h = have(R), tot = R.hi - R.lo + 1;
+    return `<button type="button" class="dexreg" data-dexr="${R.id}" aria-pressed="${R.id === r.id}">${badgeMedal(b, earnedTier(b), "sm")}<b>${R.name}</b><span class="mono">${h}/${tot}</span></button>`; }).join("");
+  const filters = [["all", "All"], ["owned", "Caught"], ["missing", "Missing"], ["shiny", "★ Shiny"]]
+    .map(([v, l]) => `<button type="button" data-dexf="${v}" aria-pressed="${f === v}">${l}</button>`).join("");
+  const grid = list.length ? list.map(m => {
+    const d = C.dex[m.num];
+    if (!d) return `<div class="dm missing" style="--rc:${rc(m.tier)}"><img class="px" src="${sprite(m.num)}" alt="" loading="lazy"><span class="nm">???</span><span class="no">#${pad(m.num)}</span></div>`;
+    return `<button type="button" class="dm" data-detail="${m.num}" style="--rc:${rc(m.tier)}"><span class="pip" title="${RARITY[m.tier]}"></span>${d.n > 1 ? `<span class="x">×${d.n}</span>` : ""}${d.shiny ? `<span class="sh" title="Shiny">★</span>` : ""}
+      <img class="px" src="${sprite(m.num)}" alt="" loading="lazy" style="${d.shiny ? SHINY_CSS : ""}"><span class="nm">${m.name}</span></button>`;
+  }).join("") : `<p class="empty-note">${f === "shiny" ? "No Shinies from this region yet." : f === "owned" ? "None caught here yet. Rip some packs!" : "Nothing missing. Region complete!"}</p>`;
+  return `<div class="dexregs" role="group" aria-label="Region">${regions}</div>
+    <div class="rchips dexf" role="group" aria-label="Show">${filters}</div>
+    <div class="row spread" style="margin-bottom:10px"><h2 style="margin:0">${r.name} <span class="muted" style="font-size:14px;font-weight:600">${have(r)} of ${r.hi - r.lo + 1} caught</span></h2></div>
     <div class="dex">${grid}</div>`;
 }
 
@@ -2274,7 +2314,12 @@ document.getElementById("view").addEventListener("click", e => {
   if ((el = on("[data-rip]"))) { if (S.battle) { clearTimers(); S.battle = null; } S.packKind = el.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
   if ((el = on("[data-boxshow]"))) { S.boxShow = el.dataset.boxshow === S.boxShow && /^(type|reg):/.test(S.boxShow) ? "all" : el.dataset.boxshow; return render(); }
   if ((el = on("[data-colview]"))) { S.colView = el.dataset.colview; return render(); }
-  if ((el = on("[data-badgeshow]"))) { S.tab = "collection"; S.colView = "cards"; S.boxShow = el.dataset.badgeshow; S.boxSearch = ""; return render(); }
+  if ((el = on("[data-badgeshow]"))) {
+    const v = el.dataset.badgeshow; S.tab = "collection";
+    if (v.startsWith("reg:")) { S.colView = "dex"; S.dexRegion = v.slice(4); S.dexFilter = "all"; } else { S.colView = "cards"; S.boxShow = v; S.boxSearch = ""; }
+    return render();
+  }
+  if ((el = on("[data-dexf]"))) { S.dexFilter = el.dataset.dexf; return render(); }
   if ((el = on("[data-boxsort]"))) { S.boxSort = el.dataset.boxsort; return render(); }
   if ((el = on("[data-bag]"))) { S.packKind = el.dataset.bag; if (S.phase === "kept" || S.phase === "batchDone") { S.phase = "sealed"; S.cards = []; S.batch = null; } return render(); }
   if ((el = on("[data-copy]"))) { const c = el.dataset.copy; try { navigator.clipboard.writeText(c).then(() => toast("Code copied"), () => toast(c)); } catch { toast(c); } return; }
