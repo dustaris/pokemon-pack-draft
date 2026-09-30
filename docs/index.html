@@ -451,7 +451,7 @@ body.simple .card .rar { position: absolute; top: 8px; left: 8px; right: 8px; }
 .tk-title { font-size: 24px; }
 .tk-chances { font-size: 14px; color: var(--muted); } .tk-chances b { color: var(--ink); font-family: var(--mono); }
 .tickets { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
-.ticket.won { box-shadow: 0 10px 30px -14px rgba(201,141,18,.9); animation: tkpop .5s cubic-bezier(.2,.9,.3,1.25) both; }
+.ticket.won { box-shadow: 0 10px 30px -14px rgba(201,141,18,.9); }
 .ticket.won .tk-amt { font-size: 44px; }
 .ticket.won h3 { font-size: 20px; }
 .ticket.won small { font-size: 12px; color: #3A2A00; }
@@ -840,10 +840,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609291107"></script>
-<script src="sprites.js?v=202609291107"></script>
-<script src="evo.js?v=202609291107"></script>
-<script src="engine.js?v=202609291107"></script>
+<script src="dex.js?v=202609291822"></script>
+<script src="sprites.js?v=202609291822"></script>
+<script src="evo.js?v=202609291822"></script>
+<script src="engine.js?v=202609291822"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -1474,7 +1474,7 @@ function renderRewardsPage() {
   // what the player may need to do: sign in, join, or nothing
   const action = !SY.shop ? `<div class="tk-action"><span>Golden Tickets are found by signed-in members on wdcardshop.com.</span><a class="btn btn-accent btn-sm" href="${STORE_PAGE}" target="_top" rel="noopener">Play on wdcardshop.com</a></div>`
     : !SY.auth ? `<div class="tk-action"><span>Sign in to hunt for Golden Tickets.</span>${SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in</a>` : ""}</div>`
-    : !r ? `<p class="muted" style="margin:0">Loading your Golden Tickets…</p>`
+    : !r ? ""
     : r.banned ? `<p style="margin:0">This account isn't eligible for Golden Tickets. Questions? Email support@wdcardshop.com.</p>`
     : !r.eligible ? `<form class="join" id="join-form">
         <b>Join to start finding Golden Tickets</b>
@@ -1483,6 +1483,7 @@ function renderRewardsPage() {
         <label><input type="checkbox" id="j-rules"> I agree to the <a href="${RULES_URL}" target="_blank" rel="noopener">Official Rules</a></label>
         <div class="row"><button class="btn btn-accent btn-sm" type="submit">Join</button>${S.joinErr ? `<span class="err">${S.joinErr}</span>` : ""}</div></form>` : "";
   const list = tickets.length ? `<div class="tickets">${tickets.map(p => wonTicketHTML(p, cfg)).join("")}</div>`
+    : SY.auth && !r ? `<div class="ticket-empty"><span>Loading your Golden Tickets…</span></div>`
     : `<div class="ticket-empty"><b>No Golden Tickets yet</b><span>Up to $20 in store credit is hidden in packs.</span><button class="btn btn-accent btn-sm" type="button" data-go="packs">Rip packs</button></div>`;
   return `<div class="today rewards-page">
     <div class="row spread"><h2 class="tk-title">Your Golden Tickets</h2>${r && r.eligible ? `<span class="tk-chances"><b>${r.chances || 0}</b> ${r.chances === 1 ? "chance" : "chances"} left</span>` : ""}</div>
@@ -1559,7 +1560,7 @@ async function loadRewards(announce) {
     const got = S.rewards.prizes.find(p => p.status === "issued" && !(before || "").includes(p.ref + "issued"));
     toast(got ? `Your WD Card Shop prize is ready: ${got.label}! See Your prizes ${PRIZES_WHERE}.` : `Reward earned! See WD Card Shop rewards ${PRIZES_WHERE}.`);
   }
-  if (S.tab === "today" || S.tab === "packs") render();
+  render();
 }
 function renderRewards() {
   const r = S.rewards;
@@ -1943,6 +1944,9 @@ function renderStarter() {
 function renderSheet() {
   const el = document.getElementById("sheet");
   if (S.ticketShow) {
+    const key = "ticket:" + (S.ticketShow.ref || S.ticketShow.code || S.ticketShow.label) + ":" + (S.ticketShow.found || "");
+    if (el.dataset.sheet === key && el.firstElementChild) return; // already showing: leave it alone so the animation plays once
+    el.dataset.sheet = key;
     const pz = S.ticketShow, amt = pz.amount > 0 ? `$${Math.round(pz.amount)}` : `${pz.pct}%`;
     el.innerHTML = `<div class="sheet-wrap tk-wrap" id="ticket-bg"><div class="tk-reveal" role="dialog" aria-modal="true" aria-label="Golden Ticket">
       <div class="tk-rays" aria-hidden="true"></div>
@@ -1955,6 +1959,9 @@ function renderSheet() {
     return;
   }
   if (S.reveal && S.reveal.length && !S.battle) {
+    const key = "reveal:" + JSON.stringify(S.reveal);
+    if (el.dataset.sheet === key && el.firstElementChild) return;
+    el.dataset.sheet = key;
     const gs = S.reveal;
     el.innerHTML = `<div class="sheet-wrap" id="reveal-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="New packs" style="text-align:center">
       <div><div class="eyebrow">Added to your bag</div><h2 style="font-size:28px">New packs!</h2></div>
@@ -1964,6 +1971,7 @@ function renderSheet() {
     </div></div>`;
     return;
   }
+  el.dataset.sheet = "";
   if (S.subOffer) {
     el.innerHTML = `<div class="sheet-wrap" id="sub-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="Join the email list">
       <div><div class="eyebrow">WD Card Shop emails</div><h2 style="font-size:24px">Get drop alerts and ${SUB_PACKS} free packs</h2></div>
