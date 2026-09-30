@@ -540,11 +540,11 @@ body.simple .dm.missing .no { display: block; font-size: 11px; color: var(--mute
 .badge-tile .pips i { width: 9px; height: 9px; border-radius: 50%; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line); }
 .badge-tile .pips i.on { background: var(--c); box-shadow: none; }
 .badge-tile.t1, .badge-tile.t2, .badge-tile.t3 { border-color: color-mix(in srgb, var(--ring) 60%, var(--line)); background: color-mix(in srgb, var(--ring) 10%, var(--surface)); }
+.badge-tile .rw-pack { font-size: 11px; color: var(--muted); margin-top: -3px; }
 .badge-tile .got { color: #C98D12; font-weight: 800; font-size: 12px; }
 @media (max-width: 520px) { .badge-grid { grid-template-columns: repeat(2, 1fr); } }
 .badge-tile { display: grid; justify-items: center; gap: 5px; padding: 14px 8px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 13px; }
 .badge-tile b { font-size: 15px; }
-.badge-tile .got { color: var(--good); font-weight: 700; font-size: 12px; }
 .badge-tile .prog { width: 70%; height: 5px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
 .badge-tile .prog i { display: block; height: 100%; background: var(--tc); border-radius: inherit; }
 .seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-2); margin-bottom: 14px; }
@@ -1463,6 +1463,9 @@ const BADGES = [
     count: () => ownedNums().filter(n => inRegion(r, n)).length, adds: c => !inBox(c.num) && inRegion(r, c.num) })),
 ];
 const BADGE_MAX = BADGES.length * 3;
+// region badges pay out packs from that region; the others pay Wild packs
+const rewardKind = id => REGIONS.some(r => r.id === id) ? id : "all";
+const rewardText = (id, n = 1) => `+${n * BADGE_PACKS} ${rewardKind(id) === "all" ? "Wild" : badgeById(id).name} packs`;
 const badgeById = id => BADGES.find(b => b.id === id);
 const earnedTier = b => [0, 1, 2].filter(i => C.badges && C.badges[b.id + ":" + i]).length;
 const badgeCount = () => BADGES.reduce((a, b) => a + earnedTier(b), 0);
@@ -1479,7 +1482,9 @@ function checkBadges() {
   const won = [];
   BADGES.forEach(b => { const have = b.count(); b.tiers.forEach((x, i) => { const k = b.id + ":" + i; if (have >= x && !C.badges[k]) { C.badges[k] = today(); won.push(k); } }); });
   if (!won.length) return won;
-  addPacks("all", won.length * BADGE_PACKS, won.length === 1 ? badgeLabel(won[0]) : `${won.length} badges`, false);
+  const by = {};
+  won.forEach(k => { const kind = rewardKind(k.split(":")[0]); by[kind] = (by[kind] || 0) + BADGE_PACKS; });
+  Object.entries(by).forEach(([kind, n]) => addPacks(kind, n, won.length === 1 ? badgeLabel(won[0]) : `${won.length} badges`, false));
   save();
   S.badgeShow = (S.badgeShow || []).concat(won);
   return won;
@@ -1493,7 +1498,7 @@ function badgeLines(c) {
   return BADGES.filter(b => b.adds(c)).map(b => {
     const g = nextGoal(b); if (!g) return null;
     const next = g.have + 1;
-    if (next >= g.need) return `${badgeMedal(b, g.tier + 1, "sm")}<b>${b.name} ${TIER_NAMES[g.tier]}!</b> +${BADGE_PACKS} packs`;
+    if (next >= g.need) return `${badgeMedal(b, g.tier + 1, "sm")}<b>${b.name} ${TIER_NAMES[g.tier]}!</b> ${rewardText(b.id)}`;
     return b.id === "dex" ? null : `${badgeMedal(b, g.tier, "sm")}${b.name} ${next}/${g.need}`;
   }).filter(Boolean).slice(0, 2);
 }
@@ -2000,13 +2005,13 @@ function renderBadges() {
   return `<div class="badge-grid">${BADGES.map(b => {
     const t = earnedTier(b), g = nextGoal(b), have = b.count();
     return `<button type="button" class="badge-tile ${t ? "t" + t : ""}" data-badgeshow="${b.show}" style="--ring:${t ? TIER_COLORS[t - 1] : "var(--line)"}">
-      ${badgeMedal(b, t, "lg")}<b>${b.name}</b>
+      ${badgeMedal(b, t, "lg")}<b>${b.name}</b><span class="rw-pack">${rewardText(b.id).replace("+" + BADGE_PACKS + " ", "")} per tier</span>
       <span class="pips">${[0, 1, 2].map(i => `<i class="${i < t ? "on" : ""}" style="--c:${TIER_COLORS[i]}" title="${TIER_NAMES[i]}"></i>`).join("")}</span>
       ${g ? `<span class="prog"><i style="width:${Math.min(100, have / g.need * 100)}%;background:${TIER_COLORS[g.tier]}"></i></span><span class="muted">${have}/${g.need} for ${TIER_NAMES[g.tier]}</span>`
           : `<span class="got">Gold complete!</span>`}
     </button>`;
   }).join("")}</div>
-  <p class="note" style="margin-top:12px">Every tier (Bronze, Silver, Gold) earns ${BADGE_PACKS} bonus packs. Tap a region to see what you're missing in the Pokédex.</p>`;
+  <p class="note" style="margin-top:12px">Every tier (Bronze, Silver, Gold) earns ${BADGE_PACKS} packs. Region badges earn packs from that region. Tap a region to see what you're missing in the Pokédex.</p>`;
 }
 function renderCollection() {
   const sc = showcase();
@@ -2148,7 +2153,7 @@ function tutorialSlides() {
   return [
     { art: fan, title: "Rip free packs", text: `You get ${DAILY_PACKS} free packs every day. Tap a pack to rip it open.` },
     { art: five, title: "Keep 1 of 5", text: "Every pack has 5 Pokémon. Tap a card to see it up close, then press Keep to add it to your collection." },
-    { art: medals, title: "Earn badges", text: `Collect Pokémon from each region, plus Shinies and Legendaries, to earn Bronze, Silver and Gold badges. Every tier gives ${BADGE_PACKS} bonus packs.` },
+    { art: medals, title: "Earn badges", text: `Collect Pokémon from each region, plus Shinies and Legendaries, to earn Bronze, Silver and Gold badges. Every tier gives ${BADGE_PACKS} bonus packs, and region badges give packs from that region.` },
     { art: ticket, title: "Find Golden Tickets", text: "Signed-in members can find WD Card Shop store credit and discount codes hidden in packs." },
   ];
 }
@@ -2193,7 +2198,8 @@ function renderSheet() {
     el.innerHTML = `<div class="sheet-wrap" id="badge-bg"><div class="sheet badge-sheet" role="dialog" aria-modal="true" aria-label="Badge earned">
       <div class="badge-row">${ks.slice(0, 12).map((k, i) => { const [id, t] = k.split(":"); return `<span class="pop" style="animation-delay:${i * .08}s">${badgeMedal(badgeById(id), +t + 1, "lg")}</span>`; }).join("")}</div>
       <h2>${n === 1 ? `${badgeLabel(ks[0])}!` : `${n} badges earned!`}</h2>
-      <p class="muted" style="margin:0"><b>+${n * BADGE_PACKS} Wild packs</b> added to your bag.</p>
+      <p class="muted" style="margin:0"><b>${(() => { const by = {}; ks.forEach(k => { const kind = rewardKind(k.split(":")[0]); by[kind] = (by[kind] || 0) + BADGE_PACKS; });
+        return Object.entries(by).map(([kind, c]) => `+${c} ${kind === "all" ? "Wild" : packLabel(kind)} packs`).join(", "); })()}</b> added to your bag.</p>
       <p class="muted" style="margin:0;font-size:13px">${badgeCount()} of ${BADGE_MAX} badge tiers · see them in Collection → Badges</p>
       <div class="row" style="justify-content:center"><button class="btn btn-accent" type="button" id="badge-ok">Nice!</button></div>
     </div></div>`;
