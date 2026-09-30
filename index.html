@@ -773,6 +773,12 @@ button.dm:hover { border-color: var(--accent); }
 .acct .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
 .acct .dot.ok { background: var(--good); } .acct .dot.busy { background: var(--hp-mid); } .acct .dot.err { background: var(--bad); }
 .acct .msg { flex: 1 1 240px; min-width: 0; }
+/* phones: one steady line, so saving never shifts the page */
+@media (max-width: 520px) {
+  .acct { flex-wrap: nowrap; min-height: 48px; }
+  .acct .msg { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .acct .btn { flex: none; white-space: nowrap; }
+}
 .acct a.btn { text-decoration: none; }
 .choice { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
 @media (max-width: 420px) { .choice { grid-template-columns: minmax(0, 1fr); } }
@@ -1058,10 +1064,10 @@ function renderAcct() {
   } else if (!SY.auth) {
     msg = "Playing as a guest.";
     action = SY.loginUrl ? `<a class="btn btn-accent btn-sm" href="${SY.loginUrl}" target="_top">Sign in to save</a>` : "";
-  } else if (SY.state === "loading") { dot = "busy"; msg = `Loading your save${who}…`; }
-  else if (SY.state === "saving") { dot = "busy"; msg = `Saving to your account${who}…`; }
-  else if (SY.state === "synced") {
-    dot = "ok"; msg = `Saved to your account${who}.`;
+  } else if (SY.state === "loading" || SY.state === "saving" || SY.state === "synced") {
+    // the status text changes on every save; the button stays put so nothing below jumps
+    dot = SY.state === "synced" ? "ok" : "busy";
+    msg = SY.state === "loading" ? `Loading your save${who}…` : SY.state === "saving" ? `Saving${who}…` : `Saved to your account${who}.`;
     if (SY.subscribed === false) action = `<button class="btn btn-accent btn-sm" type="button" id="acct-sub">Subscribe for +${SUB_PACKS} free packs</button>`;
   }
   else if (SY.state === "conflict") { dot = "err"; msg = "Your account and this device have different saves. Choose one to keep."; action = `<button class="btn btn-accent btn-sm" type="button" id="acct-resolve">Choose save</button>`; }
