@@ -494,6 +494,27 @@ body.simple .card .rar { position: absolute; top: 8px; left: 8px; right: 8px; }
   body.simple .packbag.multi .pack .top, body.simple .packbag.multi .pack .lbl span { display: none; }
 }
 
+/* How to play */
+.help-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 800; font-size: 15px; line-height: 1; cursor: pointer; }
+.sheet.tut { display: grid; gap: 12px; text-align: center; justify-items: center; max-width: 420px; }
+.tut-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+.tut-art { min-height: 150px; display: grid; place-items: center; width: 100%; }
+.sheet.tut h2 { font-size: 26px; margin: 0; }
+.sheet.tut p { margin: 0; color: var(--muted); font-size: 15px; max-width: 34ch; }
+.tut-fan { margin: 0 auto; }
+.tut-cards { display: flex; gap: 6px; justify-content: center; }
+.tut-card { width: 56px; aspect-ratio: 5 / 7; border-radius: 9px; background: var(--surface-2); border: 2px solid color-mix(in srgb, var(--rc) 70%, var(--line)); display: grid; place-items: center; }
+.tut-card img { width: 100%; }
+.tut-card.on { transform: translateY(-10px) scale(1.12); outline: 3px solid var(--accent); outline-offset: 2px; }
+.tut-medals { display: flex; gap: 12px; justify-content: center; }
+.tut-ticket { width: 100%; max-width: 300px; padding: 14px 22px; }
+.tut-ticket .tk-amt { font-size: 38px; }
+.tut-ticket h3 { font-size: 18px; }
+.tut-dots { display: flex; gap: 8px; }
+.tut-dots button { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: var(--line); cursor: pointer; }
+.tut-dots button.on { background: var(--accent); width: 22px; border-radius: 99px; }
+.tut-nav { width: 100%; justify-content: space-between; }
+
 /* Badges */
 .badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .medal { --ring: var(--line); display: inline-grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 50%; overflow: hidden; position: relative;
@@ -859,7 +880,7 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
   <header class="top">
     <div class="brand">
       <a id="home-link" class="home-link" href="https://wdcardshop.com/" target="_top" hidden>← Back to WD Card Shop</a>
-      <div class="title-row"><h1>WD <em>Pack</em> Hunt</h1><span class="beta-tag simple-only">Beta</span></div>
+      <div class="title-row"><h1>WD <em>Pack</em> Hunt</h1><span class="beta-tag simple-only">Beta</span><button class="help-btn simple-only" id="help-btn" type="button" aria-label="How to play" title="How to play">?</button></div>
       <p class="dexline simple-only"><b id="m-line">0</b> / 1,025 Pokémon caught</p>
       <p class="full-only">Rip free packs every day and keep one card from each. Signed-in members can find WD Card Shop discount codes and store credit inside packs.</p>
       <p class="beta full-only"><span class="beta-tag">Beta</span> More is on the way. Everything you pull now stays in your Pokédex and collection and carries over to upcoming features like collection showcases and challenges.</p>
@@ -891,10 +912,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609292117"></script>
-<script src="sprites.js?v=202609292117"></script>
-<script src="evo.js?v=202609292117"></script>
-<script src="engine.js?v=202609292117"></script>
+<script src="dex.js?v=202609292120"></script>
+<script src="sprites.js?v=202609292120"></script>
+<script src="evo.js?v=202609292120"></script>
+<script src="engine.js?v=202609292120"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -1063,6 +1084,7 @@ function mergeSaves(a, b) {
   m.lastDaily = [a.lastDaily, b.lastDaily].filter(Boolean).sort().pop();
   m.subBonus = !!(a.subBonus || b.subBonus);
   m.badges = { ...(b.badges || {}), ...(a.badges || {}) };
+  m.tutorialDone = !!(a.tutorialDone || b.tutorialDone);
   m.tipStage = a.tipStage === "done" || b.tipStage === "done" ? "done" : a.tipStage || b.tipStage;
   if (!m.todayBest || (b.todayBest && (b.todayBest.day || "") > (m.todayBest.day || ""))) m.todayBest = b.todayBest || m.todayBest;
   m.starter = a.starter || b.starter;
@@ -2086,8 +2108,37 @@ function renderStarter() {
 }
 
 // ---------- Rendering: detail sheet ----------
+// ---------- How to play: a short walkthrough on the first visit, replayable from the "?" button ----------
+function tutorialSlides() {
+  const fan = `<div class="fan ready tut-fan" aria-hidden="true">${Array.from({ length: 3 }, () => miniPack("all")).join("")}<span class="fan-n">+3</span></div>`;
+  const five = `<div class="tut-cards" aria-hidden="true">${[25, 1, 4, 7, 133].map((n, i) => `<span class="tut-card ${i === 2 ? "on" : ""}" style="--rc:${rc(byNum(n).tier)}">${img(n)}</span>`).join("")}</div>`;
+  const medals = `<div class="tut-medals" aria-hidden="true">${badgeMedal(badgeById("kanto"), 1, "lg")}${badgeMedal(badgeById("shiny"), 2, "lg")}${badgeMedal(badgeById("legend"), 3, "lg")}</div>`;
+  const ticket = `<div class="ticket tut-ticket" aria-hidden="true"><div class="tk-amt"><small>up to</small>$20</div><div class="tk-body"><div class="tk-top">Golden Ticket</div><h3>WD Card Shop prizes</h3></div></div>`;
+  return [
+    { art: fan, title: "Rip free packs", text: `You get ${DAILY_PACKS} free packs every day. Tap a pack to rip it open.` },
+    { art: five, title: "Keep 1 of 5", text: "Every pack has 5 Pokémon. Tap a card to see it up close, then press Keep to add it to your collection." },
+    { art: medals, title: "Earn badges", text: `Collect Pokémon from each region, plus Shinies and Legendaries, to earn Bronze, Silver and Gold badges. Every tier gives ${BADGE_PACKS} bonus packs.` },
+    { art: ticket, title: "Find Golden Tickets", text: "Signed-in members can find WD Card Shop store credit and discount codes hidden in packs." },
+  ];
+}
+function tutorialHTML() {
+  const slides = tutorialSlides(), i = S.tutorial, sl = slides[i], last = i === slides.length - 1;
+  return `<div class="sheet-wrap" id="tut-bg"><div class="sheet tut" role="dialog" aria-modal="true" aria-label="How to play">
+    <div class="tut-top"><span class="eyebrow">How to play · ${i + 1} of ${slides.length}</span><button class="btn btn-plain btn-sm" type="button" id="tut-skip">Skip</button></div>
+    <div class="tut-art">${sl.art}</div>
+    <h2>${sl.title}</h2><p>${sl.text}</p>
+    <div class="tut-dots">${slides.map((_, k) => `<button type="button" class="${k === i ? "on" : ""}" data-tut="${k}" aria-label="Step ${k + 1}"></button>`).join("")}</div>
+    <div class="row tut-nav">${i ? `<button class="btn btn-plain" type="button" id="tut-back">Back</button>` : "<span></span>"}<button class="btn btn-accent" type="button" id="tut-next">${last ? "Let's rip!" : "Next"}</button></div>
+  </div></div>`;
+}
+function endTutorial() { S.tutorial = null; if (!C.tutorialDone) { C.tutorialDone = true; save(); } render(); }
 function renderSheet() {
   const el = document.getElementById("sheet");
+  if (S.tutorial != null) {
+    const key = "tut:" + S.tutorial;
+    if (el.dataset.sheet === key && el.firstElementChild) return;
+    el.dataset.sheet = key; el.innerHTML = tutorialHTML(); return;
+  }
   if (S.ticketShow) {
     const key = "ticket:" + (S.ticketShow.ref || S.ticketShow.code || S.ticketShow.label) + ":" + (S.ticketShow.found || "");
     if (el.dataset.sheet === key && el.firstElementChild) return; // already showing: leave it alone so the animation plays once
@@ -2263,7 +2314,16 @@ document.getElementById("view").addEventListener("submit", async e => {
   e.preventDefault();
   saveName(document.getElementById("trainer-name").value.trim());
 });
+document.getElementById("help-btn").addEventListener("click", () => { S.tutorial = 0; renderSheet(); });
 document.getElementById("sheet").addEventListener("click", e => {
+  const tt = e.target;
+  if (S.tutorial != null) {
+    if (tt.closest("#tut-skip") || tt.id === "tut-bg") return endTutorial();
+    if (tt.closest("#tut-next")) { if (S.tutorial >= tutorialSlides().length - 1) return endTutorial(); S.tutorial++; return renderSheet(); }
+    if (tt.closest("#tut-back")) { S.tutorial = Math.max(0, S.tutorial - 1); return renderSheet(); }
+    const d = tt.closest("[data-tut]"); if (d) { S.tutorial = +d.dataset.tut; return renderSheet(); }
+    return;
+  }
   const t = e.target, n = S.detail;
   if (t.closest("#reveal-later") || t.id === "reveal-bg") { S.reveal = null; return renderSheet(); }
   if (t.closest("#ticket-ok") || t.id === "ticket-bg") { S.ticketShow = null; return renderSheet(); }
@@ -2349,6 +2409,7 @@ try { if (/wdcardshop\.com/.test(document.referrer)) document.getElementById("ho
 // Boot: resume an unfinished pack, then land on Today
 function boot() {
   visit();
+  if (FEATURES.simple && !C.tutorialDone && (C.packs || 0) < 3) S.tutorial = 0; // first visit
   if (C.pending) { S.region = C.pending.region; S.packKind = C.pending.kind; S.cards = C.pending.cards; S.revealed = S.cards.length; S.phase = "picking"; }
   render();
   renderAcct();
