@@ -494,6 +494,39 @@ body.simple .card .rar { position: absolute; top: 8px; left: 8px; right: 8px; }
   body.simple .packbag.multi .pack .top, body.simple .packbag.multi .pack .lbl span { display: none; }
 }
 
+/* Type Badges */
+.bdg { --tc: #888; display: inline-grid; place-items: center; width: 28px; height: 28px; flex: none; color: #fff; font-family: var(--display); font-weight: 800; font-size: 12px; letter-spacing: -.02em;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--tc) 55%, #fff), var(--tc) 55%, color-mix(in srgb, var(--tc) 70%, #000));
+  clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+.bdg.sm { width: 18px; height: 18px; font-size: 8px; vertical-align: -4px; margin-right: 5px; }
+.bdg.lg { width: 56px; height: 56px; font-size: 20px; }
+.bdg.off { filter: grayscale(.85) brightness(.9); opacity: .55; }
+.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.badge-tile { display: grid; justify-items: center; gap: 5px; padding: 14px 8px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 13px; }
+.badge-tile b { font-size: 15px; }
+.badge-tile.done { border-color: color-mix(in srgb, var(--tc) 60%, var(--line)); background: color-mix(in srgb, var(--tc) 12%, var(--surface)); }
+.badge-tile.done .bdg { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--tc) 70%, transparent)); }
+.badge-tile .got { color: var(--good); font-weight: 700; font-size: 12px; }
+.badge-tile .prog { width: 70%; height: 5px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.badge-tile .prog i { display: block; height: 100%; background: var(--tc); border-radius: inherit; }
+.seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-2); margin-bottom: 14px; }
+.seg button { border: 0; background: transparent; color: var(--muted); font-weight: 700; font-size: 14px; padding: 7px 16px; border-radius: 9px; }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+.seg .mono { font-size: 11px; opacity: .8; margin-left: 3px; }
+.badge-sheet { text-align: center; display: grid; gap: 10px; justify-items: center; }
+.badge-sheet h2 { font-size: 26px; margin: 0; }
+.badge-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 340px; }
+.badge-row .pop { animation: tkpop .6s cubic-bezier(.2,.9,.3,1.3) both; }
+.pv-badge { font-size: 12.5px; display: block; }
+.coach { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; padding: 10px 14px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); font-weight: 600; font-size: 14px; }
+.coach .n { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font-family: var(--display); font-weight: 800; }
+.claimbar.out { grid-template-columns: 1fr; text-align: center; justify-items: center; }
+.out-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; width: 100%; max-width: 440px; }
+.out-card { display: grid; justify-items: center; gap: 4px; padding: 12px 10px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink); font-size: 14px; }
+.out-card img { width: 84px; height: 84px; }
+.out-card .eyebrow { font-size: 10.5px; }
+@media (prefers-reduced-motion: reduce) { .badge-row .pop { animation: none; } }
+
 /* Collection quick filters */
 .rchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .rchips button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; }
@@ -846,10 +879,10 @@ footer .reset.armed { border-color: var(--bad); color: var(--bad); }
 <div id="sheet"></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="dex.js?v=202609292054"></script>
-<script src="sprites.js?v=202609292054"></script>
-<script src="evo.js?v=202609292054"></script>
-<script src="engine.js?v=202609292054"></script>
+<script src="dex.js?v=202609292106"></script>
+<script src="sprites.js?v=202609292106"></script>
+<script src="evo.js?v=202609292106"></script>
+<script src="engine.js?v=202609292106"></script>
 <script>
 (() => {
 const E = window.ENGINE;
@@ -1017,6 +1050,9 @@ function mergeSaves(a, b) {
   if ((b.bag || []).length > (a.bag || []).length) m.bag = b.bag;
   m.lastDaily = [a.lastDaily, b.lastDaily].filter(Boolean).sort().pop();
   m.subBonus = !!(a.subBonus || b.subBonus);
+  m.badges = { ...(b.badges || {}), ...(a.badges || {}) };
+  m.tipStage = a.tipStage === "done" || b.tipStage === "done" ? "done" : a.tipStage || b.tipStage;
+  if (!m.todayBest || (b.todayBest && (b.todayBest.day || "") > (m.todayBest.day || ""))) m.todayBest = b.todayBest || m.todayBest;
   m.starter = a.starter || b.starter;
   m.trainer = a.trainer || b.trainer;
   if (!(m.showcase || []).length && (b.showcase || []).length) m.showcase = b.showcase;
@@ -1353,13 +1389,17 @@ function keep() {
   }
   S.keptMsg = FEATURES.simple ? (isNew ? `New! ${c.shiny ? "Shiny " : ""}${m.name} added to your collection.` : `${c.shiny ? "Shiny " : ""}${m.name} again (you have ${C.dex[c.num].n}).`) : `${msg} The other four go back.`;
   C.packs++; C.pending = null;
+  const day = today(), tb = C.todayBest, better = !tb || tb.day !== day || m.tier > byNum(tb.num).tier || (m.tier === byNum(tb.num).tier && (c.shiny && !tb.shiny || m.bst > byNum(tb.num).bst));
+  if (better) C.todayBest = { day, num: c.num, shiny: c.shiny };
+  if (!C.tipStage) C.tipStage = "badge";
   save();
+  checkBadges();
   S.kept = S.selected; S.phase = "kept"; S.banner = null;
   if (S.batch) return afterBatchKeep({ num: c.num, shiny: c.shiny, isNew, ups });
   toast(ups ? `${m.name} upgraded to ${gradeName(C.box[c.num].grade)}!` : isNew ? `New Pokédex entry: ${m.name} (#${pad(m.num)})` : `${m.name} kept`);
   render();
 }
-function nextPack() { clearTimers(); S.phase = "sealed"; S.cards = []; S.banner = null; S.batch = null; S.prize = null; render(); }
+function nextPack() { if (C.tipStage === "badge") { C.tipStage = "done"; save(); } clearTimers(); S.phase = "sealed"; S.cards = []; S.banner = null; S.batch = null; S.prize = null; render(); }
 // The stack picked in the bag (falls back to the first stack when it runs out)
 function selectedKind() {
   const groups = bagGroups();
@@ -1367,6 +1407,37 @@ function selectedKind() {
   if (!groups.some(g => g.kind === S.packKind)) S.packKind = groups[0].kind;
   if (!unlockedRegions().some(r => r.id === S.region)) S.region = "all";
   return S.packKind;
+}
+
+// ---------- Type Badges: collect BADGE_GOAL different Pokémon of one type to earn its badge (+BADGE_PACKS packs) ----------
+const BADGE_GOAL = 6, BADGE_PACKS = 2;
+const typeOwned = t => Object.keys(C.box).filter(n => byNum(+n).types.includes(t)).length;
+const badgeDone = t => !!(C.badges && C.badges[t]);
+const badgeCount = () => TYPES.filter(badgeDone).length;
+const badgeIcon = (t, cls = "") => `<span class="bdg ${cls}" style="--tc:${TYPE_COLORS[t]}"><span>${t.slice(0, 2)}</span></span>`;
+function checkBadges() {
+  if (!C.starter) return [];
+  C.badges = C.badges || {};
+  const won = TYPES.filter(t => !C.badges[t] && typeOwned(t) >= BADGE_GOAL);
+  if (!won.length) return won;
+  won.forEach(t => { C.badges[t] = today(); });
+  addPacks("all", won.length * BADGE_PACKS, `${won.length === 1 ? won[0] + " Badge" : won.length + " badges"}`, false);
+  save();
+  S.badgeShow = (S.badgeShow || []).concat(won);
+  return won;
+}
+// the unfinished badge you're closest to
+function closestBadge() {
+  const open = TYPES.filter(t => !badgeDone(t)).map(t => [t, typeOwned(t)]).sort((a, b) => b[1] - a[1]);
+  return open.length ? { type: open[0][0], have: open[0][1] } : null;
+}
+// what keeping this card would do for your badges
+function badgeLines(c) {
+  if (inBox(c.num)) return [];
+  return byNum(c.num).types.filter(t => !badgeDone(t)).map(t => {
+    const next = typeOwned(t) + 1;
+    return next >= BADGE_GOAL ? `${badgeIcon(t, "sm")}<b>Completes the ${t} Badge!</b> +${BADGE_PACKS} packs` : `${badgeIcon(t, "sm")}${t} Badge ${next}/${BADGE_GOAL}`;
+  });
 }
 
 // ---------- Showcase ----------
@@ -1710,10 +1781,27 @@ function prizeLine() {
   return `<p class="prize-line"><span class="tk-mini">Golden Ticket</span> <b>${ticketCount()}</b>. ${odds}.</p>`;
 }
 // Simple mode: today's free packs as one big banner at the top of the Packs tab
+// One-time tips for a brand-new player, one step at a time
+function coachTip() {
+  if (C.tipStage === "done" || (C.packs || 0) > 6) return "";
+  const step = C.tipStage === "badge" && S.phase === "kept" ? ["4", `Collect ${BADGE_GOAL} Pokémon of one type to earn its Badge and ${BADGE_PACKS} bonus packs. Check Collection → Badges.`]
+    : dailyAvailable() && S.phase === "sealed" ? ["1", "Claim your free packs"]
+    : S.phase === "sealed" && bagCount() ? ["2", "Tap a pack to rip it open"]
+    : S.phase === "picking" ? ["3", "Tap a card to see it, then press Keep"] : null;
+  return step ? `<div class="coach"><span class="n">${step[0]}</span><span>${step[1]}</span></div>` : "";
+}
+// When the bag is empty: today's best pull, your closest badge, and when more packs come
+function outOfPacks() {
+  const tb = C.todayBest && C.todayBest.day === today() ? C.todayBest : null, cb = closestBadge();
+  const best = tb ? (() => { const m = byNum(tb.num); return `<div class="out-card" style="--rc:${rc(m.tier)}"><span class="eyebrow">Today's best pull</span>${img(m.num, tb.shiny)}<b>${tb.shiny ? "★ " : ""}${m.name}</b><span class="muted">${RARITY[m.tier]}</span></div>`; })() : "";
+  const badge = cb ? `<button class="out-card" type="button" data-badge="${cb.type}"><span class="eyebrow">Closest badge</span>${badgeIcon(cb.type, "lg")}<b>${cb.type} Badge ${cb.have}/${BADGE_GOAL}</b><span class="muted">${BADGE_GOAL - cb.have === 1 ? `1 more ${cb.type} Pokémon!` : `${BADGE_GOAL - cb.have} more ${cb.type} Pokémon`}</span></button>`
+    : `<div class="out-card"><span class="eyebrow">Badges</span><b>All ${TYPES.length} earned!</b></div>`;
+  return `<section class="claimbar done out"><div><h2>Out of packs</h2><p>${DAILY_PACKS} more free packs tomorrow${nextDailyText()}.</p></div>
+    <div class="out-grid">${best}${badge}</div></section>`;
+}
 function claimBanner() {
   const avail = dailyAvailable();
-  if (!avail) return bagCount() ? "" : `<section class="claimbar done"><div class="fan claimed" aria-hidden="true">${Array.from({ length: DAILY_PACKS }, () => miniPack("all")).join("")}</div>
-    <div><h2>Out of packs</h2><p>${DAILY_PACKS} more free packs tomorrow${nextDailyText()}.</p></div></section>`;
+  if (!avail) return bagCount() ? "" : outOfPacks();
   return `<section class="claimbar"><div class="fan ready" aria-hidden="true">${Array.from({ length: DAILY_PACKS }, () => miniPack("all")).join("")}<span class="fan-n">+${avail}</span></div>
     <div><h2>${avail} free packs are ready</h2><button class="btn btn-accent big" type="button" id="claim-daily">Claim ${plural(avail, "pack", "packs")}</button></div></section>`;
 }
@@ -1738,7 +1826,7 @@ function previewHTML() {
   if (S.phase !== "picking" || S.selected == null) return `<div class="preview empty"><span>Tap a card to see it up close</span></div>`;
   const c = S.cards[S.selected], m = byNum(c.num), had = C.dex[c.num];
   return `<div class="preview" style="--rc:${rc(m.tier)}">${img(m.num, c.shiny)}
-    <div><b>${c.shiny ? "★ Shiny " : ""}${m.name}</b><span class="pv-tags"><span class="pv-rar">${RARITY[m.tier]}</span>${had ? `<span class="pv-own">You have ${had.n}</span>` : `<span class="pv-new">NEW</span>`}</span><span class="types">${typeChips(m.types)}</span></div></div>`;
+    <div><b>${c.shiny ? "★ Shiny " : ""}${m.name}</b>${badgeLines(c).map(l => `<span class="pv-badge">${l}</span>`).join("")}<span class="pv-tags"><span class="pv-rar">${RARITY[m.tier]}</span>${had ? `<span class="pv-own">You have ${had.n}</span>` : `<span class="pv-new">NEW</span>`}</span><span class="types">${typeChips(m.types)}</span></div></div>`;
 }
 function renderPacks() {
   if (SY.auth && !S.rewards && !S.rewardsLoading) setTimeout(() => loadRewards(false), 0);
@@ -1811,7 +1899,7 @@ function renderPacks() {
       <p class="note">${note}</p><div class="actions">${actions}</div>`;
   }
   const earn = !FEATURES.simple && (S.phase === "sealed" || (S.phase === "kept" && !S.batch) || S.phase === "batchDone") ? `<div style="margin-top:16px">${renderEarn()}</div>` : "";
-  const top = FEATURES.simple && (S.phase === "sealed" || S.phase === "kept" || S.phase === "batchDone") ? claimBanner() : "";
+  const top = (FEATURES.simple ? coachTip() : "") + (FEATURES.simple && (S.phase === "sealed" || S.phase === "kept" || S.phase === "batchDone") ? claimBanner() : "");
   return `${top}${bag}${stage ? `<section class="stage" aria-live="polite"><div class="stage-inner">${stage}</div></section>` : ""}${earn}`;
 }
 
@@ -1845,7 +1933,16 @@ function rarityChips() {
   const count = t => own.filter(n => byNum(n).tier === t).length;
   const chips = [["all", "All", own.length, ""], ["t3", "Legendary", count(3), "var(--r3)"], ["t2", "Rare", count(2), "var(--r2)"], ["t1", "Uncommon", count(1), "var(--r1)"], ["t0", "Common", count(0), "var(--r0)"],
     ["shiny", "★ Shiny", own.filter(n => C.box[n].shiny).length, "var(--candy)"]];
+  if (show.startsWith("type:")) { const t = show.slice(5); chips.unshift([show, `${t} ✕`, own.filter(n => byNum(n).types.includes(t)).length, TYPE_COLORS[t]]); }
   return chips.map(([v, l, n, c]) => `<button type="button" data-boxshow="${v}" aria-pressed="${show === v}" ${c ? `style="--dot:${c}"` : ""}>${c && v !== "shiny" ? "<i></i>" : ""}${l}<span>${n}</span></button>`).join("");
+}
+function renderBadges() {
+  const list = TYPES.map(t => ({ t, have: typeOwned(t), done: badgeDone(t) })).sort((a, b) => (b.done - a.done) || (b.have - a.have)); // earned first, then the closest
+  return `<div class="badges">${list.map(x => `<button type="button" class="badge-tile ${x.done ? "done" : ""}" data-badge="${x.t}" style="--tc:${TYPE_COLORS[x.t]}">
+    ${badgeIcon(x.t, x.done ? "lg" : "lg off")}<b>${x.t}</b>
+    ${x.done ? `<span class="got">✓ Earned</span>` : `<span class="prog"><i style="width:${Math.min(100, x.have / BADGE_GOAL * 100)}%"></i></span><span class="muted">${Math.min(x.have, BADGE_GOAL)}/${BADGE_GOAL}</span>`}
+  </button>`).join("")}</div>
+  <p class="note" style="margin-top:12px">Collect ${BADGE_GOAL} different Pokémon of a type to earn its badge and ${BADGE_PACKS} bonus packs. Tap a badge to see those cards.</p>`;
 }
 function renderCollection() {
   const sc = showcase();
@@ -1860,7 +1957,7 @@ function renderCollection() {
   const q = S.boxSearch.trim().toLowerCase();
   const show = S.boxShow || "all";
   let box = Object.keys(C.box).map(Number).filter(n => !q || byNum(n).name.toLowerCase().includes(q))
-    .filter(n => show === "all" || (show === "shiny" && C.box[n].shiny) || (show === "pinned" && sc.includes(n)) || (show === "graded" && C.box[n].grade > 0) || show === "t" + byNum(n).tier);
+    .filter(n => show === "all" || (show === "shiny" && C.box[n].shiny) || (show === "pinned" && sc.includes(n)) || (show === "graded" && C.box[n].grade > 0) || show === "t" + byNum(n).tier || (show.startsWith("type:") && byNum(n).types.includes(show.slice(5))));
   // Rarest first = rarity tier, then Shinies, then the strongest; Pokédex order on request
   const rarest = (a, b) => byNum(b).tier - byNum(a).tier || (C.box[b].shiny ? 1 : 0) - (C.box[a].shiny ? 1 : 0) || power(b) - power(a) || a - b;
   box.sort(S.boxSort === "num" ? (a, b) => a - b : S.boxSort === "grade" ? (a, b) => (C.box[b].grade - C.box[a].grade) || rarest(a, b) : rarest);
@@ -1882,7 +1979,9 @@ function renderCollection() {
     <div class="galcards">${x.cards.map(c => showCard(c.num, c)).join("")}</div></div>`;
   const gallery = !g ? `<p class="muted">Loading showcases…</p>` : g.error ? `<p class="muted">The gallery is on <a href="${STORE_PAGE}" target="_top" rel="noopener">wdcardshop.com</a>.</p>`
     : `${g.featured ? `<div class="featured"><div class="eyebrow">Showcase of the Month</div>${gRow(g.featured)}</div>` : ""}${g.showcases.length ? g.showcases.map(gRow).join("") : `<p class="muted">No showcases yet. Pin your best 6 and be the first!</p>`}`;
-  if (!FEATURES.showcase) return `<section class="panel"><h2>Your cards <span>${plural(Object.keys(C.box).length, "card", "cards")} · ${shinies()} Shiny</span></h2>
+  const seg = FEATURES.simple ? `<div class="seg" role="group" aria-label="Collection view"><button type="button" data-colview="cards" aria-pressed="${S.colView !== "badges"}">Cards</button><button type="button" data-colview="badges" aria-pressed="${S.colView === "badges"}">Badges <span class="mono">${badgeCount()}/${TYPES.length}</span></button></div>` : "";
+  if (FEATURES.simple && S.colView === "badges") return `<section class="panel">${seg}${renderBadges()}</section>`;
+  if (!FEATURES.showcase) return `<section class="panel">${seg}<h2>Your cards <span>${plural(Object.keys(C.box).length, "card", "cards")} · ${shinies()} Shiny</span></h2>
       <div class="toolbar">
         <input type="search" id="box-search" placeholder="Search your cards…" value="${S.boxSearch.replace(/"/g, "&quot;")}" aria-label="Search your cards">
         <button type="button" class="sortbtn" data-boxsort="${S.boxSort === "num" ? "power" : "num"}" aria-label="Change sort order">Sort: <b>${S.boxSort === "num" ? "Pokédex #" : "Rarest first"}</b></button>
@@ -1967,6 +2066,20 @@ function renderSheet() {
     </div></div>`;
     return;
   }
+  if (S.badgeShow && S.badgeShow.length && !S.ticketShow) {
+    const key = "badge:" + S.badgeShow.join(",");
+    if (el.dataset.sheet === key && el.firstElementChild) return;
+    el.dataset.sheet = key;
+    const b = S.badgeShow, n = b.length;
+    el.innerHTML = `<div class="sheet-wrap" id="badge-bg"><div class="sheet badge-sheet" role="dialog" aria-modal="true" aria-label="Badge earned">
+      <div class="badge-row">${b.slice(0, 18).map((t, i) => `<span class="pop" style="animation-delay:${i * .08}s">${badgeIcon(t, "lg")}</span>`).join("")}</div>
+      <h2>${n === 1 ? `${b[0]} Badge earned!` : `${n} badges earned!`}</h2>
+      <p class="muted" style="margin:0">You collected ${BADGE_GOAL} different ${n === 1 ? b[0] : "Pokémon of each type"}${n === 1 ? " Pokémon" : ""}. <b>+${n * BADGE_PACKS} Wild packs</b> added to your bag.</p>
+      <p class="muted" style="margin:0;font-size:13px">${badgeCount()} of ${TYPES.length} badges · see them all in Collection → Badges</p>
+      <div class="row" style="justify-content:center"><button class="btn btn-accent" type="button" id="badge-ok">Nice!</button></div>
+    </div></div>`;
+    return;
+  }
   if (S.reveal && S.reveal.length && !S.battle) {
     const key = "reveal:" + JSON.stringify(S.reveal);
     if (el.dataset.sheet === key && el.firstElementChild) return;
@@ -2025,6 +2138,7 @@ function renderSheet() {
 }
 
 function render() {
+  checkBadges();
   renderMeter();
   document.getElementById("dev-tools").hidden = !devOn();
   if (SY.auth && !S.rewards && !S.rewardsLoading) setTimeout(() => loadRewards(false), 0); // tells us if this is a staff account
@@ -2070,7 +2184,9 @@ document.getElementById("view").addEventListener("click", e => {
   if (on("#claim-daily")) { const n = dailyAvailable(); addPacks("all", n, "Daily packs"); C.lastDaily = today(); save(); claimChances(); return render(); }
   if (on("#claim-week")) { addPacks("all", WEEK_PACKS, "Weekly bonus"); C.week.claimed = true; save(); return render(); }
   if ((el = on("[data-rip]"))) { if (S.battle) { clearTimers(); S.battle = null; } S.packKind = el.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
-  if ((el = on("[data-boxshow]"))) { S.boxShow = el.dataset.boxshow; return render(); }
+  if ((el = on("[data-boxshow]"))) { S.boxShow = el.dataset.boxshow === S.boxShow && S.boxShow.startsWith("type:") ? "all" : el.dataset.boxshow; return render(); }
+  if ((el = on("[data-colview]"))) { S.colView = el.dataset.colview; return render(); }
+  if ((el = on("[data-badge]"))) { S.tab = "collection"; S.colView = "cards"; S.boxShow = "type:" + el.dataset.badge; S.boxSearch = ""; return render(); }
   if ((el = on("[data-boxsort]"))) { S.boxSort = el.dataset.boxsort; return render(); }
   if ((el = on("[data-bag]"))) { S.packKind = el.dataset.bag; if (S.phase === "kept" || S.phase === "batchDone") { S.phase = "sealed"; S.cards = []; S.batch = null; } return render(); }
   if ((el = on("[data-copy]"))) { const c = el.dataset.copy; try { navigator.clipboard.writeText(c).then(() => toast("Code copied"), () => toast(c)); } catch { toast(c); } return; }
@@ -2114,6 +2230,7 @@ document.getElementById("sheet").addEventListener("click", e => {
   const t = e.target, n = S.detail;
   if (t.closest("#reveal-later") || t.id === "reveal-bg") { S.reveal = null; return renderSheet(); }
   if (t.closest("#ticket-ok") || t.id === "ticket-bg") { S.ticketShow = null; return renderSheet(); }
+  if (t.closest("#badge-ok") || t.id === "badge-bg") { S.badgeShow = null; return render(); }
   const rip = t.closest("[data-rip]");
   if (rip) { S.reveal = null; S.packKind = rip.dataset.rip; S.phase = "sealed"; S.cards = []; S.tab = "packs"; return render(); }
   if (t.closest("#sub-yes")) { S.subOffer = false; renderSheet(); if (SY.shopOrigin) window.parent.postMessage({ type: "pd-subscribe" }, SY.shopOrigin); toast("Subscribing…"); return; }
